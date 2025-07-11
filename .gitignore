@@ -18,7 +18,7 @@ staticfiles/
 jobcard_backups/
 .header_temp.html
 .jobcard_temp.html
-jobcard/migrations
+jobcards/migrations
 .web.config
 .wfastcgi.log
 .settings.py
