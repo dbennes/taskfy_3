@@ -21,3 +21,4 @@ jobcard_backups/
 jobcard/migrations
 .web.config
 .wfastcgi.log
+.settings.py
