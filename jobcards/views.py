@@ -663,51 +663,60 @@ def import_materials(request):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': f'Could not read file: {str(e)}'})
 
+        # Lista das colunas obrigatórias
         required_columns = [
             'job_card_number', 'working_code', 'discipline', 'tag_jobcard_base',
             'jobcard_required_qty', 'unit_req_qty', 'weight_kg', 'material_segmentation',
             'comments', 'sequenc_no_procurement', 'status_procurement', 'mto_item_no',
             'basic_material', 'description', 'project_code', 'nps1', 'qty', 'unit', 'po'
         ]
+        # item é opcional — só inclua se quiser importar a coluna "item" do Excel/CSV.
+
+        # Valida colunas
         missing = [col for col in required_columns if col not in df.columns]
         if missing:
             return JsonResponse({'status': 'error', 'message': f"Missing columns: {', '.join(missing)}"})
 
+        # Pega o job_card_number da primeira linha
         job_card_number = str(df['job_card_number'].iloc[0]).strip()
         if not JobCard.objects.filter(job_card_number=job_card_number).exists():
             return JsonResponse({'status': 'error', 'message': f"Job Card '{job_card_number}' does not exist."})
 
         materials_exist = MaterialBase.objects.filter(job_card_number=job_card_number).exists()
 
+        # Se já existe material e não é overwrite, pede confirmação
         if materials_exist and not overwrite:
             return JsonResponse({'status': 'duplicate', 'message': 'Materials already registered for this Job Card.'})
 
-        # Apaga antigos se for overwrite
+        # Se é overwrite, apaga antes de inserir os novos
         if overwrite and materials_exist:
             MaterialBase.objects.filter(job_card_number=job_card_number).delete()
 
+        # Insere os novos materiais
         for idx, row in df.iterrows():
             try:
                 MaterialBase.objects.create(
-                    job_card_number = row['job_card_number'],
-                    working_code = row.get('working_code', ''),
-                    discipline = row.get('discipline', ''),
-                    tag_jobcard_base = row.get('tag_jobcard_base', ''),
-                    jobcard_required_qty = row.get('jobcard_required_qty', 0),
-                    unit_req_qty = row.get('unit_req_qty', ''),
-                    weight_kg = row.get('weight_kg', 0),
-                    material_segmentation = row.get('material_segmentation', ''),
-                    comments = row.get('comments', ''),
-                    sequenc_no_procurement = row.get('sequenc_no_procurement', ''),
-                    status_procurement = row.get('status_procurement', ''),
-                    mto_item_no = row.get('mto_item_no', ''),
-                    basic_material = row.get('basic_material', ''),
-                    description = row.get('description', ''),
-                    project_code = row.get('project_code', ''),
-                    nps1 = row.get('nps1', ''),
-                    qty = row.get('qty', 0),
-                    unit = row.get('unit', ''),
-                    po = row.get('po', ''),
+                    # Se quiser importar 'item', descomente a linha abaixo:
+                    # item = row.get('item') if 'item' in row else None,
+                    job_card_number = str(row['job_card_number']).strip(),
+                    working_code = str(row.get('working_code', '')).strip(),
+                    discipline = str(row.get('discipline', '')).strip(),
+                    tag_jobcard_base = str(row.get('tag_jobcard_base', '')).strip(),
+                    jobcard_required_qty = float(row.get('jobcard_required_qty', 0)) if row.get('jobcard_required_qty') not in [None, ''] else None,
+                    unit_req_qty = str(row.get('unit_req_qty', '')).strip(),
+                    weight_kg = float(row.get('weight_kg', 0)) if row.get('weight_kg') not in [None, ''] else None,
+                    material_segmentation = str(row.get('material_segmentation', '')).strip(),
+                    comments = str(row.get('comments', '')).strip(),
+                    sequenc_no_procurement = str(row.get('sequenc_no_procurement', '')).strip(),
+                    status_procurement = str(row.get('status_procurement', '')).strip(),
+                    mto_item_no = str(row.get('mto_item_no', '')).strip(),
+                    basic_material = str(row.get('basic_material', '')).strip(),
+                    description = str(row.get('description', '')).strip(),
+                    project_code = str(row.get('project_code', '')).strip(),
+                    nps1 = str(row.get('nps1', '')).strip(),
+                    qty = float(row.get('qty', 0)) if row.get('qty') not in [None, ''] else None,
+                    unit = str(row.get('unit', '')).strip(),
+                    po = str(row.get('po', '')).strip(),
                 )
             except Exception as e:
                 return JsonResponse({

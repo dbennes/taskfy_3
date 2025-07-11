@@ -24,9 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-ek1fnjxzic4aol1_+hqh)bb2xbpduj*dhlp@%^=xcbgh#qs&$t'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -80,7 +80,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'taskfy',
         'USER': 'postgres',
-        'PASSWORD': 'Mabu@2030!',
+        'PASSWORD': 'utc@2025',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -128,7 +128,7 @@ STATIC_URL = '/static/'
 
 #Aqui usamos para indicar o caminho
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static_')
+    os.path.join(BASE_DIR, 'static')
 ]
 
 # Default primary key field type

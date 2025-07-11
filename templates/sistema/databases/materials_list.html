@@ -85,7 +85,7 @@
                     <td>{{ mat.unit_req_qty }}</td>
                     <td>{{ mat.weight_kg|floatformat:2 }}</td>
                     <td>{{ mat.material_segmentation }}</td>
-                    
+                    <td>{{ mat.comments }}</td>
                     <td>{{ mat.sequenc_no_procurement }}</td>
                     <td>{{ mat.status_procurement }}</td>
                     <td>{{ mat.mto_item_no }}</td>
@@ -96,7 +96,6 @@
                     <td>{{ mat.qty|floatformat:2 }}</td>
                     <td>{{ mat.unit }}</td>
                     <td>{{ mat.po }}</td>
-                    <td>{{ mat.comments }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -431,6 +430,7 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(response => response.json())
         .then(data => {
+            formDataCache = null; // <--- Limpa aqui!
             $('#confirmReplaceModal').modal('hide');
             if (data.status === 'ok') {
                 showSuccess("Materials updated successfully!", true);
