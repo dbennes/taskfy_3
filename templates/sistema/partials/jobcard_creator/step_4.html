@@ -1,0 +1,58 @@
+<div class="step-content d-none" id="step-4" style="font-size: 12px;">
+    <h5 class="mb-3">Tools for Working Code: <span class="text-primary">{{ job.working_code }}</span></h5>
+
+    {% if tools_list %}
+        <table class="table table-sm table-bordered" style="font-size: 11px;">
+            <thead class="table-light text-center">
+                <tr>
+                    <th>Item</th>
+                    <th>Discipline</th>
+                    <th>Working Code</th>
+                    <th>Direct Labor</th>
+                    <th>Qty DL</th>
+                    <th>Special Tooling</th>
+                    <th>Qty</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tool in tools_list %}
+                    <tr>
+                        <td class="text-center text-secondary">
+                            {{ tool.item }}
+                            <input type="hidden" name="tool_item[]" value="{{ tool.item }}">
+                        </td>
+                        <td class="text-center text-dark">
+                            {{ tool.discipline }}
+                            <input type="hidden" name="tool_discipline[]" value="{{ tool.discipline }}">
+                        </td>
+                        <td class="text-center">
+                            {{ tool.working_code }}
+                            <input type="hidden" name="tool_working_code[]" value="{{ tool.working_code }}">
+                        </td>
+                        <td class="text-center">
+                            {{ tool.direct_labor }}
+                            <input type="hidden" name="tool_direct_labor[]" value="{{ tool.direct_labor }}">
+                        </td>
+                        <td class="text-center">
+                            {{ tool.qty_direct_labor|floatformat:2 }}
+                            <input type="hidden" name="tool_qty_direct_labor[]" value="{{ tool.qty_direct_labor|floatformat:2 }}">
+                        </td>
+                        <td>
+                            {{ tool.special_tooling }}
+                            <input type="hidden" name="tool_special_tooling[]" value="{{ tool.special_tooling }}">
+                        </td>
+                        <td class="text-center">
+                            {{ tool.qty|floatformat:2 }}
+                            <input type="hidden" step="any" class="form-control form-control-sm text-center"
+                                   name="tool_qty[]" value="{{ tool.qty|floatformat:2 }}">
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="alert alert-warning" style="font-size: 12px;">
+            No tools found for working code <strong>{{ job.working_code }}</strong>.
+        </div>
+    {% endif %}
+</div>

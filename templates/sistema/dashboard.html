@@ -1,0 +1,181 @@
+{% extends 'sistema/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  .apple-card {
+    background: #f9f9f9;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    transition: transform .15s ease-in-out;
+  }
+  .apple-card:hover { transform: translateY(-2px);}
+  .system-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #3952a6;
+    margin-bottom: 10px;
+  }
+  .workpack-title {
+    font-size: 1.07rem;
+    color: #1b2838;
+    font-weight: 600;
+    margin: 15px 0 5px 0;
+  }
+  .jobcard-list {
+    list-style: none; padding-left: 0; margin-bottom: 14px;
+  }
+  .jobcard-item {
+    background: #fff;
+    border-radius: 10px;
+    margin-bottom: 7px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 1em;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    transition: transform .08s;
+  }
+  .jobcard-item:hover { transform: scale(1.01);}
+  .status-badge {
+    font-size: 0.82rem;
+    border-radius: 2em;
+    padding: 2px 14px;
+    font-weight: 600;
+    color: #fff;
+    background: #b7b7b7;
+    margin-left: 12px;
+  }
+  .status-checked { background: #38b84a; }
+  .status-notchecked { background: #f6c23e; color: #3b3a39; }
+  .status-inprogress { background: #4e73df;}
+  .status-other { background: #858796;}
+</style>
+
+<div class="container-fluid py-4">
+  <!-- Top summary cards -->
+  <div class="row gx-4 mb-4">
+    <div class="col-md-4 mb-3">
+      <div class="apple-card text-center p-4 h-100">
+        <h1 class="fw-bold">{{ total_jobcards }}</h1>
+        <p>Total JobCards</p>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="apple-card text-center p-4 h-100">
+        <h1 class="fw-bold text-danger">{{ not_checked_count }}</h1>
+        <p>Not Checked</p>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="apple-card text-center p-4 h-100">
+        <h1 class="fw-bold text-success">{{ checked_count }}</h1>
+        <p>Checked</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="row gx-4">
+    <div class="col-lg-6 mb-4">
+      <div class="apple-card p-3 h-100">
+        <h6 class="fw-bold text-primary">Not Checked by Discipline</h6>
+        <div style="position: relative; height:240px;">
+          <canvas id="notCheckedBar"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6 mb-4">
+      <div class="apple-card p-3 h-100">
+        <h6 class="fw-bold text-info">JobCards per Discipline</h6>
+        <div style="position: relative; height:240px;">
+          <canvas id="totalPie"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AWP Monitor Panel -->
+  <div class="row gx-4">
+    <div class="col-12">
+      <div class="apple-card p-4 mb-4">
+        <h4 class="mb-3 system-title"><i class="fa-solid fa-layer-group me-2"></i>AWP Monitor</h4>
+        {% for system, workpacks in awp_data.items %}
+          <div>
+            <div class="system-title">{{ system }}</div>
+            {% for wp, jobcards in workpacks.items %}
+              <div class="workpack-title">{{ wp }}</div>
+              <ul class="jobcard-list">
+                {% for jc in jobcards %}
+                  <li class="jobcard-item">
+                    <span>
+                      <strong>{{ jc.job_card_number }}</strong>
+                      <span class="text-muted ms-2" style="font-size: .97em;">{{ jc.discipline }}</span>
+                    </span>
+                    {% if jc.jobcard_status == 'checked' %}
+                      <span class="status-badge status-checked">Checked</span>
+                    {% elif jc.jobcard_status == 'not checked' %}
+                      <span class="status-badge status-notchecked">Not Checked</span>
+                    {% elif jc.jobcard_status == 'in progress' %}
+                      <span class="status-badge status-inprogress">In Progress</span>
+                    {% else %}
+                      <span class="status-badge status-other">{{ jc.jobcard_status|default:"Other" }}</span>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endfor %}
+          </div>
+          <hr>
+        {% empty %}
+          <div class="text-muted py-4">No JobCards found.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js scripts remain the same -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Not Checked Bar
+  new Chart(document.getElementById('notCheckedBar'), {
+    type: 'bar',
+    data: {
+      labels: {{ labels_not_checked|safe }},
+      datasets: [{
+        label: 'Not Checked',
+        data: {{ data_not_checked|safe }},
+        backgroundColor: '#e74a3b'
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  // Total Pie
+  new Chart(document.getElementById('totalPie'), {
+    type: 'pie',
+    data: {
+      labels: {{ labels_total|safe }},
+      datasets: [{
+        data: {{ data_total|safe }},
+        backgroundColor: [
+          '#4e73df','#1cc88a','#36b9cc',
+          '#f6c23e','#e74a3b','#858796'
+        ]
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'right' } }
+    }
+  });
+</script>
+{% endblock %}

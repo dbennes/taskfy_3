@@ -1,0 +1,502 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JobCard PDF</title>
+
+    <!-- CSS Externo (se houver) -->
+    <!-- Exemplo: <link rel="stylesheet" href="{{ request.build_absolute_uri }}{% static 'css/seu_estilo.css' %}"> -->
+
+    <style>
+    @page {
+        size: A4 portrait;
+        margin: 10mm 10mm 20mm 10mm;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        font-size: 9px; /* Diminua o tamanho se quiser mais conteúdo por página */
+    }
+
+    header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 25mm; /* Altura real do header */
+    }
+
+    main {
+        margin-top: 30mm; /* Header + 5mm de folga */
+        margin-bottom: 20mm; /* Espaço padrão para o footer */
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        page-break-inside: avoid;
+    }
+
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+
+    th, td {
+        border: 1px solid rgb(0, 0, 0);
+        padding: 3px 4px;
+        vertical-align: top;
+        font-size: 7px;
+    }
+
+    th { background: #e5e5e5; text-align: center; }
+</style>
+
+<!-- style do checkbox no final -->
+            <style>
+    .checkbox-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 6px;
+    }
+
+    .custom-checkbox {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border: 0.5px solid #000; /* Borda bem fina */
+        margin: 0;
+        padding: 0;
+    }
+
+    .checkbox-cell {
+        text-align: left;
+        vertical-align: middle;
+        padding: 0;
+    }
+</style>
+
+
+
+</head>
+<body>
+
+
+    <!-- JOBCARD INFO -->
+    <table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 10px; font-size: 7px;">
+        <thead>
+            <tr>
+                <th style="text-align: left; background: #cfcfcf; padding: 4px;">JOBCARD INFORMATION</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <!-- Subtabela: Informações Básicas -->
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
+                        <tr>
+                            <td style="width: 25%; border: 1px solid black;">PREPARED BY: {{ job.prepared_by }}</td>
+                            <td style="width: 25%; border: 1px solid black;">DATE OF: {{ job.date_prepared|date:"d/m/Y" }}</td>
+                            <td style="width: 25%; border: 1px solid black;">REV.: {{ job.rev }}</td>
+                            <td style="width: 25%; border: 1px solid black;">STATUS: {{ job.jobcard_status }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid black;">APPROVED BY: {{ job.approved_br }}</td>
+                            <td style="border: 1px solid black;">DATE OF: {{ job.date_approved|date:"d/m/Y" }}</td>
+                            <td style="border: 1px solid black;" colspan="2"></td>
+                        </tr>
+                    </table>
+
+                    <!-- Subtabela: Códigos -->
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
+                        <tr>
+                            <td style="width: 33%; border: 1px solid black;">SUBSYSTEM: {{ job.subsystem }}</td>
+                            <td style="width: 33%; border: 1px solid black;">DISCIPLINE: {{ job.discipline }}</td>
+                            <td style="width: 34%; border: 1px solid black;">WORKING CODE: {{ job.working_code }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid black;">SYSTEM: {{ job.system }}</td>
+                            <td style="border: 1px solid black;">LOCATION: {{ job.location }}</td>
+                            <td style="border: 1px solid black;">SEQUENTIAL NUMBER: {{ job.sequential_number }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid black;">TAG: {{ job.tag }}</td>
+                            <td style="border: 1px solid black;">TOTAL MAN-HOURS: {{ job.total_man_hours }}</td>
+                            <td style="border: 1px solid black;">MATERIAL: {{ job.material }}</td>
+                        </tr>
+                    </table>
+
+                    <!-- Subtabela: Descrição e Comentários -->
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
+                        <tr>
+                            <td style="border: 1px solid black;">JOB CARD DESCRIPTION: {{ job.description }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid black;">COMMENTS: {{ job.comments }}</td>
+                        </tr>
+                    </table>
+
+                    <!-- Subtabela: Outras Informações -->
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
+                        <tr>
+                            <td style="width: 25%; border: 1px solid black;">ACTIVITY ID P6: {{ job.activity_id }}</td>
+                            <td style="width: 25%; border: 1px solid black;">HOT-WORK REQUIRED: {{ job.hot_work_required }}</td>
+                            <td style="width: 25%; border: 1px solid black;">TOTAL WEIGHT (kg): {{ job.total_weight }}</td>
+                            <td style="width: 25%; border: 1px solid black;">TOTAL DURATION (hs): {{ job.total_duration_hs }}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+
+    <!-- DETAILED DESCRIPTION OF WORK -->
+    <table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 10px; font-size: 7px;">
+        <thead>
+            <tr>
+                <th style="text-align: left; background: #cfcfcf; padding: 4px;">DETAILED DESCRIPTION OF WORK</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <!-- Subtabela: TASKS -->
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th style="width: 10%; text-align: center;">TASK NUMBER</th>
+                                <th style="width: 70%; text-align: center;">TASK DESCRIPTION</th>
+                                <th style="width: 10%; text-align: center;">COMPLETED?</th>
+                                <th style="width: 10%; text-align: center;">%M/h</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in allocated_tasks %}
+                            <tr>
+                                <td style="text-align: center; border: 1px solid black;">{{ task.task_order }}</td>
+                                <td style="border: 1px solid black;">{{ task.description }}</td>
+                                <td style="text-align: center; border: 1px solid black;">{% if task.completed %}✔{% endif %}</td>
+                                <td style="text-align: center; border: 1px solid black;">{{ task.percent }}%</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" style="text-align: center; border: 1px solid black;">Nenhuma tarefa alocada.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+
+
+    <!-- RECURSO!! -->
+    <table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 10px; font-size: 7px;">
+        <thead>
+            <tr>
+                <th style="text-align: left; background: #cfcfcf; padding: 4px;">MAN-HOUR - DESCRIPTION</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    
+
+                    <!-- Subtabela: Manpower -->
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
+                        <thead>
+                            <tr>
+                                <th style="width: 10%; text-align: center;">ITEM</th>
+                                <th style="width: 10%; text-align: center;">TASK NUMBER</th>
+                                <th style="width: 50%; text-align: center;">DIRECT  LABOR</th>
+                                <th style="width: 15%; text-align: center;">MAN-H</th>
+                                <th style="width: 15%; text-align: center;">QTY</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for manpower in allocated_manpowers %}
+                            <tr>
+                                <td style="text-align: center; border: 1px solid black;">{{ forloop.counter }}</td>
+                                <td style="text-align: center; border: 1px solid black;">{{ manpower.task_order }}</td>
+                                <td style="text-align: left; border: 1px solid black;">{{ manpower.direct_labor }}</td>
+                                <td style="text-align: center; border: 1px solid black;">{{ manpower.hours }}</td>
+                                <td style="text-align: center; border: 1px solid black;">{{ manpower.qty }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <!-- Subtabela: Task x Duration -->
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
+                        <thead>
+                            <tr>
+                                <th style="width: 70%; text-align: center;">TASK NUMBER</th>
+                                <th style="width: 15%; text-align: center;">MAN-H</th>
+                                <th style="width: 15%; text-align: center;">DURATION (hs)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in allocated_tasks %}
+                            <tr>
+                                <td style="text-align: center; border: 1px solid black;">{{ task.task_order }}</td>
+                                <td style="text-align: center; border: 1px solid black;">{{ task.total_hours|floatformat:2 }}</td>
+                                <td style="text-align: center; border: 1px solid black;">{{ task.max_hours|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+      
+
+            <!-- ERECTION MATERIALS -->
+            <table style="margin-bottom:4px;">
+                <thead>
+                    <tr><th colspan="6" style="background:#cfcfcf; text-align:left; padding-left:5px;  font-size: 8px">ERECTION MATERIALS</th></tr>
+                    <tr>
+                        <th style="width:5%;">ITEM</th>
+                        <th style="width:45%;">DESCRIPTION</th>
+                        <th style="width:10%;">DIM</th>
+                        <th style="width:15%;">PMTO CODE</th>
+                        <th style="width:10%;">QTY</th>
+                        <th style="width:20%;">COMMENTS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mat in allocated_materials %}
+                    <tr>
+                        <td style="text-align:center;">{{ forloop.counter }}</td>
+                        <td>{{ mat.description }}</td>
+                        <td style="text-align:center;">{{ mat.nps1 }}</td>
+                        <td style="text-align:center;">{{ mat.pmto_code }}</td>
+                        <td style="text-align:center;">{{ mat.qty }}</td>
+                        <td>{{ mat.comments }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" style="text-align:center;">Nenhum material alocado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- EQUIPMENT AND SPECIAL TOOLING -->
+<table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 10px; font-size: 7px;">
+    <thead>
+        <tr>
+            <th style="text-align: left; background: #cfcfcf; padding: 4px;">EQUIPMENT & SPECIAL TOOLING</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td style="border: none; padding: 0;">
+                <table style="width: 100%; border-collapse: collapse; border: none;">
+                    <tr>
+                        <!-- Tabela da esquerda -->
+                        <td style="width: 49%; border: none; vertical-align: top; padding-right: 5px;">
+                            <table style="width: 100%; border-collapse: collapse; border: 1px solid black;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 10%; text-align: center;">ITEM</th>
+                                        <th style="width: 70%; text-align: center;">SPECIAL TOOLING</th>
+                                        <th style="width: 20%; text-align: center;">QTY</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tool in allocated_tools_left %}
+                                    <tr>
+                                        <td style="text-align: center;">{{ forloop.counter }}</td>
+                                        <td>{{ tool.special_tooling }}</td>
+                                        <td style="text-align: center;">{{ tool.qty|floatformat:2 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="3" style="text-align: center;">Nenhum equipamento alocado.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </td>
+
+                        <!-- Tabela da direita -->
+                        <td style="width: 49%; border: none; vertical-align: top; padding-left: 5px;">
+                            <table style="width: 100%; border-collapse: collapse; border: 1px solid black;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 10%; text-align: center;">ITEM</th>
+                                        <th style="width: 70%; text-align: center;">SPECIAL TOOLING</th>
+                                        <th style="width: 20%; text-align: center;">QTY</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tool in allocated_tools_right %}
+                                    <tr>
+                                        <td style="text-align: center;">{{ forloop.counter }}</td>
+                                        <td>{{ tool.special_tooling }}</td>
+                                        <td style="text-align: center;">{{ tool.qty|floatformat:2 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="3" style="text-align: center;">Nenhum equipamento alocado.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+  
+
+            <!-- ETAPA DAS CONDIÇÕES DE SEGURANÇA -->
+            <table style="font-size: 6px; width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th colspan="5" style="width: 20%; text-align: LEFT; margin-right: 5px; background: #cfcfcf; padding-left: 10px;  font-size: 8px">
+                            SAFETY - CONDITIONS & RECOMMENDATIONS
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> PPE E GENERAL
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> COLD WORK PERMIT
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> FIRE EXTINGUISHER
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> FALL PROTECTION
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> MARINE SAFETY
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> BLIND ISOLATION SYSTEM
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> HOT WORK PERMIT
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> FIRE WATCH
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> SPARK PROTECTION
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> SEVERE WEATHER PREP
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> JOB SAFETY ANALYSIS
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> BARRICADES
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> DIVER SAFETY
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> SIMULTANEOUSLY DRILL
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> ENVIRONMENTAL PROTECTION
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> GAS LEAK PROTECTION
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> LIFTING PLAN
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> HAZARDOUS MATERIAL
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> WEATHER PROTECTION REQUIRED
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> PPE SPECIAL
+                        </td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5" style="padding-left: 8px; vertical-align: top; padding-bottom: 20px;">OTHER/COMMENTS:</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <br/>
+
+            <!-- ETAPA DO CONTROLE DE QUALIDADE -->
+
+            <table style="font-size: 6px; width: 100%">
+                <thead>
+                    <tr>
+                        <th colspan="5" style="width: 20%; text-align: LEFT; margin-right: 5px; background: #cfcfcf; padding-left: 10px;  font-size: 8px">QUALITY CONTROL AND INSPECTION</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="5" style="padding-left: 8px; vertical-align: top; padding-bottom: 30px;">CQ FORMS:</td>
+                    </tr>
+                </tbody>
+            </table>
+            <br/>
+
+            <!-- ENGINEERING DOCUMENTS REFERENCE -->
+            <table style="margin-bottom:4px;">
+                <thead>
+                    <tr><th colspan="5" style="background:#cfcfcf; text-align:left; padding-left:5px;  font-size: 8px">ENGINEERING DOCUMENTS</th></tr>
+                    <tr>
+                        <th style="width:20%;">Discipline</th>
+                        <th style="width:30%;">Document</th>
+                        <th style="width:15%;">Tag</th>
+                        <th style="width:15%;">Rev.</th>
+                        <th style="width:20%;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for eng in allocated_engineerings %}
+                    <tr>
+                        <td style="text-align:center;">{{ eng.discipline }}</td>
+                        <td>{{ eng.document }}</td>
+                        <td style="text-align:center;">{{ eng.tag }}</td>
+                        <td style="text-align:center;">{{ eng.rev }}</td>
+                        <td style="text-align:center;">{{ eng.status }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" style="text-align:center;">Nenhum documento de engenharia alocado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>    
+
+            <!-- COMPANY COMMENTS -->
+            <table>
+                <thead>
+                    <tr><th style="background:#cfcfcf; text-align:left; padding-left:5px;  font-size: 8px;  " colspan="5">COMPANY COMMENTS</th></tr>
+                </thead>
+                <tbody>
+                    <tr ><td colspan="5" style="padding-bottom: 40px;">{{ job.company_comments }}</td></tr>
+                </tbody>
+            </table>
+</body>
+</html>

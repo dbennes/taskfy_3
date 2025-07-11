@@ -1,0 +1,181 @@
+{% load static %}
+
+<style>
+  .step-content {
+    font-size: 12px;
+  }
+  fieldset {
+    padding: 8px !important;
+    margin-bottom: 12px !important;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+  }
+  legend {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .form-label {
+    font-size: 11px;
+    margin-bottom: 2px !important;
+  }
+  .form-control-sm,
+  .form-select-sm,
+  textarea {
+    padding: 2px 6px !important;
+    font-size: 12px !important;
+    height: 26px !important;
+  }
+  textarea {
+    height: auto !important;
+  }
+  .form-check-label {
+    font-size: 12px;
+  }
+  .status-indicator {
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    padding: 4px 30px;
+    border-radius: 6px;
+    color: #fff;
+  }
+  .status-indicator i {
+    margin-right: 6px;
+    font-size: 16px;
+  }
+</style>
+
+<div class="step-content" id="step-1">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="mb-0">JobCard Overview & Basic Data</h6>
+    <div class="status-indicator" style="background-color: {% if job.completed == 'YES' %}#28a745{% else %}#ffc107{% endif %};">
+      
+      {% if job.completed == 'YES' %}Finalized{% else %}In Progress{% endif %}
+    </div>
+  </div>
+
+  <!-- Section: Identification -->
+  <fieldset class="border rounded-3 p-2 mb-3">
+    <legend class="float-none w-auto px-1">Identification</legend>
+    <div class="row g-2">
+      <div class="col-md-3">
+        <label for="JOB_CARD_NUMBER" class="form-label">Job Card #</label>
+        <input type="text" id="JOB_CARD_NUMBER" name="JOB_CARD_NUMBER" class="form-control form-control-sm" value="{{ job.job_card_number }}">
+      </div>
+      <div class="col-md-2">
+        <label for="REV" class="form-label">Rev</label>
+        <input type="text" id="REV" name="REV" class="form-control form-control-sm" value="{{ job.rev }}">
+      </div>
+      <div class="col-md-3">
+        <label for="JOBCARD_STATUS" class="form-label">Status</label>
+        <select id="JOBCARD_STATUS" name="JOBCARD_STATUS" class="form-select form-select-sm" required>
+          <option disabled {% if not job.jobcard_status %}selected{% endif %}>Select...</option>
+          <option value="not checked" {% if job.jobcard_status == "not checked" %}selected{% endif %}>Not Checked</option>
+          <option value="checked" {% if job.jobcard_status == "checked" %}selected{% endif %}>Checked</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label for="DISCIPLINE" class="form-label">Discipline</label>
+        <select id="DISCIPLINE" name="DISCIPLINE" class="form-select form-select-sm" required>
+          <option disabled {% if not job.discipline %}selected{% endif %}>Select...</option>
+          {% for d in disciplinas %}<option value="{{ d }}" {% if job.discipline == d %}selected{% endif %}>{{ d }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- Section: Classification -->
+  <fieldset class="border rounded-3 p-2 mb-3">
+    <legend class="float-none w-auto px-1">Classification</legend>
+    <div class="row g-2">
+      <div class="col-md-3">
+        <label for="DISCIPLINE_CODE" class="form-label">Discipline Code</label>
+        <select id="DISCIPLINE_CODE" name="DISCIPLINE_CODE" class="form-select form-select-sm">
+          <option disabled {% if not job.discipline_code %}selected{% endif %}>Select...</option>
+          {% for dc in discipline_codes %}<option value="{{ dc }}" {% if job.discipline_code == dc %}selected{% endif %}>{{ dc }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="LOCATION" class="form-label">Location</label>
+        <select id="LOCATION" name="LOCATION" class="form-select form-select-sm" required>
+          <option disabled {% if not job.location %}selected{% endif %}>Select...</option>
+          {% for l in locations %}<option value="{{ l }}" {% if job.location == l %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="LEVEL" class="form-label">Level</label>
+        <select id="LEVEL" name="LEVEL" class="form-select form-select-sm">
+          <option disabled {% if not job.level %}selected{% endif %}>Select...</option>
+          {% for lvl in levels %}<option value="{{ lvl }}" {% if job.level == lvl %}selected{% endif %}>{{ lvl }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="ACTIVITY_ID" class="form-label">Activity ID</label>
+        <select id="ACTIVITY_ID" name="ACTIVITY_ID" class="form-select form-select-sm" required>
+          <option disabled {% if not job.activity_id %}selected{% endif %}>Select...</option>
+          {% for act in activity_ids %}<option value="{{ act }}" {% if job.activity_id == act %}selected{% endif %}>{{ act }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- Section: Planning -->
+  <fieldset class="border rounded-3 p-2 mb-3">
+    <legend class="float-none w-auto px-1">Planning</legend>
+    <div class="row g-2">
+      <div class="col-md-1">
+        <label for="SYSTEM" class="form-label">System</label>
+        <select id="SYSTEM" name="SYSTEM" class="form-select form-select-sm" required>
+          <option disabled {% if not job.system %}selected{% endif %}>Select...</option>
+          {% for s in systems %}<option value="{{ s }}" {% if job.system == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="SUBSYSTEM" class="form-label">Subsystem</label>
+        <select id="SUBSYSTEM" name="SUBSYSTEM" class="form-select form-select-sm" required>
+          <option disabled {% if not job.subsystem %}selected{% endif %}>Select...</option>
+          {% for ss in subsystems %}<option value="{{ ss }}" {% if job.subsystem == ss %}selected{% endif %}>{{ ss }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="WORKPACK_NUMBER" class="form-label">Workpack #</label>
+        <select id="WORKPACK_NUMBER" name="WORKPACK_NUMBER" class="form-select form-select-sm" required>
+          <option disabled {% if not job.workpack_number %}selected{% endif %}>Select...</option>
+          {% for wp in workpacks %}<option value="{{ wp }}" {% if job.workpack_number == wp %}selected{% endif %}>{{ wp }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="START" class="form-label">Start</label>
+        <input type="date" id="START" name="START" class="form-control form-control-sm" value="{{ job.start|date:'Y-m-d' }}">
+      </div>
+      <div class="col-md-2">
+        <label for="FINISH" class="form-label">Finish</label>
+        <input type="date" id="FINISH" name="FINISH" class="form-control form-control-sm" value="{{ job.finish|date:'Y-m-d' }}">
+      </div>
+      <div class="col-md-3">
+        <label for="TAG" class="form-label">Tag</label>
+        <input type="text" id="TAG" name="TAG" class="form-control form-control-sm" value="{{ job.tag }}">
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- Section: Description -->
+  <fieldset class="border rounded-3 p-2 mb-3">
+    <legend class="float-none w-auto px-1">Descriptions</legend>
+    <div class="mb-2">
+      <label for="WORKING_CODE_DESCRIPTION" class="form-label">Working Code Description</label>
+      <textarea id="WORKING_CODE_DESCRIPTION" name="WORKING_CODE_DESCRIPTION" class="form-control form-control-sm" rows="1">{{ job.working_code_description }}</textarea>
+    </div>
+    <div class="mb-2">
+      <label for="JOB_CARD_DESCRIPTION" class="form-label">Job Card Description</label>
+      <textarea id="JOB_CARD_DESCRIPTION" name="JOB_CARD_DESCRIPTION" class="form-control form-control-sm" rows="1">{{ job.job_card_description }}</textarea>
+    </div>
+    <div class="mb-2">
+      <label for="COMMENTS" class="form-label">Comments</label>
+      <textarea id="COMMENTS" name="COMMENTS" class="form-control form-control-sm" rows="1">{{ job.comments }}</textarea>
+    </div>
+  </fieldset>
+
+</div>

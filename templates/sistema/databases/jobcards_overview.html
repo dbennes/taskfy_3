@@ -1,0 +1,579 @@
+{% extends 'sistema/base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-2">
+    <!-- Faixa Azul -->
+    <div class="d-flex align-items-center justify-content-between p-2 mb-3" style="background-color: #313131; border-radius: 8px;">
+        <div class="d-flex align-items-center me-3">
+            <span style="width: 10px; height: 10px; background-color: #ff5f57; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
+            <span style="width: 10px; height: 10px; background-color: #febc2e; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
+            <span style="width: 10px; height: 10px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+            <h6 class="mb-0 ms-3 text-white">JobCards - Complete Database View</h6>
+        </div>
+
+        <!-- Botão baixar modelo e importar -->
+        <div class="d-flex gap-2 mb-2">
+            <button type="button" class="btn btn-outline-light btn-sm" onclick="baixarModeloJobcard()">
+                <i class="fa fa-download me-1"></i> Template
+            </button>
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importJobcardModal">
+                <i class="fa fa-upload me-1"></i> Import
+            </button>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-1">
+
+    <!-- Quantidade -->
+    <div class="d-flex align-items-center gap-1  p-2 border rounded " style="font-size: 9px;">
+        <label class="mb-0 small">Show</label>
+        <select id="rowsPerPage" class="form-select form-select-sm" style="width: 70px; font-size: 10px;">
+            <option value="10">10</option>
+            <option value="18" selected >18</option>
+            <option value="25" >25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+        <label class="mb-0 small"> entries</label>
+    </div>
+
+    <!-- Filtros -->
+    <form id="filterForm" class="d-flex flex-wrap align-items-center  gap-1  p-2 border rounded ">
+        <input type="text" id="filterJobNumber" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Job Card #">
+        <input type="text" id="filterDiscipline" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Discipline">
+        <input type="text" id="filterPreparedBy" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Prepared By">
+        <input type="text" id="filterLocation" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Location">
+        <input type="text" id="filterStatus" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Status">
+        <button style="font-size: 9px" type="button" id="applyFilters" class="btn btn-apply btn-sm">Apply</button>
+    </form>
+
+    
+
+    <!-- Pesquisa -->
+    <div class="d-flex align-items-center gap-1  p-2 border rounded ">
+        <input type="text" id="globalSearch" class="form-control form-control-sm" style="width: 120px; font-size: 10px;" placeholder="Search...">
+    </div>
+
+    <!-- Botões alinhados à direita -->
+    <div class="ms-auto d-flex align-items-center gap-1  p-2 border rounded " id="customButtons"></div>
+
+</div>
+
+
+
+    <!-- Tabela -->
+    <div class="table-responsive mt-2">
+        <table id="jobcardsTable" class="table table-hover table-sm w-100 compact-table table-bordered-custom">
+            <thead class="table-light text-center table-header">
+                <tr>
+                    <th>Item</th>
+                    <th>Seq Number</th>
+                    <th>Discipline</th>
+                    <th>Discipline Code</th>
+                    <th>Location</th>
+                    <th>Level</th>
+                    <th>Activity ID</th>
+                    <th>Start</th>
+                    <th>Finish</th>
+                    <th>System</th>
+                    <th>Subsystem</th>
+                    <th>Workpack Number</th>
+                    <th>Working Code</th>
+                    <th>Tag</th>
+                    <th>Working Code Description</th>
+                    <th>Job Card Number</th>
+                    <th>Rev</th>
+                    <th>Status</th>
+                    <th>Job Card Description</th>
+                    <th>Completed</th>
+                    <th>Total Weight</th>
+                    <th>Unit</th>
+                    <th>Total Duration Hs</th>
+                    <th>Indice KPI</th>
+                    <th>Total Man Hours</th>
+                    <th>Prepared By</th>
+                    <th>Date Prepared</th>
+                    <th>Approved By</th>
+                    <th>Date Approved</th>
+                    <th>Hot Work Required</th>
+                    <th>Status (Optional)</th>
+                    <th>Comments</th>
+                    <th>Last Modified By</th>
+                    <th>Last Modified At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobcards %}
+                <tr>
+                    <td>{{ job.item }}</td>
+                    <td>{{ job.seq_number }}</td>
+                    <td>{{ job.discipline }}</td>
+                    <td>{{ job.discipline_code }}</td>
+                    <td>{{ job.location }}</td>
+                    <td>{{ job.level }}</td>
+                    <td>{{ job.activity_id }}</td>
+                    <td>{{ job.start|date:"Y/m/d" }}</td>
+                    <td>{{ job.finish|date:"Y/m/d" }}</td>
+                    <td>{{ job.system }}</td>
+                    <td>{{ job.subsystem }}</td>
+                    <td>{{ job.workpack_number }}</td>
+                    <td>{{ job.working_code }}</td>
+                    <td>{{ job.tag }}</td>
+                    <td>{{ job.working_code_description }}</td>
+                    <td>{{ job.job_card_number }}</td>
+                    <td>{{ job.rev }}</td>
+                    <td>{{ job.jobcard_status }}</td>
+                    <td>{{ job.job_card_description }}</td>
+                    <td>{{ job.completed }}</td>
+                    <td>{{ job.total_weight }}</td>
+                    <td>{{ job.unit }}</td>
+                    <td>{{ job.total_duration_hs }}</td>
+                    <td>{{ job.indice_kpi }}</td>
+                    <td>{{ job.total_man_hours }}</td>
+                    <td>{{ job.prepared_by }}</td>
+                    <td>{{ job.date_prepared|date:"Y/m/d" }}</td>
+                    <td>{{ job.approved_br }}</td>
+                    <td>{{ job.date_approved|date:"Y/m/d" }}</td>
+                    <td>{{ job.hot_work_required }}</td>
+                    <td>{{ job.status }}</td>
+                    <td>{{ job.comments }}</td>
+                    <td>{{ job.last_modified_by }}</td>
+                    <td>{{ job.last_modified_at|date:"Y/m/d" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importJobcardModal" tabindex="-1" aria-labelledby="importJobcardModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="importJobcardForm" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="importJobcardModalLabel">Import JobCard</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Download the <b>template</b>, fill all required fields, and upload it here:</p>
+          <input type="file" name="file" id="importJobcardFile" accept=".xlsx,.csv" required class="form-control"/>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Import</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Confirm Overwrite Modal -->
+<div class="modal fade" id="confirmReplaceJobcardModal" tabindex="-1" aria-labelledby="confirmReplaceJobcardLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmReplaceJobcardLabel">Overwrite JobCard?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>
+            This JobCard already exists.<br>
+            Do you want to <b>update</b> the existing data? <br>
+            <span style="font-size:12px;color:#888;">(No revision number will be incremented)</span>
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" id="confirmOverwriteJobcardBtn">Yes, Update</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="errorJobcardModal" tabindex="-1" aria-labelledby="errorJobcardModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="errorJobcardModalLabel">Import Error</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorJobcardModalBody">
+        <!-- Error message appears here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DataTables + Export -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        let table = $('#jobcardsTable').DataTable({
+            paging: true,
+            pageLength: 18,
+            autoWidth: true,
+            fixedHeader: true,
+            dom: 'Bfrtip',
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    title: 'JobCards Export',
+                    className: 'btn-minimal btn-excel',
+                    text: '<i class="fa-solid fa-file-excel me-2"></i> Export Excel'
+                },
+                {
+                    extend: 'pdfHtml5',
+                    title: 'JobCards Export',
+                    className: 'btn-minimal btn-pdf',
+                    text: '<i class="fa-solid fa-file-pdf me-2"></i> Export PDF',
+                    orientation: 'landscape',
+                    pageSize: 'A4'
+                },
+                {
+                    extend: 'print',
+                    title: 'JobCards Print',
+                    className: 'btn-minimal btn-print',
+                    text: '<i class="fa-solid fa-print me-2"></i> Print'
+                }
+            ]
+        });
+
+        // Posicionar botões ao lado dos inputs
+        table.buttons().container().appendTo('#customButtons');
+
+
+
+
+        $('#applyFilters').click(function () {
+            table.column(15).search($('#filterJobNumber').val());
+            table.column(2).search($('#filterDiscipline').val());
+            table.column(25).search($('#filterPreparedBy').val());
+            table.column(4).search($('#filterLocation').val());
+            table.column(17).search($('#filterStatus').val());
+            table.draw();
+        });
+
+        $('#rowsPerPage').change(function () {
+            table.page.len($(this).val()).draw();
+        });
+
+        $('#globalSearch').keyup(function () {
+            table.search($(this).val()).draw();
+        });
+    });
+</script>
+
+<style>
+    .compact-table {
+        table-layout: auto !important;
+        border: 1px solid #ddd !important;
+        border-collapse: collapse !important;
+    }
+
+    .compact-table td, .compact-table th {
+        white-space: nowrap !important;
+        padding: 2px 4px !important;
+        line-height: 15px !important;
+        vertical-align: middle;
+        font-size: 7px;
+        border: 0.5px solid #ddd !important;
+    }
+
+    .table-header th {
+        font-size: 9px !important;
+        padding: 6px 4px !important;
+        background-color: #f0f0f0 !important;
+    }
+
+    .compact-table tbody tr:nth-child(odd) {
+        background-color: #f8f9fa;
+    }
+
+    .compact-table tbody tr:nth-child(even) {
+        background-color: #f1f1f1;
+    }
+
+    .compact-table tbody tr:hover {
+        background-color: #d9edf7;
+    }
+
+    .table-bordered-custom {
+        border: 1px solid #ccc !important;
+    }
+
+    div.dataTables_length, div.dataTables_filter {
+        display: none !important;
+    }
+
+    .dt-buttons {
+        margin-left: 10px;
+        display: flex;
+        gap: 5px;
+    }
+
+    .paginate_button {
+        background-color: #f5f5f5 !important;
+        border: 1px solid #ddd !important;
+        color: #333 !important;
+        padding: 4px 8px !important;
+        margin: 2px !important;
+        border-radius: 4px !important;
+    }
+
+    .paginate_button.current {
+        background-color:rgb(184, 184, 184) !important;
+        color: white !important;
+    }
+
+    .paginate_button:hover {
+        background-color: #e0e0e0 !important;
+        color: #000 !important;
+    }
+
+    /* Estilo geral dos botões */
+.btn-minimal {
+    border: none !important;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    color: white !important;
+    transition: background-color 0.3s ease !important;
+}
+
+/* Excel Button - Minimal Green */
+.btn-excel {
+    background-color: #a2d5a2 !important; 
+    color: black; /* Verde claro */
+}
+
+.btn-excel:hover {
+    background-color:rgb(104, 165, 104) !important;
+    color: black;
+}
+
+/* PDF Button - Minimal Red */
+.btn-pdf {
+    background-color: #f5a9a9 !important;  /* Vermelho suave */
+}
+
+.btn-pdf:hover {
+    background-color: #ec8383 !important;
+}
+
+/* Print Button - Minimal Gray */
+.btn-print {
+    background-color: #c7c7c7 !important;  /* Cinza claro */
+}
+
+.btn-print:hover {
+    background-color: #a5a5a5 !important;
+}
+
+</style>
+
+
+
+
+
+<!-- Gerador de Template Excel  -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script>
+function baixarModeloJobcard() {
+    const cabecalho = [
+        "item",
+        "seq_number",
+        "discipline",
+        "discipline_code",
+        "location",
+        "level",
+        "activity_id",
+        "start",
+        "finish",
+        "system",
+        "subsystem",
+        "workpack_number",
+        "working_code",
+        "tag",
+        "working_code_description",
+        "job_card_number",
+        "job_card_description",
+        "total_weight",
+        "unit",
+        "total_duration_hs",
+        "indice_kpi",
+        "total_man_hours",
+        "comments",
+        "hot_work_required"
+    ];
+    const exemplo = [
+        1,
+        "001",
+        "Mechanical",
+        "MEC-01",
+        "Plant 1",
+        "A",
+        "ACT-1",
+        "2025-07-10",
+        "2025-07-15",
+        "SYS-01",
+        "SUBSYS-01",
+        "WP-01",
+        "WKC-01",
+        "TAG-001",
+        "Pipe welding",
+        "JC-20250710-01",
+        "Main pipe section welding",
+        "150.0",
+        "kg",
+        "12.0",
+        "90",
+        "108.0",
+        "No relevant comments",
+        "No"
+    ];
+
+    const ws_data = [cabecalho, exemplo];
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "JobCardTemplate");
+    XLSX.writeFile(wb, "jobcard_template.xlsx");
+}
+</script>
+
+
+
+
+<!-- JavaScript AJAX (AJAX + Modais)  -->
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    let formDataCache = null;
+
+    const form = document.getElementById('importJobcardForm');
+    if (!form) { 
+        alert("Formulário de importação não encontrado!"); 
+        return; 
+    }
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        console.log("Interceptando submit!");
+
+        const fileInput = document.getElementById('importJobcardFile');
+        const file = fileInput.files[0];
+        if (!file) {
+            showJobcardError("Please select a file.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch("{% url 'import_jobcard' %}", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => {
+            // Para debug:
+            console.log("Resposta do backend:", response);
+            return response.json();
+        })
+        .then(data => {
+            // Para debug:
+            console.log("Dados recebidos:", data);
+
+            if (data.status === 'duplicate') {
+                formDataCache = formData;
+                $('#importJobcardModal').modal('hide');
+                setTimeout(function() {
+                    $('#confirmReplaceJobcardModal').modal('show');
+                }, 400);
+            } else if (data.status === 'ok') {
+                $('#importJobcardModal').modal('hide');
+                showJobcardSuccess("Import successful!", true);
+            } else {
+                showJobcardError(data.message || "An error occurred!");
+            }
+        })
+        .catch(err => {
+            console.log("Erro no AJAX:", err);
+            showJobcardError("Error uploading file.");
+        });
+    });
+
+    // Overwrite...
+    document.getElementById('confirmOverwriteJobcardBtn').onclick = function() {
+        if (!formDataCache) return;
+        formDataCache.append('overwrite', '1');
+        fetch("{% url 'import_jobcard' %}", {
+            method: "POST",
+            body: formDataCache
+        })
+        .then(response => response.json())
+        .then(data => {
+            $('#confirmReplaceJobcardModal').modal('hide');
+            if (data.status === 'ok') {
+                showJobcardSuccess("JobCard updated successfully!", true);
+            } else {
+                showJobcardError(data.message || "Error on update.");
+            }
+        })
+        .catch(() => {
+            showJobcardError("Error overwriting data.");
+        });
+    }
+
+    function showJobcardError(message) {
+        document.getElementById('errorJobcardModalBody').innerText = message;
+        $('#errorJobcardModal').modal('show');
+    }
+
+    function showJobcardSuccess(message, reload) {
+        document.getElementById('errorJobcardModalLabel').innerText = "Success";
+        document.getElementById('errorJobcardModalBody').innerText = message;
+        let header = document.querySelector('#errorJobcardModal .modal-header');
+        if(header){
+            header.classList.remove('bg-danger');
+            header.classList.add('bg-success');
+        }
+        $('#errorJobcardModal').modal('show');
+        if (reload) {
+            setTimeout(function(){
+                window.location.reload();
+            }, 1800);
+        }
+        $('#errorJobcardModal').on('hidden.bs.modal', function () {
+            document.getElementById('errorJobcardModalLabel').innerText = "Import Error";
+            if(header){
+                header.classList.remove('bg-success');
+                header.classList.add('bg-danger');
+            }
+            $(this).off('hidden.bs.modal');
+        });
+    }
+});
+</script>
+
+
+
+{% endblock %}
+
+
+

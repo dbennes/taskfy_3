@@ -1,0 +1,81 @@
+<div class="step-content d-none" id="step-3" style="font-size: 12px;">
+    <h5 class="mb-3">Materials for Job Card: <span class="text-primary">{{ job.job_card_number }}</span></h5>
+
+    {% if materials_list %}
+        <table class="table table-sm table-bordered" style="font-size: 8px;">
+            <thead class="table-light text-center">
+                <tr>
+                    <th>ITEM</th> 
+                    <th>MATERIAL</th>
+                    <th>PMTO</th>
+                    <th>DESCRIPTION</th>
+                    <th>DIM</th>
+                    <th>QTY REQUIRED</th>
+                    <th>UNIT</th>
+                    <th>STATUS</th>
+                    <th>PO</th>
+                    <th>COMMENTS</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for mat in materials_list %}
+                <tr class="align-middle">
+                    <td class="text-center">
+                        {{ mat.item }}
+                        <input type="hidden" name="material_item[]" value="{{ mat.item }}">
+                    </td>
+
+                    <td class="text-center">
+                        {{ mat.material_segmentation }}
+                        <input type="hidden" name="material_segmentation[]" value="{{ mat.material_segmentation }}">
+                    </td>
+
+                    <td class="text-center">
+                        {{ mat.project_code }}
+                        <input type="hidden" name="project_code[]" value="{{ mat.project_code }}">
+                    </td>
+
+                    <td>
+                        {{ mat.description }}
+                        <input type="hidden" name="description[]" value="{{ mat.description }}">
+                    </td>
+
+                    <td>
+                        {{ mat.nps1 }}
+                        <input type="hidden" name="nps1[]" value="{{ mat.nps1 }}">
+                    </td>
+
+                    <td class="text-center">
+                        {{ mat.jobcard_required_qty|floatformat:2 }}
+                        <input type="hidden" name="jobcard_required_qty[]" value="{{ mat.jobcard_required_qty|floatformat:2 }}">
+                    </td>
+
+                    <td class="text-center">
+                        {{ mat.unit_req_qty }}
+                        <input type="hidden" name="unit_req_qty[]" value="{{ mat.unit_req_qty }}">
+                    </td>
+
+                    <td class="text-center">
+                        {{ mat.status_procurement }}
+                        <input type="hidden" name="status_procurement[]" value="{{ mat.status_procurement }}">
+                    </td>
+
+                    <td class="text-center">
+                        {{ mat.po }}
+                        <input type="hidden" name="po[]" value="{{ mat.po }}">
+                    </td>
+
+                    <td class="text-center">
+                        {{ mat.comments }}
+                        <input type="hidden" name="comments[]" value="{{ mat.comments }}">
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="alert alert-warning" style="font-size: 12px;">
+            No materials found for Job Card <strong>{{ job.job_card_number }}</strong>.
+        </div>
+    {% endif %}
+</div>

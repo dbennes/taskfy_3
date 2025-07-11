@@ -1,0 +1,197 @@
+<!-- Sidebar -->
+<nav class="navbar align-items-start sidebar sidebar-dark accordion bg-gradient-primary p-0 navbar-dark" style="background: #14191c;">
+    <div class="container-fluid d-flex flex-column p-0">
+        <!-- Marca -->
+        <a class="navbar-brand d-flex justify-content-center align-items-center sidebar-brand m-0" href="#">
+            <div class="sidebar-brand-icon rotate-n-15"></div>
+            <div class="sidebar-brand-text mx-3">
+                <span style="color: rgb(255,255,255);">TASK<span style="color: #879aff;">FY</span></span>
+            </div>
+        </a>
+
+        <hr class="sidebar-divider my-0">
+
+        <!-- Sidebar Menu -->
+        <ul class="navbar-nav text-light" id="accordionSidebar">
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'dashboard' %}">
+                    <i class="fas fa-globe-americas fa-2x text-gray-300"></i>
+                    <span>&nbsp;Dashboard</span>
+                </a>
+                <a class="nav-link" href="{% url 'jobcards_list' %}">
+                    <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                    <span>&nbsp;Jobcards</span>
+                <a class="nav-link" href="#">
+                    <i class="fas fa-globe-americas fa-2x text-gray-300"></i>
+                    <span>&nbsp;Jobcard Creator</span>
+                </a>
+                <a class="nav-link" href="#">
+                    <i class="fas fa-th-list fa-2x text-gray-300"></i>
+                    <span>&nbsp;Blockers</span>
+                </a>
+                <a class="nav-link" href="#">
+                    <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                    <span>&nbsp;Blockers Reg.</span>
+                </a>
+                <a class="nav-link" target="_blank" href="#">
+                    <i class="fas fa-chart-pie fa-2x text-gray-300"></i>
+                    <span>&nbsp;Dashboard</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="text-center d-none d-md-inline">
+            <button class="btn rounded-circle border-0" id="sidebarToggle" type="button"></button>
+        </div>
+    </div>
+</nav>
+
+<!-- Conteúdo principal -->
+<div class="d-flex flex-column" id="content-wrapper">
+    <div id="content">
+        <!-- Topbar -->
+        <nav class="navbar navbar-expand bg-white shadow mb-4 topbar static-top navbar-light">
+            <div class="container-fluid">
+                <ul class="navbar-nav">
+                    <!-- Relatórios -->
+                    <li class="nav-item dropdown no-arrow">
+                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
+                            <span class="d-none d-lg-inline me-2 text-gray-600 small">
+                                Reports <i class="fas fa-chevron-down fa-sm fa-fw me-2 text-gray-400"></i>
+                            </span>
+                        </a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="#">-</a>
+                        </div>
+                    </li>
+
+                    <!-- Tasks -->
+                    <li class="nav-item dropdown no-arrow">
+                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
+                            <span class="d-none d-lg-inline me-2 text-gray-600 small">
+                                Tasks <i class="fas fa-chevron-down fa-sm fa-fw me-2 text-gray-400"></i>
+                            </span>
+                        </a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="#">-</a>
+                        </div>
+                    </li>
+
+                    <li class="nav-item dropdown no-arrow">
+                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
+                            <span class="d-none d-lg-inline me-2 text-gray-600 small">
+                            References <i class="fas fa-chevron-down fa-sm fa-fw me-2 text-gray-400"></i>
+                            </span>
+                        </a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{% url 'disciplines_list' %}">
+                                <i class="fas fa-shapes fa-sm fa-fw me-2 text-gray-400"></i>
+                                Disciplines
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'areas_list' %}">
+                                <i class="fas fa-map fa-sm fa-fw me-2 text-gray-400"></i>
+                                Areas
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'workingcodes_list' %}">
+                                <i class="fas fa-tasks fa-sm fa-fw me-2 text-gray-400"></i>
+                                Working Codes
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'systems_list' %}">
+                                <i class="fas fa-network-wired fa-sm fa-fw me-2 text-gray-400"></i>
+                                Sys & Subsystems
+                            </a>
+                        </div>
+                    </li>
+
+
+                    
+                    <!-- Bases -->
+                    <li class="nav-item dropdown no-arrow">
+
+                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
+                            <span class="d-none d-lg-inline me-2 text-gray-600 small">
+                                Databases <i class="fas fa-chevron-down fa-sm fa-fw me-2 text-gray-400"></i>
+                            </span>
+                        </a>
+
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{% url 'jobcards_overview' %}">Jobcard Base</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'materials_list' %}">Material Base</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'manpower_list' %}">Manpower Base</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'tools_list' %}">Tools Base</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'engineering_list' %}">Engineering Base</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'task_list' %}">Task Base</a>
+                        </div>
+                    </li>
+
+                    <!-- Bases -->
+                    <li class="nav-item dropdown no-arrow">
+
+                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
+                            <span class="d-none d-lg-inline me-2 text-gray-600 small">
+                                Allocated <i class="fas fa-chevron-down fa-sm fa-fw me-2 text-gray-400"></i>
+                            </span>
+                        </a>
+
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{% url 'allocated_material_list' %}">Material Base</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'allocated_manpower_list' %}">Manpower Base</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'allocated_tool_list' %}">Tools Base</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'allocated_engineering_list' %}">Engineering Base</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'allocated_task_list' %}">Task Base</a>
+                        </div>
+
+                    </li>
+
+                    <!-- Links simples -->
+                    <li class="nav-item"><a class="nav-link" href="#">Imports</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Exports</a></li>
+                </ul>
+
+                <!-- Usuário e busca -->
+                <ul class="navbar-nav flex-nowrap ms-auto">
+                    <li class="nav-item dropdown d-sm-none no-arrow">
+                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#"><i class="fas fa-search"></i></a>
+                        <div class="dropdown-menu dropdown-menu-end p-3">
+                            <form class="me-auto navbar-search w-100">
+                                <div class="input-group">
+                                    <input class="bg-light form-control border-0 small" type="text" placeholder="Search...">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-primary py-0" type="button">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </li>
+
+                    <div class="d-none d-sm-block topbar-divider"></div>
+
+                    <!-- Informações do usuário -->
+                    <li class="nav-item dropdown no-arrow">
+                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
+                            <span class="d-none d-lg-inline me-2 text-gray-600 small">{{user.username}}</span>
+                        </a>
+                        <div class="dropdown-menu shadow dropdown-menu-end">
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="#">
+                                <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-gray-400"></i>&nbsp;Logout
+                            </a>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </nav>

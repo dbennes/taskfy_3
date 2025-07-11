@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <style>
+    /* zera margem/padding de toda a página */
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Aumenta a largura máxima do card */
+    .login-card {
+      max-width: 350px;
+      min-height: 450px;
+      background: rgba(31, 37, 41, 0.85);
+      backdrop-filter: blur(10px);
+      border-radius: 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Fundo da coluna 2 */
+    .login-bg {
+      background: url("{% static 'assets/img/fpso2.png' %}") no-repeat center center;
+      background-size: cover;
+      opacity: 0.28;
+    }
+
+    .window-controls {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 10;
+    }
+    .window-controls .dot {
+      width: 0.75rem;
+      height: 0.75rem;
+      border-radius: 50%;
+      display: block;
+    }
+    .dot-red    { background: #cbd5e1; }
+    .dot-yellow { background: #a1a1aa; }
+    .dot-green  { background: #71717a; }
+  </style>
+
+  <section class="vh-100 m-0 p-0">
+    <div class="container-fluid h-100 p-0">
+      <div class="row h-100 gx-0 gy-0">
+
+        <!-- Coluna 1: Card de Login -->
+        <div class="col-12 col-md-4 col-lg-4 d-flex align-items-center justify-content-center p-0">
+          <div class="card login-card shadow-lg border-0" style="width: 70%; padding: 25px;">
+
+            <!-- bolinhas tipo macOS -->
+            <div class="window-controls">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            
+            <div class="card-body d-flex flex-column align-items-center justify-content-center px-4" >
+
+              <!-- Ícone em vez de logo -->
+              <div class="mb-4">
+                <i class="bi bi-terminal-fill display-4 text-light"></i>
+              </div>
+
+              <!-- Título -->
+              <h5 class="text-light mb-4 fw-light">Sign in to your account</h5>
+
+              <!-- Formulário -->
+              <form method="POST" class="w-100" >{% csrf_token %}
+                <div class="mb-3">
+                  <label for="id_username" class="form-label text-light small">Email</label>
+                  <input id="id_username" type="email" name="username"
+                    class="form-control form-control-sm bg-transparent text-light border-0 border-bottom"
+                    placeholder="you@example.com">
+                </div>
+                <div class="mb-3">
+                  <label for="id_password" class="form-label text-light small">Password</label>
+                  <input id="id_password" type="password" name="password"
+                    class="form-control form-control-sm bg-transparent text-light border-0 border-bottom"
+                    placeholder="••••••••">
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                  <div class="form-check">
+                    <input style="font-size:12x" class="form-check-input" type="checkbox" id="remember" name="remember">
+                    <label style="font-size:12px" class="form-check-label text-light small" for="remember">Remember me</label>
+                  </div>
+                  <a href="#" class="text-light small text-decoration-none " style="font-size:10px">Forgot password?</a>
+                </div>
+                <button  type="submit"
+                  class="btn btn-outline-light btn-sm w-100 rounded-pill fw-semibold">
+                  Sign in
+                </button>
+              </form>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Coluna 2: Imagem de fundo -->
+        <div class="col-12 col-md-8 col-lg-8 d-none d-md-block p-0">
+          <div class="h-100 w-100 login-bg"></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+{% endblock %}

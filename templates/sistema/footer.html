@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-size: 8px; margin: 0; padding: 0; }
+        table { width: 100%; border-collapse: collapse; }
+        td, th { border: 1px solid black; padding: 3px; vertical-align: middle; }
+        .signature-cell { height: 20px; } /* 🔥 Altura fixa para padronizar as linhas */
+    </style>
+</head>
+<body>
+
+    <table>
+        <!-- Cabeçalho -->
+        <thead>
+            <tr>
+                <th style="width: 50%; text-align: Left; padding-left: 10px">JobCard N°: {{ job.job_card_number }}</th>
+                <th style="width: 16.66%; text-align: center;">QC INSPECTOR</th>
+                <th style="width: 16.66%; text-align: center;">SNEPCo</th>
+                <th style="width: 16.66%; text-align: center;">MABU</th>
+            </tr>
+        </thead>
+
+        <!-- Corpo -->
+        <tbody>
+            <!-- Primeira linha: Código de barras + assinaturas -->
+            <tr>
+                <!-- Código de Barras -->
+                <td style="text-align: center;" rowspan="3">
+                    <img src="{{ barcode_image }}" alt="Barcode" style="width: 95%; height: 50px;">
+                </td>
+
+                <!-- CQ INSPECTOR -->
+                <td class="signature-cell" style="text-align: left;">SIGNATURE</td>
+
+                <!-- CERTIFICATION COMPANY -->
+                <td class="signature-cell" style="text-align: left;">SIGNATURE</td>
+
+                <!-- MABU -->
+                <td class="signature-cell" style="text-align: left;">SIGNATURE</td>
+            </tr>
+
+            <!-- Segunda linha -->
+            <tr>
+                <td class="signature-cell" style="text-align: left;">NAME</td>
+                <td class="signature-cell" style="text-align: left;">NAME</td>
+                <td class="signature-cell" style="text-align: left;">NAME</td>
+            </tr>
+
+            <!-- Terceira linha -->
+            <tr>
+                <td class="signature-cell" style="text-align: left;">DATE</td>
+                <td class="signature-cell" style="text-align: left;">DATE</td>
+                <td class="signature-cell" style="text-align: left;">DATE</td>
+            </tr>
+
+        </tbody>
+    </table>
+
+</body>
+</html>

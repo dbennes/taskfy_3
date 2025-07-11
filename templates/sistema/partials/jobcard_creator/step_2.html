@@ -1,0 +1,484 @@
+{% load static  %}
+{% load dict_extras %}
+
+<div class="step-content d-none" id="step-2" style="font-size: 12px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="mb-0">JobCard Overview & Basic Data</h6>
+        <div class="status-indicator" style="background-color: {% if job.completed == 'YES' %}#28a745{% else %}#ffc107{% endif %};">
+        
+        {% if job.completed == 'YES' %}Finalized{% else %}In Progress{% endif %}
+        </div>
+    </div>
+    <div class="row">
+
+        
+        <!-- Coluna da Esquerda: Formulário de dados -->
+        <div class="col-md-5">
+
+            <!-- Hot Work Required? (antes ficava no final, agora vem primeiro) -->
+            <fieldset class="border rounded-3 p-2 mb-2">
+                <legend class="float-none w-auto px-1">Hot Work Required?</legend>
+                <select id="HOT_WORK_REQUIRED" name="HOT_WORK_REQUIRED"
+                        class="form-select form-select-sm">
+                <option disabled selected>Select…</option>
+                <option value="Yes" {% if job.hot_work_required == "Yes" %}selected{% endif %}>Yes</option>
+                <option value="No"  {% if job.hot_work_required == "No"  %}selected{% endif %}>No</option>
+                </select>
+            </fieldset>
+
+            <!-- Totals -->
+            <fieldset class="border rounded-3 p-2 mb-2">
+                <legend class="float-none w-auto px-1">Totals</legend>
+                <div class="row g-2">
+                <div class="col-md-3">
+                    <label for="TOTAL_WEIGHT" class="form-label">Total Weight</label>
+                    <input type="number" step="any" id="TOTAL_WEIGHT" name="TOTAL_WEIGHT"
+                        class="form-control form-control-sm"
+                        value="{{ job.total_weight }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="UNIT" class="form-label">Unit</label>
+                    <input type="text" id="UNIT" name="UNIT"
+                        class="form-control form-control-sm"
+                        value="{{ job.unit }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="TOTAL_DURATION_HS" class="form-label">Duration (hs)</label>
+                    <input type="number" step="any" id="TOTAL_DURATION_HS" name="TOTAL_DURATION_HS"
+                        class="form-control form-control-sm"
+                        value="{{ job.total_duration_hs }}">
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="TOTAL_MAN_HOURS" class="form-label">Man Hours</label>
+                    <input type="number" step="any" id="TOTAL_MAN_HOURS" name="TOTAL_MAN_HOURS"
+                        class="form-control form-control-sm"
+                        value="{{ job.total_man_hours }}">
+                </div>
+                </div>
+            </fieldset>
+
+            <!-- Preparation Info -->
+            <fieldset class="border rounded-3 p-2 mb-2">
+                <legend class="float-none w-auto px-1">Preparation</legend>
+                <div class="row g-2">
+                <div class="col-md-6">
+                    <label for="PREPARED_BY" class="form-label">Prepared By</label>
+                    <input type="text" id="PREPARED_BY" name="PREPARED_BY"
+                        class="form-control form-control-sm"
+                        value="{{ job.prepared_by }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="DATE_PREPARED" class="form-label">Date Prepared</label>
+                    <input type="date" id="DATE_PREPARED" name="DATE_PREPARED"
+                        class="form-control form-control-sm"
+                        value="{{ job.date_prepared|date:'Y-m-d' }}">
+                </div>
+                </div>
+            </fieldset>
+
+            <!-- Approval Info -->
+            <fieldset class="border rounded-3 p-2 mb-0">
+                <legend class="float-none w-auto px-1">Approval</legend>
+                <div class="row g-2">
+                <div class="col-md-6">
+                    <label for="APPROVED_BR" class="form-label">Approved By</label>
+                    <input type="text" id="APPROVED_BR" name="APPROVED_BR"
+                        class="form-control form-control-sm"
+                        value="{{ job.approved_br }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="DATE_APPROVED" class="form-label">Date Approved</label>
+                    <input type="date" id="DATE_APPROVED" name="DATE_APPROVED"
+                        class="form-control form-control-sm"
+                        value="{{ job.date_approved|date:'Y-m-d' }}">
+                </div>
+                </div>
+            </fieldset>
+        </div>
+
+
+
+
+        <!-- Tabela de Tarefas à Direita -->
+        <div class="col-md-7">
+            <table class="table table-sm table-bordered" style="font-size:10px;">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th>Item</th>
+                        <th>Task Description</th>
+                        <th>Manpower</th>
+                        <th>Hours</th>       <!-- maior HH no modal -->
+                        <th>Total HH</th>    <!-- soma do qty * hh no modal -->
+                        <th>%M/h</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in task_list %}
+                    <tr class="align-middle" style="border-bottom: 1px solid #dee2e6; font-size: 10px;">
+                        <td class="text-center text-secondary fw-semibold" style="width: 40px;">{{ task.item }}</td>
+
+                        <td style="padding-left: 15px; font-weight: 600; color: #2c3e50; width: 45%;">
+                            {{ task.typical_task }}
+                        </td>
+
+                        <td class="text-center" style="width: 50px;">
+                            <button type="button" class="btn btn-sm" data-bs-toggle="modal" data-bs-target="#modalAtividade{{ forloop.counter }}">
+                                <i class="fa-solid fa-user-plus" style="color: #27ae60; font-size: 14px;"></i>
+                            </button>
+                        </td>
+
+                        <td class="text-center fw-bold text-primary" style="width: 70px; font-size: 10px;">
+                            <span id="hh-max-{{ forloop.counter }}">0.00</span>
+                            <input type="hidden" name="hh-max-{{ forloop.counter }}" id="input-hh-max-{{ forloop.counter }}" value="0.00">
+                        </td>
+
+                        <td class="text-center fw-bold text-success" style="width: 70px; font-size: 10px;">
+                            <span id="hh-total-{{ forloop.counter }}">0.00</span>
+                            <input type="hidden" name="hh-total-{{ forloop.counter }}" id="input-hh-total-{{ forloop.counter }}" value="0.00">
+                        </td>
+
+                        <td class="text-center fw-semibold text-warning" style="width: 70px; font-size: 10px;">
+                            <span id="hh-percent-{{ forloop.counter }}">0.00%</span>
+                            <input type="hidden" id="input-hh-percent-{{ forloop.counter }}" name="hh-percent-{{ forloop.counter }}" value="0.00">
+                        </td>
+                        <td class="text-center">
+                            <input type="checkbox" name="task-not-applicable-{{ forloop.counter }}" id="task-not-applicable-{{ forloop.counter }}" class="form-check-input not-applicable-checkbox" onchange="handleNotApplicable({{ forloop.counter }})">
+                            <label for="task-not-applicable-{{ forloop.counter }}" style="font-size:10px;">N/A</label>
+                        </td>
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <!-- Modais de Manpower por Task -->
+{% for task in task_list %}
+{% with task_index=forloop.counter %}
+<div class="modal fade" id="modalAtividade{{ task_index }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+        <div class="modal-header" style="background:#21262b; border-bottom: 1px solid rgb(255, 255, 255); border-top-left-radius: 8px; border-top-right-radius: 8px;">
+            <h6 class="modal-title"> 
+                <i class="fa-regular fa-rectangle-xmark me-2"></i>  
+                Manpowers to "{{ task.typical_task }}"
+            </h6>
+            <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
+                <div class="d-flex align-items-center gap-1">
+                    <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+                    <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+                    <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+                </div>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <table class="table table-sm table-bordered" style="font-size: 13px;">
+            <thead>
+                <tr>
+                    <th class="text-center">Item</th>
+                    <th class="text-center">Description</th>
+                    <th class="text-center" style="width: 120px;">Qty</th>
+                    <th class="text-center" style="width: 120px;">Hours</th>
+                    <th class="text-center" style="width: 100px;">Total Hh</th>
+                    <th class="text-center" style="width: 80px;">Action</th>
+                </tr>
+            </thead>
+            
+            <tbody>
+                {% with manpower_list=manpowers_dict|dict_get:task.working_code %}
+                {% if manpower_list %}
+                    {% for manpower in manpower_list %}
+                        <tr data-id="{{ manpower.id }}">
+                        <td class="text-center">{{ forloop.counter }}</td>
+                        <td>{{ manpower.direct_labor }}</td>
+                        <td class="text-center">
+                            <input type="number" step="any"
+                                name="mp-{{ task_index }}-{{ manpower.id }}-qty"
+                                class="form-control form-control-sm text-center manpower-qty-input"
+                                value="{{ manpower.qty|default:1|stringformat:'0.2f' }}">
+                        </td>
+                        <td class="text-center">
+                            <input type="number" step="any"
+                                name="mp-{{ task_index }}-{{ manpower.id }}-hh"
+                                class="form-control form-control-sm text-center manpower-hh-input"
+                                value="">
+                        </td>
+                        <td class="text-center manpower-total-hh">0.00</td>
+                        <td class="text-center">
+                            <button type="button"
+                                    class="btn btn-sm btn-danger manpower-remove-btn">
+                            <i class="fa-regular fa-trash-can"></i>
+                            </button>
+                        </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                    <td colspan="6" class="text-center text-muted">Nenhum manpower encontrado.</td>
+                    </tr>
+                {% endif %}
+                {% endwith %}
+            </tbody>
+            </table>
+
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <select id="manpower-select-{{ task_index }}" class="form-select form-select-sm manpower-select" style="width: 60%;">
+                    <option value="">-- Select Manpower --</option>
+                    {% for mp in all_manpowers %}
+                        <option value="{{ mp.id }}" data-name="{{ mp.direct_labor }}">{{ mp.direct_labor }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="button" class="btn btn-light border shadow-sm rounded-pill px-3 py-1"
+                        style="font-size: 13px;" onclick="addManpower({{ task_index }})">
+                    <i class="fa-solid fa-plus me-2" style="color: #28c840;"></i> Add Manpower
+                </button>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary">Salvar Alterações</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+
+        </div>
+    </div>
+</div>
+{% endwith %}
+{% endfor %}
+
+</div>
+
+<script>
+function updateTotals(taskIndex) {
+    const rows = document.querySelectorAll(`#modalAtividade${taskIndex} tbody tr`);
+    let totalTaskHH = 0;
+    let maxHours = 0;
+
+    rows.forEach(row => {
+        const qtyInput = row.querySelector('.manpower-qty-input');
+        const hhInput = row.querySelector('.manpower-hh-input');
+        const totalHHCell = row.querySelector('.manpower-total-hh');
+
+        if (qtyInput && hhInput && totalHHCell) {
+            const qty = parseFloat((qtyInput.value || "0").replace(',', '.'));
+            const hh = parseFloat((hhInput.value || "0").replace(',', '.'));
+
+            const totalHH = qty * hh;
+            totalHHCell.textContent = totalHH.toFixed(2);
+            totalTaskHH += totalHH;
+
+            if (hh > maxHours) {
+                maxHours = hh;
+            }
+        }
+    });
+
+    // Atualiza total HH e max HH na tabela de tarefas
+    const totalCell = document.getElementById(`hh-total-${taskIndex}`);
+    if (totalCell) {
+        totalCell.textContent = totalTaskHH.toFixed(2);
+    }
+
+    const maxCell = document.getElementById(`hh-max-${taskIndex}`);
+    if (maxCell) {
+        maxCell.textContent = maxHours.toFixed(2);
+    }
+
+    // Atualiza também o input hidden
+    const inputTotal = document.getElementById(`input-hh-total-${taskIndex}`);
+    if (inputTotal) {
+        inputTotal.value = totalTaskHH.toFixed(2);
+    }
+
+    const inputMax = document.getElementById(`input-hh-max-${taskIndex}`);
+    if (inputMax) {
+        inputMax.value = maxHours.toFixed(2);
+    }
+
+    
+
+    updatePercentage();
+}
+
+function updatePercentage() {
+    const totalCells = document.querySelectorAll('[id^="hh-total-"]');
+    let grandTotal = 0;
+
+    totalCells.forEach(cell => {
+        grandTotal += parseFloat(cell.textContent) || 0;
+    });
+
+    totalCells.forEach(cell => {
+        const taskIndex = cell.id.replace('hh-total-', '');
+        const percentCell = document.getElementById(`hh-percent-${taskIndex}`);
+        const inputPercent = document.getElementById(`input-hh-percent-${taskIndex}`);
+
+        const taskTotal = parseFloat(cell.textContent) || 0;
+        const percent = grandTotal === 0 ? 0 : (taskTotal / grandTotal) * 100;
+
+        if (percentCell) {
+            percentCell.textContent = percent.toFixed(2) + '%';
+        }
+
+        if (inputPercent) {
+            inputPercent.value = percent.toFixed(2);
+        }
+    });
+}
+
+
+function addManpower(modalIndex) {
+    const select = document.getElementById(`manpower-select-${modalIndex}`);
+    if (!select) {
+        alert("Select não encontrado.");
+        return;
+    }
+
+    const selectedOption = select.options[select.selectedIndex];
+    const name = selectedOption.getAttribute('data-name');
+    const id = selectedOption.value;
+
+    if (!id) return;
+
+    const modalBody = select.closest('.modal-body');
+    const tableBody = modalBody.querySelector('tbody');
+
+    if ([...tableBody.children].some(row => row.dataset.id === id)) {
+        alert("Esse manpower já foi adicionado.");
+        return;
+    }
+
+    const newRow = document.createElement('tr');
+    newRow.classList.add('align-middle');
+    newRow.setAttribute('data-id', id);
+    newRow.innerHTML = `
+        <td class="text-center text-secondary">--</td>
+        <td class="text-dark" style="font-size: 13px;">${name}</td>
+        <td class="text-center">
+            <input type="number" step="any"
+                   name="mp-${modalIndex}-${id}-qty"
+                   class="form-control form-control-sm text-center manpower-qty-input"
+                   value="1.00">
+         </td>
+        <td class="text-center">
+           <input type="number" step="any"
+                   name="mp-${modalIndex}-${id}-hh"
+                   class="form-control form-control-sm text-center text-muted manpower-hh-input"
+                   data-task-index="${modalIndex}"
+                   value="">
+         </td>
+        <td class="text-center text-primary fw-semibold manpower-total-hh">0.00</td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm p-1 manpower-remove-btn" style="border: none; background: transparent;" title="Remover">
+                <i class="fa-regular fa-trash-can" style="color: #ff5f57; font-size: 16px;"></i>
+            </button>
+        </td>
+    `;
+
+    tableBody.appendChild(newRow);
+
+    // Ativa eventos para os novos inputs
+    const qtyInput = newRow.querySelector('.manpower-qty-input');
+    const hhInput = newRow.querySelector('.manpower-hh-input');
+
+    [qtyInput, hhInput].forEach(input => {
+        input.addEventListener('input', () => updateTotals(modalIndex));
+    });
+
+    // Atualiza imediatamente mesmo que campos estejam vazios
+    updateTotals(modalIndex);
+
+    // Limpa o select
+    select.selectedIndex = 0;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.body.addEventListener('click', function(event) {
+    const btn = event.target.closest('.manpower-remove-btn');
+    if (!btn) return;
+
+    const row = btn.closest('tr');
+    if (!row) return;
+
+    // Pega o modal para identificar taskIndex
+    const modal = btn.closest('.modal');
+    if (!modal) return;
+
+    const modalId = modal.id; // ex: "modalAtividade3"
+    const taskIndex = modalId.replace('modalAtividade', '');
+
+    // Remove a linha
+    row.remove();
+
+    // Atualiza as somas e percentuais
+    updateTotals(taskIndex);
+  });
+});
+
+
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const allInputs = document.querySelectorAll('.manpower-hh-input, .manpower-qty-input');
+    allInputs.forEach(input => {
+        input.addEventListener('input', function () {
+            let modal = input.closest('.modal');
+            if (!modal) return;
+            const modalId = modal.id;  // ex: "modalAtividade3"
+            const taskIndex = modalId.replace('modalAtividade', '');
+            updateTotals(taskIndex);
+        });
+    });
+
+    // Inicializa os totais ao carregar (se quiser carregar valores previamente preenchidos)
+    const modals = document.querySelectorAll('[id^="modalAtividade"]');
+    modals.forEach(modal => {
+        const taskIndex = modal.id.replace('modalAtividade', '');
+        updateTotals(taskIndex);
+    });
+});
+
+
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    $('.manpower-select').each(function () {
+        $(this).select2({
+            placeholder: "Search manpower...",
+            width: 'resolve',
+            allowClear: true,
+            dropdownParent: $(this).closest('.modal') // força o dropdown a ficar dentro do modal
+        });
+    });
+});
+</script>
+
+<script>
+
+function handleNotApplicable(taskIndex) {
+    const isChecked = document.getElementById(`task-not-applicable-${taskIndex}`).checked;
+
+    const modalButton = document.querySelector(`button[data-bs-target="#modalAtividade${taskIndex}"]`);
+    if (isChecked) {
+        modalButton.disabled = true;
+        modalButton.title = "Esta tarefa foi marcada como Não Aplicável.";
+        modalButton.style.opacity = "0.1";
+        modalButton.style.border = "0";
+    } else {
+        modalButton.disabled = false;
+        modalButton.title = "";
+        modalButton.style.opacity = "1";
+    }
+}
+
+
+
+</script>

@@ -1,0 +1,52 @@
+<div class="step-content d-none" id="step-5" style="font-size: 12px;">
+    <h5 class="mb-3">
+        <i class="fa-solid fa-file-lines me-2"></i>
+        Engineering Documents for "{{ job.job_card_number }}"
+    </h5>
+
+    {% if engineering_list %}
+        <table class="table table-sm table-bordered" style="font-size: 11px;">
+            <thead class="table-light text-center">
+                <tr>
+                    <th>Discipline</th>
+                    <th>Document</th>
+                    <th>Jobcard</th>
+                    <th>Rev.</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for eng in engineering_list %}
+                <tr class="align-middle">
+                    <td class="text-center">
+                        {{ eng.discipline }}
+                        <input type="hidden" name="eng_discipline[]" value="{{ eng.discipline }}">
+                    </td>
+                    <td>
+                        {{ eng.document }}
+                        <input type="hidden" name="eng_document[]" value="{{ eng.document }}">
+                    </td>
+                    <td class="text-center">
+                        {{ eng.jobcard_number }}
+                        <input type="hidden" name="eng_tag[]" value="{{ eng.jobcard_number }}">
+                    </td>
+                    <td class="text-center">
+                        {{ eng.rev }}
+                        <input type="hidden" name="eng_rev[]" value="{{ eng.rev }}">
+                    </td>
+                    <td class="text-center">
+                        <span class="badge {% if eng.status == 'AFC' %}bg-success{% elif eng.status == 'NOT APPROVED' %}bg-danger{% else %}bg-secondary{% endif %}">
+                            {{ eng.status|default:"—" }}
+                        </span>
+                        <input type="hidden" name="eng_status[]" value="{{ eng.status }}">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="alert alert-warning" style="font-size: 12px;">
+            No engineering documents found for working code <strong>{{ job.job_card_number }}</strong>.
+        </div>
+    {% endif %}
+</div>

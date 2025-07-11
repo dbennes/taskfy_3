@@ -1,0 +1,313 @@
+{% extends 'sistema/base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-2">
+    <div class="d-flex align-items-center justify-content-between p-2 mb-3" style="background-color: #313131; border-radius: 8px;">
+        <div class="d-flex align-items-center me-3">
+            <span style="width: 10px; height: 10px; background-color: #ff5f57; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
+            <span style="width: 10px; height: 10px; background-color: #febc2e; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
+            <span style="width: 10px; height: 10px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+            <h6 class="mb-0 ms-3 text-white">Manpower Base - Complete Database View</h6>
+        </div>
+         <div class="d-flex gap-2 mb-2">
+            <button type="button" class="btn btn-outline-light btn-sm" onclick="baixarModeloManpower()">
+                <i class="fa fa-download me-1"></i> Template
+            </button>
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importManpowerModal">
+                <i class="fa fa-upload me-1"></i> Import
+            </button>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-1">
+        <div class="d-flex align-items-center gap-1 p-2 border rounded" style="font-size: 9px;">
+            <label class="mb-0 small">Show</label>
+            <select id="rowsPerPage" class="form-select form-select-sm" style="width: 70px; font-size: 10px;">
+                <option value="10">10</option>
+                <option value="18" selected>18</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <label class="mb-0 small"> entries</label>
+        </div>
+        <form id="filterForm" class="d-flex flex-wrap align-items-center gap-1 p-2 border rounded">
+            <input type="text" id="filterDiscipline" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Discipline">
+            <input type="text" id="filterWorkingCode" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Working Code">
+            <input type="text" id="filterDirectLabor" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Direct Labor">
+            <button style="font-size: 9px" type="button" id="applyFilters" class="btn btn-apply btn-sm">Apply</button>
+        </form>
+        <div class="d-flex align-items-center gap-1 p-2 border rounded">
+            <input type="text" id="globalSearch" class="form-control form-control-sm" style="width: 120px; font-size: 10px;" placeholder="Search...">
+        </div>
+        <div class="ms-auto d-flex align-items-center gap-1 p-2 border rounded" id="customButtons"></div>
+    </div>
+
+    <div class="table-responsive mt-2">
+        <table id="manpowerTable" class="table table-hover table-sm w-100 compact-table table-bordered-custom">
+            <thead class="table-light text-center table-header">
+                <tr>
+                    <th>Item</th>
+                    <th>Discipline</th>
+                    <th>Working Code</th>
+                    <th>Working Description</th>
+                    <th>Direct Labor</th>
+                    <th>Qty</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mp in manpowers %}
+                <tr>
+                    <td>{{ mp.item }}</td>
+                    <td>{{ mp.discipline }}</td>
+                    <td>{{ mp.working_code }}</td>
+                    <td>{{ mp.working_description }}</td>
+                    <td>{{ mp.direct_labor }}</td>
+                    <td>{{ mp.qty|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal fade" id="importManpowerModal" tabindex="-1" aria-labelledby="importManpowerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="importManpowerForm" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title" id="importManpowerModalLabel">Import ManpowerBase</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+            <p>Download the <b>template</b>, fill all required fields, and upload it here:</p>
+            <input type="file" name="file" id="importManpowerFile" accept=".xlsx,.csv" required class="form-control"/>
+            </div>
+            <div class="modal-footer">
+            <button type="submit" class="btn btn-success">Import</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+        </form>
+    </div>
+    </div>
+
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+<script>
+    $(document).ready(function () {
+        let table = $('#manpowerTable').DataTable({
+            paging: true,
+            pageLength: 18,
+            autoWidth: true,
+            fixedHeader: true,
+            dom: 'Bfrtip',
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    title: 'Manpower Export',
+                    className: 'btn-minimal btn-excel',
+                    text: '<i class="fa-solid fa-file-excel me-2"></i> Export Excel'
+                },
+                {
+                    extend: 'pdfHtml5',
+                    title: 'Manpower Export',
+                    className: 'btn-minimal btn-pdf',
+                    text: '<i class="fa-solid fa-file-pdf me-2"></i> Export PDF',
+                    orientation: 'landscape',
+                    pageSize: 'A4'
+                },
+                {
+                    extend: 'print',
+                    title: 'Manpower Print',
+                    className: 'btn-minimal btn-print',
+                    text: '<i class="fa-solid fa-print me-2"></i> Print'
+                }
+            ]
+        });
+
+        table.buttons().container().appendTo('#customButtons');
+
+        $('#applyFilters').click(function () {
+            table.column(1).search($('#filterDiscipline').val());
+            table.column(2).search($('#filterWorkingCode').val());
+            table.column(4).search($('#filterDirectLabor').val());
+            table.draw();
+        });
+
+        $('#rowsPerPage').change(function () {
+            table.page.len($(this).val()).draw();
+        });
+
+        $('#globalSearch').keyup(function () {
+            table.search($(this).val()).draw();
+        });
+    });
+</script>
+<style>
+    .compact-table {
+        table-layout: auto !important;
+        border: 1px solid #ddd !important;
+        border-collapse: collapse !important;
+    }
+    .compact-table td, .compact-table th {
+        white-space: nowrap !important;
+        padding: 2px 4px !important;
+        line-height: 15px !important;
+        vertical-align: middle;
+        font-size: 8px;
+        border: 0.5px solid #ddd !important;
+    }
+    .table-header th {
+        font-size: 9px !important;
+        padding: 6px 4px !important;
+        background-color: #f0f0f0 !important;
+    }
+    .compact-table tbody tr:nth-child(odd) {
+        background-color: #f8f9fa;
+    }
+    .compact-table tbody tr:nth-child(even) {
+        background-color: #f1f1f1;
+    }
+    .compact-table tbody tr:hover {
+        background-color: #d9edf7;
+    }
+    .table-bordered-custom {
+        border: 1px solid #ccc !important;
+    }
+    div.dataTables_length, div.dataTables_filter {
+        display: none !important;
+    }
+    .dt-buttons {
+        margin-left: 10px;
+        display: flex;
+        gap: 5px;
+    }
+    .paginate_button {
+        background-color: #f5f5f5 !important;
+        border: 1px solid #ddd !important;
+        color: #333 !important;
+        padding: 4px 8px !important;
+        margin: 2px !important;
+        border-radius: 4px !important;
+    }
+    .paginate_button.current {
+        background-color: rgb(184, 184, 184) !important;
+        color: white !important;
+    }
+    .paginate_button:hover {
+        background-color: #e0e0e0 !important;
+        color: #000 !important;
+    }
+    .btn-minimal {
+        border: none !important;
+        padding: 4px 10px !important;
+        font-size: 11px !important;
+        color: white !important;
+        transition: background-color 0.3s ease !important;
+    }
+    .btn-excel {
+        background-color: #a2d5a2 !important;
+        color: black;
+    }
+    .btn-excel:hover {
+        background-color: rgb(104, 165, 104) !important;
+        color: black;
+    }
+    .btn-pdf {
+        background-color: #f5a9a9 !important;
+    }
+    .btn-pdf:hover {
+        background-color: #ec8383 !important;
+    }
+    .btn-print {
+        background-color: #c7c7c7 !important;
+    }
+    .btn-print:hover {
+        background-color: #a5a5a5 !important;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script>
+function baixarModeloManpower() {
+    const cabecalho = [
+        "item",
+        "discipline",
+        "working_code",
+        "working_description",
+        "direct_labor",
+        "qty"
+    ];
+    const exemplo = [
+        1,
+        "Mechanical",
+        "WKC-01",
+        "Welding main pipe",
+        "Welder",
+        2.0
+    ];
+
+    const ws_data = [cabecalho, exemplo];
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "ManpowerBaseTemplate");
+    XLSX.writeFile(wb, "manpowerbase_template.xlsx");
+}
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('importManpowerForm');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const fileInput = document.getElementById('importManpowerFile');
+        const file = fileInput.files[0];
+        if (!file) {
+            alert("Please select a file.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch("{% url 'import_manpower' %}", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                $('#importManpowerModal').modal('hide');
+                alert("Import successful!");
+                window.location.reload();
+            } else if (data.status === 'duplicate') {
+                $('#importManpowerModal').modal('hide');
+                alert("This manpower already exists. Please delete before importing again or add support for overwrite.");
+            } else {
+                alert(data.message || "An error occurred!");
+            }
+        })
+        .catch(err => {
+            alert("Error uploading file.");
+        });
+    });
+});
+</script>
+
+
+
+{% endblock %}

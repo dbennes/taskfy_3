@@ -1,0 +1,310 @@
+{% extends 'sistema/base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="container-fluid">
+  <div class="row">
+    
+    <!-- Botão download -->
+    
+    <!-- Formulário principal -->
+    <div class="col-md-8">
+      <div class="card shadow mb-3" style="width: 100%; color:#7a8093">
+        <div class="card-header py-3" style="background:#f5f5f7; border-bottom: 1px solid #d0d0d0; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+          <div class="d-flex align-items-center justify-content-between">
+            <h5 class="m-0 fw-bold fs-6 text-left w-100" style="margin-left: -60px;">Jobcard Creator</h5>
+            <div class="d-flex align-items-center gap-1">
+              <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+              <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+              <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <form method="post" id="stepForm" action="{% url 'edit_jobcard' job.job_card_number %}">
+            {% csrf_token %}
+            
+
+            {% include 'sistema/partials/jobcard_creator/step_1.html' %}
+            {% include 'sistema/partials/jobcard_creator/step_2.html' %}
+            {% include 'sistema/partials/jobcard_creator/step_3.html' %}
+            {% include 'sistema/partials/jobcard_creator/step_4.html' %}
+            {% include 'sistema/partials/jobcard_creator/step_5.html' %}
+
+            <!-- Bolinhas -->
+            <div class="text-center my-3">
+              <span class="step-indicator active" data-step="1"></span>
+              <span class="step-indicator" data-step="2"></span>
+              <span class="step-indicator" data-step="3"></span>
+              <span class="step-indicator" data-step="4"></span>
+              <span class="step-indicator" data-step="5"></span>
+            </div>
+
+            <!-- Botões -->
+            <div class="d-flex justify-content-between">
+              <button type="button" class="btn btn-secondary" id="prevBtn">Back</button>
+              <button type="button" class="btn btn-primary" id="nextBtn">Next</button>
+              <button type="submit" name="generate_pdf" class="btn btn-success d-none" id="submitBtn">Save & Finish</button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card lateral -->
+    <div class="col-md-4">
+      {% include 'sistema/partials/jobcard_creator/sidebar_image.html' %}
+    </div>
+
+  </div>
+</div>
+
+
+<!-- Modal de Validação Minimalista -->
+<div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <!-- Header estilo Apple -->
+            <div class="modal-header" style="background:#21262b; border-bottom: 1px solid rgb(255, 255, 255); border-top-left-radius: 8px; border-top-right-radius: 8px;">
+                <h6 class="modal-title">
+                    <i class="fa-solid fa-circle-exclamation me-2"></i> 
+                    Validation Required
+                </h6>
+                <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
+                    <div class="d-flex align-items-center gap-1">
+                        <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+                    </div>
+                </button>
+            </div>
+
+            <div class="modal-body " style="font-size: 14px; color: #black;">
+                <p>There are tasks without allocated manpowers or not marked as Not Applicable.</p>
+                <p>Please review before finalizing.</p>
+            </div>
+
+            <div class="modal-footer d-flex justify-content-center">
+                <button type="button" class="btn btn-light border shadow-sm rounded-pill px-4 py-1" data-bs-dismiss="modal" style="font-size: 14px;">
+                    Close
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Validação para PDF Minimalista -->
+<div class="modal fade" id="confirmSaveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <!-- Cabeçalho estilo Apple -->
+            <div class="modal-header" style="background:#21262b; border-bottom: 1px solid white; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+                <h6 class="modal-title">
+                    <i class="fa-regular fa-rectangle-xmark me-2"></i>
+                    Save Confirmation
+                </h6>
+                <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
+                    <div class="d-flex align-items-center gap-1">
+                        <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Corpo da mensagem -->
+            <div class="modal-body text-center" style="font-size: 14px;">
+                Are you sure you want to save the changes and generate the PDF?
+            </div>
+
+            <!-- Botões -->
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-success px-4" id="confirmSaveBtn">Yes</button>
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">No</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Sucesso -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <!-- Cabeçalho estilo Apple -->
+            <div class="modal-header" style="background:#21262b; border-bottom: 1px solid white; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+                <h6 class="modal-title">
+                    <i class="fa-regular fa-circle-check me-2"></i>
+                    Completed
+                </h6>
+                <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
+                    <div class="d-flex align-items-center gap-1">
+                        <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+                    </div>
+                </button>
+            </div>
+
+            <div class="modal-body text-center" style="font-size: 14px;">
+                <p>PDF generated successfully!</p>
+            </div>
+
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-success px-4" id="successModalBtn">OK</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+<!-- Estilo dos indicadores -->
+<style>
+  .step-indicator {
+    height: 8px;
+    width: 8px;
+    margin: 0 8px;
+    background-color: #ccc;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .step-indicator.active {
+    background-color: #0d6efd;
+  }
+</style>
+
+<!-- Script do wizard -->
+<script>
+  let currentStep = 1;
+  const totalSteps = 5;
+
+  function updateWizard() {
+    for (let i = 1; i <= totalSteps; i++) {
+      document.getElementById(`step-${i}`)
+              .classList.toggle('d-none', i !== currentStep);
+      document.querySelector(`.step-indicator[data-step="${i}"]`)
+              .classList.toggle('active', i === currentStep);
+    }
+    document.getElementById('prevBtn').disabled = currentStep === 1;
+    document.getElementById('nextBtn')
+            .classList.toggle('d-none', currentStep === totalSteps);
+    document.getElementById('submitBtn')
+            .classList.toggle('d-none', currentStep !== totalSteps);
+  }
+
+  document.getElementById('nextBtn').addEventListener('click', () => {
+    if (currentStep < totalSteps) {
+      currentStep++;
+      updateWizard();
+    }
+  });
+
+  document.getElementById('prevBtn').addEventListener('click', () => {
+    if (currentStep > 1) {
+      currentStep--;
+      updateWizard();
+    }
+  });
+
+  document.getElementById('stepForm').addEventListener('submit', function(e) {
+    if (currentStep !== totalSteps) {
+      e.preventDefault();
+      currentStep++;
+      updateWizard();
+      return;
+    }
+
+    // 🔒 Validação ANTES de finalizar no último passo
+    let invalid = false;
+
+    const taskRows = document.querySelectorAll('input[id^="task-not-applicable-"]');
+
+    taskRows.forEach(row => {
+      const index = row.id.replace('task-not-applicable-', '');
+      const totalManpower = document.getElementById(`hh-total-${index}`);
+      const isNotApplicable = row.checked;
+
+      if (!isNotApplicable && totalManpower && parseFloat(totalManpower.textContent) === 0) {
+        invalid = true;
+      }
+    });
+
+    if (invalid) {
+      e.preventDefault();
+      var validationModal = new bootstrap.Modal(document.getElementById('validationModal'));
+      validationModal.show();
+    }
+    // Se tudo estiver ok, o form será submetido normalmente
+  });
+
+  // Inicializa o passo 1
+  updateWizard();
+
+
+document.getElementById('submitBtn').addEventListener('click', function (e) {
+    e.preventDefault();
+
+    // 🔒 Validação ANTES de abrir o modal
+    let invalid = false;
+
+    const taskRows = document.querySelectorAll('input[id^="task-not-applicable-"]');
+
+    taskRows.forEach(row => {
+        const index = row.id.replace('task-not-applicable-', '');
+        const totalManpower = document.getElementById(`hh-total-${index}`);
+        const isNotApplicable = row.checked;
+
+        if (!isNotApplicable && totalManpower && parseFloat(totalManpower.textContent) === 0) {
+            invalid = true;
+        }
+    });
+
+    if (invalid) {
+        var validationModal = new bootstrap.Modal(document.getElementById('validationModal'));
+        validationModal.show();
+        return;
+    }
+
+    // Se passou na validação, abre o modal de confirmação
+    const confirmModalElement = document.getElementById('confirmSaveModal');
+    const confirmModal = new bootstrap.Modal(confirmModalElement);
+    confirmModal.show();
+
+    const confirmSaveBtn = document.getElementById('confirmSaveBtn');
+    confirmSaveBtn.onclick = function () {
+        confirmModal.hide();
+
+        // Gera o PDF imediatamente (o submit envia o POST que baixa o PDF)
+        document.getElementById('stepForm').submit();
+
+        // Abre o modal de sucesso
+        const successModalElement = document.getElementById('successModal');
+        const successModal = new bootstrap.Modal(successModalElement);
+        successModal.show();
+
+        // Quando clicar em OK no modal de sucesso, fecha o modal e recarrega a página
+        document.getElementById('successModalBtn').addEventListener('click', function () {
+            successModal.hide();
+            
+        });
+    };
+});
+
+
+
+</script>
+
+
+{% endblock %}

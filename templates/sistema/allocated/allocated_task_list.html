@@ -1,0 +1,223 @@
+{% extends 'sistema/base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-2">
+    <div class="d-flex align-items-center justify-content-between p-2 mb-3" style="background-color: #313131; border-radius: 8px;">
+        <div class="d-flex align-items-center me-3">
+            <span style="width: 10px; height: 10px; background-color: #ff5f57; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
+            <span style="width: 10px; height: 10px; background-color: #febc2e; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
+            <span style="width: 10px; height: 10px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+            <h6 class="mb-0 ms-3 text-white">Allocated Tasks - Complete Database View</h6>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-1">
+        <div class="d-flex align-items-center gap-1 p-2 border rounded" style="font-size: 9px;">
+            <label class="mb-0 small">Show</label>
+            <select id="rowsPerPage" class="form-select form-select-sm" style="width: 70px; font-size: 10px;">
+                <option value="10">10</option>
+                <option value="18" selected>18</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <label class="mb-0 small"> entries</label>
+        </div>
+        <form id="filterForm" class="d-flex flex-wrap align-items-center gap-1 p-2 border rounded">
+            <input type="text" id="filterJobcardNumber" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Jobcard #">
+            <input type="text" id="filterTaskOrder" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Task Order">
+            <button style="font-size: 9px" type="button" id="applyFilters" class="btn btn-apply btn-sm">Apply</button>
+        </form>
+        <div class="d-flex align-items-center gap-1 p-2 border rounded">
+            <input type="text" id="globalSearch" class="form-control form-control-sm" style="width: 120px; font-size: 10px;" placeholder="Search...">
+        </div>
+        <div class="ms-auto d-flex align-items-center gap-1 p-2 border rounded" id="customButtons"></div>
+    </div>
+
+    <div class="table-responsive mt-2">
+        <table id="allocatedTaskTable" class="table table-hover table-sm w-100 compact-table table-bordered-custom">
+            <thead class="table-light text-center table-header">
+                <tr>
+                    <th>Jobcard Number</th>
+                    <th>Task Order</th>
+                    <th>Description</th>
+                    <th>Max Hours</th>
+                    <th>Total Hours</th>
+                    <th>Completed</th>
+                    <th>Percent</th>
+                    <th>Not Applicable</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in allocated_tasks %}
+                <tr>
+                    <td>{{ task.jobcard_number }}</td>
+                    <td>{{ task.task_order }}</td>
+                    <td>{{ task.description }}</td>
+                    <td>{{ task.max_hours|floatformat:2 }}</td>
+                    <td>{{ task.total_hours|floatformat:2 }}</td>
+                    <td>
+                        {% if task.completed %}
+                            <span class="badge bg-success">Yes</span>
+                        {% else %}
+                            <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ task.percent|floatformat:2 }}%</td>
+                    <td>
+                        {% if task.not_applicable %}
+                            <span class="badge bg-warning text-dark">Yes</span>
+                        {% else %}
+                            <span class="badge bg-light text-muted">No</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+<script>
+    $(document).ready(function () {
+        let table = $('#allocatedTaskTable').DataTable({
+            paging: true,
+            pageLength: 18,
+            autoWidth: true,
+            fixedHeader: true,
+            dom: 'Bfrtip',
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    title: 'Allocated Tasks Export',
+                    className: 'btn-minimal btn-excel',
+                    text: '<i class="fa-solid fa-file-excel me-2"></i> Export Excel'
+                },
+                {
+                    extend: 'pdfHtml5',
+                    title: 'Allocated Tasks Export',
+                    className: 'btn-minimal btn-pdf',
+                    text: '<i class="fa-solid fa-file-pdf me-2"></i> Export PDF',
+                    orientation: 'landscape',
+                    pageSize: 'A4'
+                },
+                {
+                    extend: 'print',
+                    title: 'Allocated Tasks Print',
+                    className: 'btn-minimal btn-print',
+                    text: '<i class="fa-solid fa-print me-2"></i> Print'
+                }
+            ]
+        });
+
+        table.buttons().container().appendTo('#customButtons');
+
+        $('#applyFilters').click(function () {
+            table.column(0).search($('#filterJobcardNumber').val());
+            table.column(1).search($('#filterTaskOrder').val());
+            table.draw();
+        });
+
+        $('#rowsPerPage').change(function () {
+            table.page.len($(this).val()).draw();
+        });
+
+        $('#globalSearch').keyup(function () {
+            table.search($(this).val()).draw();
+        });
+    });
+</script>
+<style>
+    .compact-table {
+        table-layout: auto !important;
+        border: 1px solid #ddd !important;
+        border-collapse: collapse !important;
+    }
+    .compact-table td, .compact-table th {
+        white-space: nowrap !important;
+        padding: 2px 4px !important;
+        line-height: 15px !important;
+        vertical-align: middle;
+        font-size: 8px;
+        border: 0.5px solid #ddd !important;
+    }
+    .table-header th {
+        font-size: 9px !important;
+        padding: 6px 4px !important;
+        background-color: #f0f0f0 !important;
+    }
+    .compact-table tbody tr:nth-child(odd) {
+        background-color: #f8f9fa;
+    }
+    .compact-table tbody tr:nth-child(even) {
+        background-color: #f1f1f1;
+    }
+    .compact-table tbody tr:hover {
+        background-color: #d9edf7;
+    }
+    .table-bordered-custom {
+        border: 1px solid #ccc !important;
+    }
+    div.dataTables_length, div.dataTables_filter {
+        display: none !important;
+    }
+    .dt-buttons {
+        margin-left: 10px;
+        display: flex;
+        gap: 5px;
+    }
+    .paginate_button {
+        background-color: #f5f5f5 !important;
+        border: 1px solid #ddd !important;
+        color: #333 !important;
+        padding: 4px 8px !important;
+        margin: 2px !important;
+        border-radius: 4px !important;
+    }
+    .paginate_button.current {
+        background-color: rgb(184, 184, 184) !important;
+        color: white !important;
+    }
+    .paginate_button:hover {
+        background-color: #e0e0e0 !important;
+        color: #000 !important;
+    }
+    .btn-minimal {
+        border: none !important;
+        padding: 4px 10px !important;
+        font-size: 11px !important;
+        color: white !important;
+        transition: background-color 0.3s ease !important;
+    }
+    .btn-excel {
+        background-color: #a2d5a2 !important;
+        color: black;
+    }
+    .btn-excel:hover {
+        background-color: rgb(104, 165, 104) !important;
+        color: black;
+    }
+    .btn-pdf {
+        background-color: #f5a9a9 !important;
+    }
+    .btn-pdf:hover {
+        background-color: #ec8383 !important;
+    }
+    .btn-print {
+        background-color: #c7c7c7 !important;
+    }
+    .btn-print:hover {
+        background-color: #a5a5a5 !important;
+    }
+</style>
+{% endblock %}

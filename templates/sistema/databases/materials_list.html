@@ -1,0 +1,486 @@
+{% extends 'sistema/base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-2">
+    <div class="d-flex align-items-center justify-content-between p-2 mb-3" style="background-color: #313131; border-radius: 8px;">
+        <div class="d-flex align-items-center me-3">
+            <span style="width: 10px; height: 10px; background-color: #ff5f57; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
+            <span style="width: 10px; height: 10px; background-color: #febc2e; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
+            <span style="width: 10px; height: 10px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+            <h6 class="mb-0 ms-3 text-white">Materials - Complete Database View</h6>
+        </div>
+        <div class="d-flex align-items-center" style="gap: 8px;">
+            <button type="button" class="btn btn-outline-light btn-sm" onclick="baixarModeloMaterialBase()">
+                <i class="fa fa-download me-1"></i> Modelo
+            </button>
+            <button type="button" 
+                    class="btn btn-success btn-sm" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#importModal">
+                <i class="fa fa-upload me-1"></i> Importar
+            </button>
+        </div>
+    </div>
+
+
+    <div class="d-flex flex-wrap align-items-center gap-1">
+        <div class="d-flex align-items-center gap-1 p-2 border rounded" style="font-size: 9px;">
+            <label class="mb-0 small">Show</label>
+            <select id="rowsPerPage" class="form-select form-select-sm" style="width: 70px; font-size: 10px;">
+                <option value="10">10</option>
+                <option value="18" selected>18</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <label class="mb-0 small"> entries</label>
+        </div>
+        <form id="filterForm" class="d-flex flex-wrap align-items-center gap-1 p-2 border rounded">
+            <input type="text" id="filterMaterial" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Material">
+            <input type="text" id="filterProjectCode" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="PMTO">
+            <input type="text" id="filterStatus" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Status">
+            <button style="font-size: 9px" type="button" id="applyFilters" class="btn btn-apply btn-sm">Apply</button>
+        </form>
+        <div class="d-flex align-items-center gap-1 p-2 border rounded">
+            <input type="text" id="globalSearch" class="form-control form-control-sm" style="width: 120px; font-size: 10px;" placeholder="Search...">
+        </div>
+        <div class="ms-auto d-flex align-items-center gap-1 p-2 border rounded" id="customButtons"></div>
+    </div>
+
+    <div class="table-responsive mt-2">
+        <table id="materialsTable" class="table table-hover table-sm w-100 compact-table table-bordered-custom">
+            <thead class="table-light text-center table-header">
+                <tr>
+                    <th>Item</th>
+                    <th>Job Card Number</th>
+                    <th>Working Code</th>
+                    <th>Discipline</th>
+                    <th>Tag JobCard Base</th>
+                    <th>JobCard Required Qty</th>
+                    <th>Unit Req. Qty</th>
+                    <th>Weight (Kg)</th>
+                    <th>Material Segmentation</th>
+                    <th>Comments</th>
+                    <th>Sequenc. Nº Procurement</th>
+                    <th>Status Procurement</th>
+                    <th>MTO Item No</th>
+                    <th>Basic Material</th>
+                    <th>Description</th>
+                    <th>Project Code</th>
+                    <th>NPS 1</th>
+                    <th>Qty</th>
+                    <th>Unit</th>
+                    <th>PO</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mat in materials %}
+                <tr>
+                    <td>{{ mat.item }}</td>
+                    <td>{{ mat.job_card_number }}</td>
+                    <td>{{ mat.working_code }}</td>
+                    <td>{{ mat.discipline }}</td>
+                    <td>{{ mat.tag_jobcard_base }}</td>
+                    <td>{{ mat.jobcard_required_qty|floatformat:2 }}</td>
+                    <td>{{ mat.unit_req_qty }}</td>
+                    <td>{{ mat.weight_kg|floatformat:2 }}</td>
+                    <td>{{ mat.material_segmentation }}</td>
+                    
+                    <td>{{ mat.sequenc_no_procurement }}</td>
+                    <td>{{ mat.status_procurement }}</td>
+                    <td>{{ mat.mto_item_no }}</td>
+                    <td>{{ mat.basic_material }}</td>
+                    <td>{{ mat.description }}</td>
+                    <td>{{ mat.project_code }}</td>
+                    <td>{{ mat.nps1 }}</td>
+                    <td>{{ mat.qty|floatformat:2 }}</td>
+                    <td>{{ mat.unit }}</td>
+                    <td>{{ mat.po }}</td>
+                    <td>{{ mat.comments }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="importForm" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="importModalLabel">Import Materials</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Download the <b>template</b>, fill it out, and upload it here:</p>
+          <input type="file" name="file" id="importFile" accept=".xlsx,.csv" required class="form-control"/>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Import</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal de confirmação de overwrite -->
+<div class="modal fade" id="confirmReplaceModal" tabindex="-1" aria-labelledby="confirmReplaceLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmReplaceLabel">Overwrite Materials?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>
+          There are already materials registered for this Job Card.<br>
+          Do you want to <b>overwrite</b> the existing data?
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" id="confirmOverwriteBtn">Yes, Overwrite</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de erro -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="errorModalLabel">Import Error</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody">
+        <!-- The error message will be placed here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+<script>
+    $(document).ready(function () {
+        let table = $('#materialsTable').DataTable({
+            paging: true,
+            pageLength: 18,
+            autoWidth: true,
+            fixedHeader: true,
+            dom: 'Bfrtip',
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    title: 'Materials Export',
+                    className: 'btn-minimal btn-excel',
+                    text: '<i class="fa-solid fa-file-excel me-2"></i> Export Excel'
+                },
+                {
+                    extend: 'pdfHtml5',
+                    title: 'Materials Export',
+                    className: 'btn-minimal btn-pdf',
+                    text: '<i class="fa-solid fa-file-pdf me-2"></i> Export PDF',
+                    orientation: 'landscape',
+                    pageSize: 'A4'
+                },
+                {
+                    extend: 'print',
+                    title: 'Materials Print',
+                    className: 'btn-minimal btn-print',
+                    text: '<i class="fa-solid fa-print me-2"></i> Print'
+                }
+            ]
+        });
+
+        table.buttons().container().appendTo('#customButtons');
+
+        $('#applyFilters').click(function () {
+            table.column(8).search($('#filterMaterial').val());
+            table.column(15).search($('#filterProjectCode').val());
+            table.column(11).search($('#filterStatus').val());
+            table.draw();
+        });
+
+        $('#rowsPerPage').change(function () {
+            table.page.len($(this).val()).draw();
+        });
+
+        $('#globalSearch').keyup(function () {
+            table.search($(this).val()).draw();
+        });
+    });
+</script>
+<style>
+    .compact-table {
+        table-layout: auto !important;
+        border: 1px solid #ddd !important;
+        border-collapse: collapse !important;
+    }
+    .compact-table td, .compact-table th {
+        white-space: nowrap !important;
+        padding: 2px 4px !important;
+        line-height: 15px !important;
+        vertical-align: middle;
+        font-size: 8px;
+        border: 0.5px solid #ddd !important;
+    }
+    .table-header th {
+        font-size: 9px !important;
+        padding: 6px 4px !important;
+        background-color: #f0f0f0 !important;
+    }
+    .compact-table tbody tr:nth-child(odd) {
+        background-color: #f8f9fa;
+    }
+    .compact-table tbody tr:nth-child(even) {
+        background-color: #f1f1f1;
+    }
+    .compact-table tbody tr:hover {
+        background-color: #d9edf7;
+    }
+    .table-bordered-custom {
+        border: 1px solid #ccc !important;
+    }
+    div.dataTables_length, div.dataTables_filter {
+        display: none !important;
+    }
+    .dt-buttons {
+        margin-left: 10px;
+        display: flex;
+        gap: 5px;
+    }
+    .paginate_button {
+        background-color: #f5f5f5 !important;
+        border: 1px solid #ddd !important;
+        color: #333 !important;
+        padding: 4px 8px !important;
+        margin: 2px !important;
+        border-radius: 4px !important;
+    }
+    .paginate_button.current {
+        background-color: rgb(184, 184, 184) !important;
+        color: white !important;
+    }
+    .paginate_button:hover {
+        background-color: #e0e0e0 !important;
+        color: #000 !important;
+    }
+    .btn-minimal {
+        border: none !important;
+        padding: 4px 10px !important;
+        font-size: 11px !important;
+        color: white !important;
+        transition: background-color 0.3s ease !important;
+    }
+    .btn-excel {
+        background-color: #a2d5a2 !important;
+        color: black;
+    }
+    .btn-excel:hover {
+        background-color: rgb(104, 165, 104) !important;
+        color: black;
+    }
+    .btn-pdf {
+        background-color: #f5a9a9 !important;
+    }
+    .btn-pdf:hover {
+        background-color: #ec8383 !important;
+    }
+    .btn-print {
+        background-color: #c7c7c7 !important;
+    }
+    .btn-print:hover {
+        background-color: #a5a5a5 !important;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script>
+function baixarModeloMaterialBase() {
+    // Cabeçalho do seu MaterialBase (ajuste a ordem se quiser):
+    const cabecalho = [
+        "job_card_number",
+        "working_code",
+        "discipline",
+        "tag_jobcard_base",
+        "jobcard_required_qty",
+        "unit_req_qty",
+        "weight_kg",
+        "material_segmentation",
+        "comments",
+        "sequenc_no_procurement",
+        "status_procurement",
+        "mto_item_no",
+        "basic_material",
+        "description",
+        "project_code",
+        "nps1",
+        "qty",
+        "unit",
+        "po"
+    ];
+
+    // Linha exemplo (opcional - remova se não quiser)
+    const exemplo = [
+        "JC-001",
+        "WKC-01",
+        "Mechanical",
+        "TAG-100",
+        "10.00",
+        "pcs",
+        "12.50",
+        "SEGMENTO-X",
+        "Sem comentários",
+        "SEQ-01",
+        "Pendente",
+        "MTO-10",
+        "Aço Carbono",
+        "Parafuso M8x40 Zincado",
+        "PC-21",
+        "3/4\"",
+        "10",
+        "kg",
+        "PO123456"
+    ];
+
+    const ws_data = [cabecalho, exemplo]; // Cabeçalho + linha de exemplo
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Modelo");
+
+    XLSX.writeFile(wb, "modelo_material_base.xlsx");
+}
+</script>
+
+
+<!-- JAVASCRIPT PARA MANDAR VIA AJAX -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    let formDataCache = null;
+
+    const form = document.getElementById('importForm');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const fileInput = document.getElementById('importFile');
+        const file = fileInput.files[0];
+        if (!file) {
+            showError("Please select a file.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch("{% url 'import_materials' %}", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'duplicate') {
+                // Mostra modal de confirmação
+                formDataCache = formData; // salva para reutilizar
+                $('#importModal').modal('hide');
+                setTimeout(function() {
+                    $('#confirmReplaceModal').modal('show');
+                }, 400);
+            } else if (data.status === 'ok') {
+                $('#importModal').modal('hide');
+                showSuccess("Import successful!", true);
+            } else {
+                showError(data.message || "An error occurred!");
+            }
+        })
+        .catch(err => {
+            showError("Error uploading file.");
+        });
+    });
+
+    // Ao confirmar sobrescrever
+    document.getElementById('confirmOverwriteBtn').onclick = function() {
+        if (!formDataCache) return;
+        formDataCache.append('overwrite', '1');
+        fetch("{% url 'import_materials' %}", {
+            method: "POST",
+            body: formDataCache
+        })
+        .then(response => response.json())
+        .then(data => {
+            $('#confirmReplaceModal').modal('hide');
+            if (data.status === 'ok') {
+                showSuccess("Materials updated successfully!", true);
+            } else {
+                showError(data.message || "Error on update.");
+            }
+        })
+        .catch(() => {
+            showError("Error overwriting data.");
+        });
+    }
+
+    function showError(message) {
+        document.getElementById('errorModalBody').innerText = message;
+        $('#errorModal').modal('show');
+    }
+
+    function showSuccess(message, reload) {
+        // Usa o mesmo modal de erro mas com cor verde (ou crie outro modal, se quiser separar)
+        document.getElementById('errorModalLabel').innerText = "Success";
+        document.getElementById('errorModalBody').innerText = message;
+        // Troca cor
+        let header = document.querySelector('#errorModal .modal-header');
+        if(header){
+            header.classList.remove('bg-danger');
+            header.classList.add('bg-success');
+            header.classList.remove('text-white');
+            header.classList.add('text-white');
+        }
+        $('#errorModal').modal('show');
+        if (reload) {
+            setTimeout(function(){
+                window.location.reload();
+            }, 1800);
+        }
+        // Volta para vermelho para outros erros:
+        $('#errorModal').on('hidden.bs.modal', function () {
+            document.getElementById('errorModalLabel').innerText = "Import Error";
+            if(header){
+                header.classList.remove('bg-success');
+                header.classList.add('bg-danger');
+            }
+            // Remove evento para não acumular
+            $(this).off('hidden.bs.modal');
+        });
+    }
+});
+</script>
+
+
+
+
+{% endblock %}
