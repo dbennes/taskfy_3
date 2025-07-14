@@ -1068,7 +1068,6 @@ def import_engineering(request):
 @login_required
 def import_taskbase(request):
     if request.method == "POST":
-        overwrite = request.POST.get('overwrite') == '1'
         file = request.FILES.get('file')
         if not file:
             return JsonResponse({'status': 'error', 'message': 'No file uploaded.'})
@@ -1099,44 +1098,37 @@ def import_taskbase(request):
 
         empty_fields = []
         for field in required_fields:
-            if df[field].isnull().any() or (df[field] == '').any():
+            if df[field].isnull().any() or (df[field].astype(str).str.strip() == '').any():
                 empty_fields.append(field)
         if empty_fields:
             return JsonResponse({'status': 'error', 'message': f"Please fill all required fields: {', '.join(empty_fields)}"})
 
+        # Descobrir todos os pares discipline+working_code do arquivo
+        discipline_codes = set(
+            (str(row["discipline"]).strip().lower(), str(row["working_code"]).strip().lower())
+            for _, row in df.iterrows()
+        )
+
+        # Apagar todos os registros existentes para esses pares
+        for discipline, working_code in discipline_codes:
+            TaskBase.objects.filter(
+                discipline__iexact=discipline,
+                working_code__iexact=working_code
+            ).delete()
+
+        # Criar os novos registros
         for _, row in df.iterrows():
-            # VALIDAÇÃO: working_code deve existir em WorkingCode
-            if not WorkingCode.objects.filter(code=row["working_code"]).exists():
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f"Working code '{row['working_code']}' is not registered in the WorkingCode base. Only registered codes are allowed."
-                })
-
-            exists = TaskBase.objects.filter(
-                working_code=row["working_code"],
-                typical_task=row["typical_task"]
-            ).exists()
-
-            if exists and not overwrite:
-                return JsonResponse({
-                    'status': 'duplicate',
-                    'message': f"Task '{row['typical_task']}' already registered for working code '{row['working_code']}'. Overwrite?"
-                })
-
-            if exists and overwrite:
-                task = TaskBase.objects.get(
-                    working_code=row["working_code"],
-                    typical_task=row["typical_task"]
-                )
-                for field in required_fields:
-                    setattr(task, field, row[field])
-                task.save()
-            else:
-                data = {field: row[field] for field in required_fields}
-                TaskBase.objects.create(**data)
+            TaskBase.objects.create(
+                item=int(row["item"]),
+                discipline=str(row["discipline"]).strip().lower(),
+                working_code=str(row["working_code"]).strip().lower(),
+                typical_task=str(row["typical_task"]).strip(),
+                order=int(row["order"])
+            )
 
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
+
 
 #REFERENCES FUNÇÕES 
 
