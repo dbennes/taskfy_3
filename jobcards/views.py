@@ -21,15 +21,12 @@ from django.urls import reverse_lazy
 from .models import Discipline, Area, WorkingCode, System
 from .forms import DisciplineForm, AreaForm, WorkingCodeForm, SystemForm
 import datetime
-
 from django.conf import settings
-
 from .models import (
     JobCard, TaskBase, ManpowerBase, MaterialBase, ToolsBase, EngineeringBase,
     AllocatedEngineering, AllocatedManpower, AllocatedMaterial, AllocatedTool, AllocatedTask,
     Discipline, Area, WorkingCode, System,
 )
-
 import tempfile
 from django.db.models import Sum
 from django.views.decorators.csrf import csrf_exempt
@@ -71,7 +68,7 @@ def login(request):
 def dashboard(request):
     # Summary cards
     total_jobcards = JobCard.objects.count()
-    not_checked_count = JobCard.objects.filter(jobcard_status='not checked').count()
+    not_checked_count = JobCard.objects.filter(jobcard_status='NO CHECKED').count()
     checked_count = JobCard.objects.filter(jobcard_status='checked').count()
 
     # Charts
@@ -100,6 +97,16 @@ def dashboard(request):
         if jc.system and jc.workpack_number:
             awp_data[jc.system][jc.workpack_number].append(jc)
 
+    # ALERTA: JobCards com campos obrigatórios vazios/nulos
+    jobcards_incompletos = JobCard.objects.filter(
+        Q(job_card_number__isnull=True) | Q(job_card_number__exact='') |
+        Q(prepared_by__isnull=True) | Q(prepared_by__exact='') |
+        Q(discipline__isnull=True) | Q(discipline__exact='') |
+        Q(job_card_description__isnull=True) | Q(job_card_description__exact='') |
+        Q(date_prepared__isnull=True)
+    )
+    alerta_count = jobcards_incompletos.count()
+
     context = {
         'total_jobcards': total_jobcards,
         'not_checked_count': not_checked_count,
@@ -109,6 +116,8 @@ def dashboard(request):
         'labels_total': labels_total,
         'data_total': data_total,
         'awp_data': awp_data,
+        'jobcards_incompletos': jobcards_incompletos,
+        'alerta_count': alerta_count,
     }
     return render(request, 'sistema/dashboard.html', context)
 
@@ -535,7 +544,8 @@ def generate_pdf(request, jobcard_id):
     response['Content-Disposition'] = f'attachment; filename=JobCard_{jobcard_id}_Rev_{job.rev}.pdf'
     return response
 
-# DATABASES - EXIBIÇÕES
+
+# --------- DATABASE EXIBIÇÕES --------------- #
 
 @login_required(login_url='login')
 def jobcards_overview(request):
@@ -604,7 +614,8 @@ def task_list(request):
         'code_to_desc': code_to_desc
     }
     return render(request, 'sistema/databases/task_list.html', context)
-#ALOCAÇÕES NOS BANCOS
+
+# --------- DATABASE ALOCAÇÕES --------------- #
 
 @login_required(login_url='login')
 def allocated_manpower_list(request):
@@ -646,7 +657,7 @@ def allocated_task_list(request):
     }
     return render(request, 'sistema/allocated/allocated_task_list.html', context)
 
-#IMPORTAÇÕES PARA O BANCO
+# --------- IMPORTAÇÕES BANCOS --------------- #
 
 @csrf_exempt
 def import_materials(request):
@@ -1234,7 +1245,7 @@ def delete_area(request, pk):
     return redirect('areas_list')  # Nome da URL que lista Areas
 
 
-# BAIXAR EXPORTAÇÕES
+# --------- BAIXAR EXPORTAÇÕES --------- #
 
 @login_required
 def export_materials_excel(request):
@@ -1309,3 +1320,66 @@ def export_materials_excel(request):
     response['Content-Disposition'] = 'attachment; filename=materials.xlsx'
     df.to_excel(response, index=False)
     return response
+
+
+# --------- AREA REPORTS --------------- #
+
+@login_required(login_url='jobcards')
+def jobcards_tam(request):  
+    qs = JobCard.objects.filter(comments__icontains='TAM')
+
+    search = request.GET.get('search', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    items_per_page = request.GET.get('items_per_page', '10')
+
+    if search:
+        qs = qs.filter(
+            Q(discipline__icontains=search) |
+            Q(job_card_number__icontains=search) |
+            Q(prepared_by__icontains=search)
+        )
+
+    if start_date:
+        try:
+            start = datetime.strptime(start_date, '%Y-%m-%d').date()
+            qs = qs.filter(date_prepared__gte=start)
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            qs = qs.filter(date_prepared__lte=end)
+        except ValueError:
+            pass
+
+    try:
+        items_per_page = int(items_per_page)
+    except (ValueError, TypeError):
+        items_per_page = 10
+
+    paginator = Paginator(qs, items_per_page)
+
+    page = request.GET.get('page')
+    try:
+        jobcards_page = paginator.page(page)
+    except PageNotAnInteger:
+        jobcards_page = paginator.page(1)
+    except EmptyPage:
+        jobcards_page = paginator.page(paginator.num_pages)
+        
+    backups_dir = os.path.join(settings.BASE_DIR, 'jobcard_backups')
+    available_pdfs = {f for f in os.listdir(backups_dir) if f.endswith('.pdf')}
+
+    context = {
+        'jobcards': jobcards_page,
+        'search': search,
+        'start_date': start_date,
+        'end_date': end_date,
+        'items_per_page': items_per_page,
+        'paginator': paginator,
+        'available_pdfs': available_pdfs,
+        'tam_only': True,  # você pode usar no template para mostrar aviso ou badge
+    }
+    return render(request, 'sistema/jobcards.html', context)

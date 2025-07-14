@@ -60,7 +60,10 @@ urlpatterns = [
     path('areas/delete/<int:pk>/', views.delete_area, name='delete_area'),
     
     #EXPORTAÇÕES
-    path('export_materials_excel/', views.export_materials_excel, name='export_materials_excel')
+    path('export_materials_excel/', views.export_materials_excel, name='export_materials_excel'),
+    
+    #REPORTS
+    path('jobcards/tam/', views.jobcards_tam, name='jobcards_tam'),
 
 
 ]
