@@ -926,7 +926,6 @@ def import_manpower(request):
 @login_required
 def import_toolsbase(request):
     if request.method == "POST":
-        overwrite = request.POST.get('overwrite') == '1'
         file = request.FILES.get('file')
         if not file:
             return JsonResponse({'status': 'error', 'message': 'No file uploaded.'})
@@ -959,44 +958,58 @@ def import_toolsbase(request):
 
         empty_fields = []
         for field in required_fields:
-            if df[field].isnull().any() or (df[field] == '').any():
+            if df[field].isnull().any() or (df[field].astype(str).str.strip() == '').any():
                 empty_fields.append(field)
         if empty_fields:
             return JsonResponse({'status': 'error', 'message': f"Please fill all required fields: {', '.join(empty_fields)}"})
 
+        # Descobrir todos os pares discipline+working_code do arquivo
+        discipline_codes = set(
+            (str(row["discipline"]).strip().lower(), str(row["working_code"]).strip().lower())
+            for _, row in df.iterrows()
+        )
+
+        # Apagar todos os registros existentes para esses pares
+        for discipline, working_code in discipline_codes:
+            ToolsBase.objects.filter(
+                discipline__iexact=discipline,
+                working_code__iexact=working_code
+            ).delete()
+
+        # Criar os novos registros (garante unicidade no arquivo também)
+        seen = set()
         for _, row in df.iterrows():
-            # VALIDAÇÃO: working_code deve existir em WorkingCode
-            if not WorkingCode.objects.filter(code=row["working_code"]).exists():
+            discipline = str(row["discipline"]).strip().lower()
+            working_code = str(row["working_code"]).strip().lower()
+            direct_labor = str(row["direct_labor"]).strip().lower()
+            special_tooling = str(row["special_tooling"]).strip().lower()
+
+            # Checa unicidade dentro do próprio arquivo (opcional, mas recomendado)
+            key = (discipline, working_code, direct_labor, special_tooling)
+            if key in seen:
+                return JsonResponse({'status': 'error', 'message': f"Duplicated tool for direct labor '{direct_labor}', special tooling '{special_tooling}' in file."})
+            seen.add(key)
+
+            # working_code deve existir
+            if not WorkingCode.objects.filter(code__iexact=working_code).exists():
                 return JsonResponse({
                     'status': 'error',
                     'message': f"Working code '{row['working_code']}' is not registered in the WorkingCode base. Only registered codes are allowed."
                 })
 
-            exists = ToolsBase.objects.filter(
-                direct_labor=row["direct_labor"],
-                special_tooling=row["special_tooling"]
-            ).exists()
-
-            if exists and not overwrite:
-                return JsonResponse({
-                    'status': 'duplicate',
-                    'message': f"Tool '{row['special_tooling']}' already registered for direct labor '{row['direct_labor']}'. Overwrite?"
-                })
-
-            if exists and overwrite:
-                tool = ToolsBase.objects.get(
-                    direct_labor=row["direct_labor"],
-                    special_tooling=row["special_tooling"]
-                )
-                for field in required_fields:
-                    setattr(tool, field, row[field])
-                tool.save()
-            else:
-                data = {field: row[field] for field in required_fields}
-                ToolsBase.objects.create(**data)
+            ToolsBase.objects.create(
+                item=int(row["item"]),
+                discipline=discipline,
+                working_code=working_code,
+                direct_labor=direct_labor,
+                qty_direct_labor=float(row["qty_direct_labor"]),
+                special_tooling=special_tooling,
+                qty=float(row["qty"])
+            )
 
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
+
 
 @login_required
 def import_engineering(request):
