@@ -74,7 +74,7 @@ def dashboard(request):
     # Charts
     not_checked_qs = (
         JobCard.objects
-        .filter(jobcard_status='not checked')
+        .filter(jobcard_status='NO CHECKED')
         .values('discipline')
         .annotate(count=Count('id'))
         .order_by('discipline')
