@@ -1,6 +1,7 @@
 {% extends 'sistema/base.html' %}
-
+{% load dict_extras %}
 {% block content %}
+
 <div class="container-fluid mt-2">
     <div class="d-flex align-items-center justify-content-between p-2 mb-3" style="background-color: #313131; border-radius: 8px;">
         <div class="d-flex align-items-center me-3">
@@ -49,19 +50,22 @@
                     <th>Item</th>
                     <th>Discipline</th>
                     <th>Working Code</th>
+                    <th>Working Code Description</th>
                     <th>Typical Task</th>
                     <th>Order</th>
+                    
                 </tr>
             </thead>
             <tbody>
                 {% for task in tasks %}
-                <tr>
-                    <td>{{ task.item }}</td>
-                    <td>{{ task.discipline }}</td>
-                    <td>{{ task.working_code }}</td>
-                    <td>{{ task.typical_task }}</td>
-                    <td>{{ task.order }}</td>
-                </tr>
+                    <tr>
+                        <td>{{ task.item }}</td>
+                        <td>{{ task.discipline }}</td>
+                        <td>{{ task.working_code }}</td>
+                        <td>{{ code_to_desc|get_item:task.working_code }}</td>
+                        <td>{{ task.typical_task }}</td>
+                        <td>{{ task.order }}</td>   
+                    </tr>
                 {% endfor %}
             </tbody>
         </table>

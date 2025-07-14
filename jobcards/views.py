@@ -597,11 +597,13 @@ def engineering_list(request):
 @login_required(login_url='login')
 def task_list(request):
     tasks = TaskBase.objects.all()
+    # Cria um dicionário: código → descrição
+    code_to_desc = {wc.code.upper(): wc.description for wc in WorkingCode.objects.all()}
     context = {
-        'tasks': tasks
+        'tasks': tasks,
+        'code_to_desc': code_to_desc
     }
     return render(request, 'sistema/databases/task_list.html', context)
-
 #ALOCAÇÕES NOS BANCOS
 
 @login_required(login_url='login')
@@ -1010,7 +1012,6 @@ def import_toolsbase(request):
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
-
 @login_required
 def import_engineering(request):
     if request.method == "POST":
@@ -1118,7 +1119,7 @@ def import_taskbase(request):
 
         # Descobrir todos os pares discipline+working_code do arquivo
         discipline_codes = set(
-            (str(row["discipline"]).strip().lower(), str(row["working_code"]).strip().lower())
+            (str(row["discipline"]).strip().upper(), str(row["working_code"]).strip().upper())
             for _, row in df.iterrows()
         )
 
@@ -1133,15 +1134,14 @@ def import_taskbase(request):
         for _, row in df.iterrows():
             TaskBase.objects.create(
                 item=int(row["item"]),
-                discipline=str(row["discipline"]).strip().lower(),
-                working_code=str(row["working_code"]).strip().lower(),
-                typical_task=str(row["typical_task"]).strip(),
+                discipline=str(row["discipline"]).strip().upper(),
+                working_code=str(row["working_code"]).strip().upper(),
+                typical_task=str(row["typical_task"]).strip().upper(),
                 order=int(row["order"])
             )
 
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
-
 
 #REFERENCES FUNÇÕES 
 

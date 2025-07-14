@@ -39,6 +39,7 @@
         width: 100%;
         border-collapse: collapse;
         page-break-inside: avoid;
+        font-size: 9px;
     }
 
     thead { display: table-header-group; }
@@ -48,7 +49,7 @@
         border: 1px solid rgb(0, 0, 0);
         padding: 3px 4px;
         vertical-align: top;
-        font-size: 7px;
+        font-size: 9px;
     }
 
     th { background: #e5e5e5; text-align: center; }
@@ -184,7 +185,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="4" style="text-align: center; border: 1px solid black;">Nenhuma tarefa alocada.</td>
+                                <td colspan="4" style="text-align: center; border: 1px solid black;">No tasks allocated.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -281,7 +282,7 @@
                         <td>{{ mat.comments }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" style="text-align:center;">Nenhum material alocado.</td></tr>
+                    <tr><td colspan="5" style="text-align:center;">No materials allocated.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -317,7 +318,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="3" style="text-align: center;">Nenhum equipamento alocado.</td>
+                                        <td colspan="3" style="text-align: center;">No equipment allocated.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -343,7 +344,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="3" style="text-align: center;">Nenhum equipamento alocado.</td>
+                                        <td colspan="3" style="text-align: center;">No equipment allocated.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -484,7 +485,7 @@
                         <td style="text-align:center;">{{ eng.status }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" style="text-align:center;">Nenhum documento de engenharia alocado.</td></tr>
+                    <tr><td colspan="5" style="text-align:center;">No engineering documents allocated.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>    
