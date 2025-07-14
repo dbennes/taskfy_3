@@ -711,25 +711,25 @@ def import_materials(request):
                 MaterialBase.objects.create(
                     # Se quiser importar 'item', descomente a linha abaixo:
                     # item = row.get('item') if 'item' in row else None,
-                    job_card_number = str(row['job_card_number']).strip(),
-                    working_code = str(row.get('working_code', '')).strip(),
-                    discipline = str(row.get('discipline', '')).strip(),
-                    tag_jobcard_base = str(row.get('tag_jobcard_base', '')).strip(),
+                    job_card_number = str(row['job_card_number']).strip().upper(),
+                    working_code = str(row.get('working_code', '')).strip().upper(),
+                    discipline = str(row.get('discipline', '')).strip().upper(),
+                    tag_jobcard_base = str(row.get('tag_jobcard_base', '')).strip().upper(),
                     jobcard_required_qty = float(row.get('jobcard_required_qty', 0)) if row.get('jobcard_required_qty') not in [None, ''] else None,
-                    unit_req_qty = str(row.get('unit_req_qty', '')).strip(),
+                    unit_req_qty = str(row.get('unit_req_qty', '')).strip().upper(),
                     weight_kg = float(row.get('weight_kg', 0)) if row.get('weight_kg') not in [None, ''] else None,
-                    material_segmentation = str(row.get('material_segmentation', '')).strip(),
+                    material_segmentation = str(row.get('material_segmentation', '')).strip().upper(),
                     comments = str(row.get('comments', '')).strip(),
-                    sequenc_no_procurement = str(row.get('sequenc_no_procurement', '')).strip(),
-                    status_procurement = str(row.get('status_procurement', '')).strip(),
-                    mto_item_no = str(row.get('mto_item_no', '')).strip(),
-                    basic_material = str(row.get('basic_material', '')).strip(),
-                    description = str(row.get('description', '')).strip(),
-                    project_code = str(row.get('project_code', '')).strip(),
-                    nps1 = str(row.get('nps1', '')).strip(),
+                    sequenc_no_procurement = str(row.get('sequenc_no_procurement', '')).strip().upper(),
+                    status_procurement = str(row.get('status_procurement', '')).strip().upper(),
+                    mto_item_no = str(row.get('mto_item_no', '')).strip().upper(),
+                    basic_material = str(row.get('basic_material', '')).strip().upper(),
+                    description = str(row.get('description', '')).strip().upper(),
+                    project_code = str(row.get('project_code', '')).strip().upper(),
+                    nps1 = str(row.get('nps1', '')).strip().upper(),
                     qty = float(row.get('qty', 0)) if row.get('qty') not in [None, ''] else None,
-                    unit = str(row.get('unit', '')).strip(),
-                    po = str(row.get('po', '')).strip(),
+                    unit = str(row.get('unit', '')).strip().upper(),
+                    po = str(row.get('po', '')).strip().upper(),
                 )
             except Exception as e:
                 return JsonResponse({
@@ -739,7 +739,6 @@ def import_materials(request):
 
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
-
 
 @login_required
 def import_jobcard(request):
@@ -866,7 +865,6 @@ def import_jobcard(request):
 @login_required
 def import_manpower(request):
     if request.method == "POST":
-        overwrite = request.POST.get('overwrite') == '1'
         file = request.FILES.get('file')
         if not file:
             return JsonResponse({'status': 'error', 'message': 'No file uploaded.'})
@@ -903,35 +901,46 @@ def import_manpower(request):
         if empty_fields:
             return JsonResponse({'status': 'error', 'message': f"Please fill all required fields: {', '.join(empty_fields)}"})
 
+        # Descobrir todos os pares discipline+working_code do arquivo, sempre em maiúsculo
+        discipline_codes = set(
+            (str(row["discipline"]).strip().upper(), str(row["working_code"]).strip().upper())
+            for _, row in df.iterrows()
+        )
+
+        # Apagar todos os registros existentes para esses pares, usando sempre upper
+        for discipline, working_code in discipline_codes:
+            ManpowerBase.objects.filter(
+                discipline=discipline,
+                working_code=working_code
+            ).delete()
+
+        # Checar unicidade dentro do arquivo e criar registros em CAPS LOCK
+        seen = set()
         for _, row in df.iterrows():
-            # Verifica se working_code existe na tabela WorkingCode (campo code)
-            if not WorkingCode.objects.filter(code=row["working_code"]).exists():
+            discipline = str(row["discipline"]).strip().upper()
+            working_code = str(row["working_code"]).strip().upper()
+            direct_labor = str(row["direct_labor"]).strip().upper()
+            working_description = str(row["working_description"]).strip().upper()
+            key = (discipline, working_code, direct_labor)
+            if key in seen:
+                return JsonResponse({'status': 'error', 'message': f"Duplicated direct_labor '{direct_labor}' for working_code '{working_code}' and discipline '{discipline}' in the file."})
+            seen.add(key)
+
+            # working_code deve existir (sempre upper)
+            if not WorkingCode.objects.filter(code=working_code).exists():
                 return JsonResponse({
                     'status': 'error',
-                    'message': f"Working code '{row['working_code']}' is not registered in the WorkingCode base. Only registered codes are allowed."
+                    'message': f"Working code '{working_code}' is not registered in the WorkingCode base. Only registered codes are allowed."
                 })
 
-            exists = ManpowerBase.objects.filter(
-                working_code=row["working_code"],
-                direct_labor=row["direct_labor"]
-            ).exists()
-            if exists and not overwrite:
-                return JsonResponse({
-                    'status': 'duplicate',
-                    'message': f"Manpower with working_code '{row['working_code']}' and direct_labor '{row['direct_labor']}' already exists. Overwrite?"
-                })
-
-            if exists and overwrite:
-                mp = ManpowerBase.objects.get(
-                    working_code=row["working_code"],
-                    direct_labor=row["direct_labor"]
-                )
-                for field in required_fields:
-                    setattr(mp, field, row[field])
-                mp.save()
-            else:
-                data = {field: row[field] for field in required_fields}
-                ManpowerBase.objects.create(**data)
+            ManpowerBase.objects.create(
+                item=row["item"],
+                discipline=discipline,
+                working_code=working_code,
+                working_description=working_description,
+                direct_labor=direct_labor,
+                qty=row["qty"]
+            )
 
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
@@ -992,10 +1001,10 @@ def import_toolsbase(request):
         # Criar os novos registros (garante unicidade no arquivo também)
         seen = set()
         for _, row in df.iterrows():
-            discipline = str(row["discipline"]).strip().lower()
-            working_code = str(row["working_code"]).strip().lower()
-            direct_labor = str(row["direct_labor"]).strip().lower()
-            special_tooling = str(row["special_tooling"]).strip().lower()
+            discipline = str(row["discipline"]).strip().upper()
+            working_code = str(row["working_code"]).strip().upper()
+            direct_labor = str(row["direct_labor"]).strip().upper()
+            special_tooling = str(row["special_tooling"]).strip().upper()
 
             # Checa unicidade dentro do próprio arquivo (opcional, mas recomendado)
             key = (discipline, working_code, direct_labor, special_tooling)
@@ -1221,6 +1230,7 @@ class SystemListView(ListView):
         return redirect('systems_list')
     
     # Discipline Delete
+    
 def delete_discipline(request, pk):
     discipline = get_object_or_404(Discipline, pk=pk)
     discipline.delete()
