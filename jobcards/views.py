@@ -1227,3 +1227,80 @@ def delete_area(request, pk):
     area = get_object_or_404(Area, pk=pk)
     area.delete()
     return redirect('areas_list')  # Nome da URL que lista Areas
+
+
+# BAIXAR EXPORTAÇÕES
+
+@login_required
+def export_materials_excel(request):
+    # CAPTURA OS FILTROS ENVIADOS PELO FRONT
+    material = request.GET.get('material', '')
+    status = request.GET.get('status', '')
+    project_code = request.GET.get('project_code', '')
+    global_search = request.GET.get('search', '')
+
+    # INICIA A QUERY
+    qs = MaterialBase.objects.all()
+
+    # FILTROS POR CAMPO INDIVIDUAL
+    if material:
+        qs = qs.filter(material_segmentation__icontains=material)
+    if status:
+        qs = qs.filter(status_procurement__icontains=status)
+    if project_code:
+        qs = qs.filter(project_code__icontains=project_code)
+
+    # FILTRO GLOBAL (BUSCA EM VÁRIOS CAMPOS)
+    if global_search:
+        qs = qs.filter(
+            Q(item__icontains=global_search) |
+            Q(job_card_number__icontains=global_search) |
+            Q(working_code__icontains=global_search) |
+            Q(discipline__icontains=global_search) |
+            Q(tag_jobcard_base__icontains=global_search) |
+            Q(material_segmentation__icontains=global_search) |
+            Q(project_code__icontains=global_search) |
+            Q(description__icontains=global_search) |
+            Q(unit_req_qty__icontains=global_search) |
+            Q(weight_kg__icontains=global_search) |
+            Q(comments__icontains=global_search) |
+            Q(status_procurement__icontains=global_search)
+            # Adicione outros campos que queira filtrar no global_search!
+        )
+
+    # MONTA O DATAFRAME COM OS CAMPOS QUE QUER EXPORTAR
+    data = qs.values(
+        'item',
+        'job_card_number',
+        'working_code',
+        'discipline',
+        'tag_jobcard_base',
+        'jobcard_required_qty',
+        'unit_req_qty',
+        'weight_kg',
+        'material_segmentation',
+        'comments',
+        'sequenc_no_procurement',
+        'status_procurement',
+        'mto_item_no',
+        'basic_material',
+        'description',
+        'project_code',
+        'nps1',
+        'qty',
+        'unit',
+        'po'
+    )
+
+    df = pd.DataFrame(list(data))
+
+    # FORMATAÇÃO NUMÉRICA: duas casas, vírgula
+    for col in ['jobcard_required_qty', 'weight_kg', 'qty']:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: '{:.2f}'.format(x).replace('.', ',') if pd.notnull(x) else '')
+
+    # GERA O EXCEL PARA DOWNLOAD
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename=materials.xlsx'
+    df.to_excel(response, index=False)
+    return response

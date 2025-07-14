@@ -59,5 +59,8 @@ urlpatterns = [
     path('workingcodes/delete/<int:pk>/', views.delete_working_code, name='delete_working_code'),
     path('areas/delete/<int:pk>/', views.delete_area, name='delete_area'),
     
+    #EXPORTAÇÕES
+    path('export_materials_excel/', views.export_materials_excel, name='export_materials_excel')
+
 
 ]

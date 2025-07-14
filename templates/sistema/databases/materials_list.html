@@ -44,7 +44,13 @@
         <div class="d-flex align-items-center gap-1 p-2 border rounded">
             <input type="text" id="globalSearch" class="form-control form-control-sm" style="width: 120px; font-size: 10px;" placeholder="Search...">
         </div>
-        <div class="ms-auto d-flex align-items-center gap-1 p-2 border rounded" id="customButtons"></div>
+        
+        <div class="ms-auto d-flex align-items-center gap-1 p-2 border rounded" id="customButtons">
+            <button type="button" class="btn btn-success" onclick="exportarExcelDoBanco()">
+                Exportar Excel do Banco
+            </button>
+
+        </div>
     </div>
 
     <div class="table-responsive mt-2">
@@ -181,6 +187,22 @@
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
 <script>
+
+    function exportarExcelDoBanco() {
+        // Pega os valores dos filtros dos campos da tabela
+        var material = $('#filterMaterial').val() || '';
+        var status = $('#filterStatus').val() || '';
+        var projectCode = $('#filterProjectCode').val() || '';
+        var globalSearch = $('#globalSearch').val() || '';
+        // Constrói a URL com os filtros aplicados
+        var url = '/export_materials_excel/?material=' + encodeURIComponent(material)
+                + '&status=' + encodeURIComponent(status)
+                + '&project_code=' + encodeURIComponent(projectCode)
+                + '&search=' + encodeURIComponent(globalSearch);
+        // Faz download
+        window.open(url, '_blank');
+    }
+
     $(document).ready(function () {
         let table = $('#materialsTable').DataTable({
             paging: true,
@@ -188,28 +210,7 @@
             autoWidth: true,
             fixedHeader: true,
             dom: 'Bfrtip',
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    title: 'Materials Export',
-                    className: 'btn-minimal btn-excel',
-                    text: '<i class="fa-solid fa-file-excel me-2"></i> Export Excel'
-                },
-                {
-                    extend: 'pdfHtml5',
-                    title: 'Materials Export',
-                    className: 'btn-minimal btn-pdf',
-                    text: '<i class="fa-solid fa-file-pdf me-2"></i> Export PDF',
-                    orientation: 'landscape',
-                    pageSize: 'A4'
-                },
-                {
-                    extend: 'print',
-                    title: 'Materials Print',
-                    className: 'btn-minimal btn-print',
-                    text: '<i class="fa-solid fa-print me-2"></i> Print'
-                }
-            ]
+            buttons: [ ]
         });
 
         table.buttons().container().appendTo('#customButtons');
