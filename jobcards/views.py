@@ -1325,7 +1325,7 @@ def export_materials_excel(request):
 # --------- AREA REPORTS --------------- #
 
 @login_required(login_url='jobcards')
-def jobcards_tam(request):  
+def jobcards_tam(request):
     qs = JobCard.objects.filter(comments__icontains='TAM')
 
     search = request.GET.get('search', '')
@@ -1360,7 +1360,6 @@ def jobcards_tam(request):
         items_per_page = 10
 
     paginator = Paginator(qs, items_per_page)
-
     page = request.GET.get('page')
     try:
         jobcards_page = paginator.page(page)
@@ -1368,7 +1367,7 @@ def jobcards_tam(request):
         jobcards_page = paginator.page(1)
     except EmptyPage:
         jobcards_page = paginator.page(paginator.num_pages)
-        
+
     backups_dir = os.path.join(settings.BASE_DIR, 'jobcard_backups')
     available_pdfs = {f for f in os.listdir(backups_dir) if f.endswith('.pdf')}
 
@@ -1380,6 +1379,8 @@ def jobcards_tam(request):
         'items_per_page': items_per_page,
         'paginator': paginator,
         'available_pdfs': available_pdfs,
-        'tam_only': True,  # você pode usar no template para mostrar aviso ou badge
+        'tam_only': True,
+        'request': request,  # <-- ADICIONE ESTA LINHA!
     }
     return render(request, 'sistema/jobcards.html', context)
+
