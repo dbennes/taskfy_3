@@ -15,31 +15,30 @@
         <ul class="navbar-nav text-light" id="accordionSidebar">
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'dashboard' %}">
-                    <i class="fas fa-globe-americas fa-2x text-gray-300"></i>
+                    <i class="fas fa-chart-pie fa-2x text-gray-300"></i>
                     <span>&nbsp;Dashboard</span>
                 </a>
                 <a class="nav-link" href="{% url 'jobcards_list' %}">
                     <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
-                    <span>&nbsp;Jobcards</span>
-                <a class="nav-link" href="#">
-                    <i class="fas fa-globe-americas fa-2x text-gray-300"></i>
-                    <span>&nbsp;Jobcard Creator</span>
+                    <span>&nbsp;Jobcards List</span>
                 </a>
+                
                 <a class="nav-link" href="{% url 'jobcard_progress' %}">
                     <i class="fas fa-check-square fa-2x text-gray-300" style="color: #ffffff;"></i>
-                    <span style="color: #ffffff;">&nbsp;Progress Reg.</span>
+                    <span style="color: #ffffff;">&nbsp;Report Progress</span>
+                </a>
+                
+                <a class="nav-link" href="{% url 'create_impediment'  %}">
+                    <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                    <span>&nbsp;Report Impediment</span>
                 </a>
                 <a class="nav-link" href="#">
                     <i class="fas fa-th-list fa-2x text-gray-300"></i>
                     <span>&nbsp;Blockers</span>
                 </a>
-                <a class="nav-link" href="#">
-                    <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
-                    <span>&nbsp;Blockers Reg.</span>
-                </a>
                 <a class="nav-link" target="_blank" href="#">
                     <i class="fas fa-chart-pie fa-2x text-gray-300"></i>
-                    <span>&nbsp;Dashboard</span>
+                    <span>&nbsp;Power BI</span>
                 </a>
             </li>
         </ul>

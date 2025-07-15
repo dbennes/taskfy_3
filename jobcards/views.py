@@ -19,7 +19,7 @@ from io import BytesIO
 from django.views.generic import ListView, CreateView
 from django.urls import reverse_lazy
 from .models import Discipline, Area, WorkingCode, System
-from .forms import DisciplineForm, AreaForm, WorkingCodeForm, SystemForm
+from .forms import DisciplineForm, AreaForm, WorkingCodeForm, SystemForm, ImpedimentsForm
 import datetime
 from django.conf import settings
 from .models import (
@@ -35,6 +35,7 @@ from .models import MaterialBase, JobCard
 import pandas as pd
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
+from datetime import datetime
 
 
 
@@ -141,18 +142,12 @@ def jobcards_list(request):
         )
 
     if start_date:
-        try:
-            start = datetime.strptime(start_date, '%Y-%m-%d').date()
-            qs = qs.filter(date_prepared__gte=start)
-        except ValueError:
-            pass
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+        qs = qs.filter(start__gte=start_date_obj)
 
     if end_date:
-        try:
-            end = datetime.strptime(end_date, '%Y-%m-%d').date()
-            qs = qs.filter(date_prepared__lte=end)
-        except ValueError:
-            pass
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+        qs = qs.filter(start__lte=end_date_obj)
 
     # Verifica items_per_page, define padrão 10 se inválido
     try:
@@ -748,7 +743,6 @@ def import_materials(request):
 
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
-
 
 
 @login_required
@@ -1364,18 +1358,12 @@ def jobcards_tam(request):
         )
 
     if start_date:
-        try:
-            start = datetime.strptime(start_date, '%Y-%m-%d').date()
-            qs = qs.filter(date_prepared__gte=start)
-        except ValueError:
-            pass
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+        qs = qs.filter(start__gte=start_date_obj)
 
     if end_date:
-        try:
-            end = datetime.strptime(end_date, '%Y-%m-%d').date()
-            qs = qs.filter(date_prepared__lte=end)
-        except ValueError:
-            pass
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+        qs = qs.filter(start__lte=end_date_obj)
 
     try:
         items_per_page = int(items_per_page)
@@ -1403,7 +1391,7 @@ def jobcards_tam(request):
         'paginator': paginator,
         'available_pdfs': available_pdfs,
         'tam_only': True,
-        'request': request,  # <-- ADICIONE ESTA LINHA!
+        'request': request,  # Para usar request.GET.* no template
     }
     return render(request, 'sistema/jobcards.html', context)
 
@@ -1428,6 +1416,8 @@ def api_jobcard_detail(request, jobcard_number):
         'completed': job.completed,
         'prepared_by': job.prepared_by,
         'date_prepared': job.date_prepared.strftime('%Y-%m-%d') if job.date_prepared else '',
+        'prepared_by': job.prepared_by,
+        'working_code_description': job.working_code_description,
     }
     return JsonResponse(data)
 
@@ -1440,3 +1430,33 @@ def api_jobcard_advance(request, jobcard_number):
     job.completed = 'YES'
     job.save()
     return JsonResponse({'success': True})
+
+
+# --------- AREA DE IMPEDIMENTOS --------------- #
+
+@login_required
+def create_impediment(request):
+    error = None
+    jobcard = None
+    jobcard_number = ''
+
+    if request.method == 'POST':
+        form = ImpedimentsForm(request.POST)
+        jobcard_number = request.POST.get('jobcard_number', '').strip()
+        if not JobCard.objects.filter(job_card_number=jobcard_number).exists():
+            error = f"JobCard '{jobcard_number}' does not exist."
+        if form.is_valid() and not error:
+            impediment = form.save(commit=False)
+            impediment.created_by = request.user.username  # <--- SÓ O NOME
+            impediment.save()
+            return render(request, 'sistema/impediments/impediments.html', {'form': ImpedimentsForm(), 'success': True})
+
+    else:
+        form = ImpedimentsForm()
+
+    return render(request, 'sistema/impediments/impediments.html', {
+        'form': form,
+        'jobcard_number': jobcard_number,
+        'jobcard': jobcard,
+        'error': error,
+    })

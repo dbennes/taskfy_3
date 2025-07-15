@@ -76,6 +76,7 @@
                             <th>PREPARED_BY</th>
                             <th>COMPLETED?</th>
                             <th>START</th>
+                            <th>FINISH</th>
                             <th>CHECKED?</th>
                             <th>AÇÕES</th>
                         </tr>
@@ -89,8 +90,9 @@
                             <td>{{ job.working_code_description }}</td>
                             <td>{{ job.system }}</td>
                             <td>{{ job.prepared_by }}</td>
-                            <td>{{ job.completed|yesno:"Sim,Não" }}</td>
-                            <td>{% if job.date_prepared %}{{ job.date_prepared|date:"d/m/Y" }}{% else %}--{% endif %}</td>
+                            <td>{{ job.completed }}</td>
+                            <td>{% if job.start %}{{ job.start|date:"d/m/Y" }}{% else %}--{% endif %}</td>
+                            <td>{% if job.finish %}{{ job.finish|date:"d/m/Y" }}{% else %}--{% endif %}</td>
                             <td>{{ job.jobcard_status }}</td>
                             <td>
                                 <a href="{% url 'edit_jobcard' jobcard_id=job.job_card_number %}" class="text-primary" style="font-size: 12px;">

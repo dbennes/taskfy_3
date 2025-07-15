@@ -1,5 +1,5 @@
 from django import forms
-from .models import Discipline, Area, WorkingCode, System
+from .models import Discipline, Area, WorkingCode, System, Impediments
 
 
 class DisciplineForm(forms.ModelForm):
@@ -80,3 +80,49 @@ class SystemForm(forms.ModelForm):
             }),
         }
 
+class ImpedimentsForm(forms.ModelForm):
+    class Meta:
+        model = Impediments
+        fields = [
+            'jobcard_number', 'scaffold', 'material', 'engineering', 'other',
+            'origin_shell', 'origin_utc', 'notes'
+        ]
+        widgets = {
+            'jobcard_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter JobCard Number',
+                'id': 'id_jobcard_number'
+            }),
+            'scaffold': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+                'id': 'id_scaffold'
+            }),
+            'material': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+                'id': 'id_material'
+            }),
+            'engineering': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+                'id': 'id_engineering'
+            }),
+            'other': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Other impediments...',
+                'style': 'width: 450px;',
+                'id': 'id_other'
+            }),
+            'origin_shell': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+                'id': 'id_origin_shell'
+            }),
+            'origin_utc': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+                'id': 'id_origin_utc'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 1,
+                'placeholder': 'Additional notes...',
+                'id': 'id_notes'
+            }),
+        }

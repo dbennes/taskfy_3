@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.conf import settings
 
 class JobCard(models.Model):
     item = models.IntegerField()
@@ -210,4 +210,19 @@ class System(models.Model):
     def __str__(self):
         return f"{self.system_code} - {self.subsystem_code}"   
     
- 
+# BANCO DE IMPEDIMENTOS
+
+class Impediments(models.Model):
+    jobcard_number = models.CharField(max_length=30)  # Editable input for JobCard Number
+    scaffold = models.BooleanField(default=False)
+    material = models.BooleanField(default=False)
+    engineering = models.BooleanField(default=False)
+    other = models.CharField(max_length=255, blank=True)
+    origin_shell = models.BooleanField(default=False)
+    origin_utc = models.BooleanField(default=False)
+    notes = models.TextField(blank=True)
+    created_by = models.CharField(max_length=150, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'Impediment for {self.jobcard_number}'

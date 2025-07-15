@@ -1,0 +1,191 @@
+{% extends 'sistema/base.html' %}
+{% load static %}
+{% block content %}
+
+<!-- Botão preto topo igual ao JobCard List -->
+<div class="container-fluid">
+  <button id="downloadFilteredBtn" class="btn btn-dark w-100 mb-3" style="height:40px; font-size:13px;"></button>
+
+  <div class="row justify-content-center">
+    <div class="col-md-12">
+      <div class="card shadow mb-3" style="width: 100%; color:#7a8093">
+        <div class="card-header py-3 d-flex align-items-center justify-content-between"
+             style="background:#f5f5f7; border-bottom: 1px solid #d0d0d0; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+          <h5 class="m-0 fw-bold fs-6 text-left w-100" style="margin-left: -60px;">
+            <i class="fas fa-exclamation-triangle me-2 text-warning"></i>
+            Register Impediment
+          </h5>
+          <div class="d-flex align-items-center gap-1" style="margin-right: 5px;">
+            <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+            <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+            <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+          </div>
+        </div>
+
+        <div class="card-body" style="font-size:13px; font-family: Arial, sans-serif;">
+          <form method="post" id="impedimentForm" autocomplete="off">
+            {% csrf_token %}
+            {% if error %}
+              <div class="alert alert-danger">{{ error }}</div>
+            {% endif %}
+
+            <div class="row g-3 align-items-end">
+              <div class="col-lg-8 col-md-7 mb-3">
+                <label for="id_jobcard_number" class="form-label mb-1"><strong>JobCard Number</strong></label>
+                <input type="text" name="jobcard_number" id="id_jobcard_number"
+                       class="form-control"
+                       placeholder="Enter JobCard Number"
+                       style="height:36px;"
+                       value="{{ form.jobcard_number.value|default_if_none:'' }}">
+              </div>
+              <div class="col-lg-4 col-md-5 mb-3 d-flex align-items-end">
+                <div class="w-100">
+                  <label class="form-label mb-1"><strong>Origin:</strong></label>
+                  <div class="d-flex gap-3 ps-2 pt-1">
+                    <div class="form-check mb-0">
+                      {{ form.origin_shell }} <label class="form-check-label ms-1" for="id_origin_shell">Shell</label>
+                    </div>
+                    <div class="form-check mb-0">
+                      {{ form.origin_utc }} <label class="form-check-label ms-1" for="id_origin_utc">UTC</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Checkboxes e Other em linha única -->
+            <div class="row align-items-center mt-1 mb-2">
+              <div class="col-12">
+                <div class="d-flex align-items-center flex-wrap" style="gap: 18px;">
+                  <div class="form-check mb-0">
+                    {{ form.scaffold }} <label class="form-check-label ms-1" for="id_scaffold">Scaffold</label>
+                  </div>
+                  <div class="form-check mb-0">
+                    {{ form.material }} <label class="form-check-label ms-1" for="id_material">Material</label>
+                  </div>
+                  <div class="form-check mb-0">
+                    {{ form.engineering }} <label class="form-check-label ms-1" for="id_engineering">Engineering</label>
+                  </div>
+                  <label for="id_other" class="form-label mb-0 ms-2" style="min-width:120px;"><strong>Other Impediments:</strong></label>
+                  <input type="text" name="other" id="id_other"
+                        class="form-control ms-1"
+                        placeholder="Other impediments..."
+                        style="min-width: 220px; width: 100%; max-width: 420px; display:inline-block;"
+                        value="{{ form.other.value|default_if_none:'' }}">
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3 mt-2">
+              <div class="col-12">
+                <label for="id_notes" class="form-label"><strong>Notes:</strong></label>
+                <textarea name="notes" id="id_notes"
+                          class="form-control"
+                          rows="4"
+                          placeholder="Additional notes...">{{ form.notes.value|default_if_none:'' }}</textarea>
+              </div>
+            </div>
+
+            <div class="row mt-4">
+              <div class="col-12 d-flex justify-content-end">
+                <button type="button" class="btn btn-success btn-lg px-5" id="submitImpedimentBtn" style="font-size:15px; border-radius:12px;">
+                  <i class="fas fa-check-circle me-1"></i> Submit
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmação minimalista -->
+<div class="modal fade" id="confirmImpedimentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header" style="background:#21262b; border-bottom: 1px solid white; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+                <h6 class="modal-title">
+                    <i class="fa-regular fa-rectangle-xmark me-2"></i>
+                    Save Confirmation
+                </h6>
+                <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
+                    <div class="d-flex align-items-center gap-1">
+                        <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+                    </div>
+                </button>
+            </div>
+
+            <div class="modal-body text-center" style="font-size: 14px;">
+                Are you sure you want to save the impediment?
+            </div>
+
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-success px-4" id="confirmSaveImpedimentBtn">Yes</button>
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">No</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de sucesso minimalista -->
+<div class="modal fade" id="successImpedimentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header" style="background:#21262b; border-bottom: 1px solid white; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+                <h6 class="modal-title">
+                    <i class="fa-regular fa-circle-check me-2"></i>
+                    Saved!
+                </h6>
+                <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
+                    <div class="d-flex align-items-center gap-1">
+                        <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+                    </div>
+                </button>
+            </div>
+
+            <div class="modal-body text-center" style="font-size: 16px;">
+                <p>Impediment registered successfully!</p>
+            </div>
+
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-success px-4" id="successImpedimentModalBtn">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+  // Intercepta clique em "Submit", exibe modal de confirmação
+  document.getElementById('submitImpedimentBtn').addEventListener('click', function (e) {
+    e.preventDefault();
+    var confirmModal = new bootstrap.Modal(document.getElementById('confirmImpedimentModal'));
+    confirmModal.show();
+
+    document.getElementById('confirmSaveImpedimentBtn').onclick = function () {
+      confirmModal.hide();
+      // Após confirmação, submete o formulário
+      document.getElementById('impedimentForm').submit();
+    };
+  });
+
+  // Mostra modal de sucesso depois do salvamento, se 'success' no contexto
+  {% if success %}
+    window.addEventListener('DOMContentLoaded', function() {
+      var successModal = new bootstrap.Modal(document.getElementById('successImpedimentModal'));
+      successModal.show();
+      document.getElementById('successImpedimentModalBtn').onclick = function() {
+        successModal.hide();
+        // Opcional: window.location.reload();
+      };
+    });
+  {% endif %}
+</script>
+
+{% endblock %}
