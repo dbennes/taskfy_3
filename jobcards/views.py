@@ -665,7 +665,7 @@ def allocated_task_list(request):
 @csrf_exempt
 def import_materials(request):
     if request.method == "POST":
-        overwrite = request.POST.get('overwrite') == '1'
+        overwrite = True  # Sempre sobrescreve (apaga antes de incluir)
         file = request.FILES.get('file')
         if not file:
             return JsonResponse({'status': 'error', 'message': 'No file uploaded.'})
@@ -690,11 +690,11 @@ def import_materials(request):
         if missing:
             return JsonResponse({'status': 'error', 'message': f"Missing columns: {', '.join(missing)}"})
 
-        # Pegue todos os jobcards distintos da planilha
+        # Padroniza os jobcards da planilha
         df['job_card_number'] = df['job_card_number'].astype(str).str.strip().str.upper()
         jobcards_in_file = df['job_card_number'].unique()
         errors = []
-        # Validar existência de todos os jobcards antes de qualquer alteração
+        # Valida existência de todos os jobcards antes de qualquer alteração
         for jc in jobcards_in_file:
             if not JobCard.objects.filter(job_card_number__iexact=jc).exists():
                 errors.append(f"Job Card '{jc}' does not exist.")
@@ -702,10 +702,9 @@ def import_materials(request):
         if errors:
             return JsonResponse({'status': 'error', 'message': " | ".join(errors)})
 
-        # Para cada jobcard, overwrite se pedido
+        # Para cada jobcard, apaga antes de importar os novos (sempre overwrite=True)
         for jc in jobcards_in_file:
-            if overwrite:
-                MaterialBase.objects.filter(job_card_number__iexact=jc).delete()
+            MaterialBase.objects.filter(job_card_number__iexact=jc).delete()
 
         # Agora insere todos os materiais de todas as jobcards válidas
         for idx, row in df.iterrows():
@@ -741,6 +740,7 @@ def import_materials(request):
 
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
+
 
 @login_required
 def import_jobcard(request):
