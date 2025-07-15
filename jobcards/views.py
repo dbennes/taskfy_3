@@ -665,7 +665,7 @@ def allocated_task_list(request):
 @csrf_exempt
 def import_materials(request):
     if request.method == "POST":
-        overwrite = True  # Sempre sobrescreve (apaga antes de incluir)
+        overwrite = request.POST.get('overwrite') == '1'  # <-- Mantém decisão do usuário!
         file = request.FILES.get('file')
         if not file:
             return JsonResponse({'status': 'error', 'message': 'No file uploaded.'})
@@ -702,16 +702,24 @@ def import_materials(request):
         if errors:
             return JsonResponse({'status': 'error', 'message': " | ".join(errors)})
 
-        # Para cada jobcard, apaga antes de importar os novos (sempre overwrite=True)
-        for jc in jobcards_in_file:
-            MaterialBase.objects.filter(job_card_number__iexact=jc).delete()
+        # Confirma duplicidade para qualquer jobcard
+        materials_exist = any(
+            MaterialBase.objects.filter(job_card_number__iexact=jc).exists()
+            for jc in jobcards_in_file
+        )
+        if materials_exist and not overwrite:
+            return JsonResponse({'status': 'duplicate', 'message': 'Materials already registered for one or more Job Cards in your file. Overwrite?'})
+
+        # Se overwrite, apaga antes de importar os novos
+        if overwrite:
+            for jc in jobcards_in_file:
+                MaterialBase.objects.filter(job_card_number__iexact=jc).delete()
 
         # Agora insere todos os materiais de todas as jobcards válidas
         for idx, row in df.iterrows():
             try:
                 jc = str(row['job_card_number']).strip().upper()
                 MaterialBase.objects.create(
-                    # item = row.get('item') if 'item' in row else None,
                     job_card_number = jc,
                     working_code = str(row.get('working_code', '')).strip().upper(),
                     discipline = str(row.get('discipline', '')).strip().upper(),
@@ -740,6 +748,7 @@ def import_materials(request):
 
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
+
 
 
 @login_required
