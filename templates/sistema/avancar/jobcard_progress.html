@@ -1,0 +1,158 @@
+{% extends 'sistema/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid" id="container1">
+    <div class="alert alert-warning" role="alert">
+        [ ATTENTION ] - When scanning the barcode, the activities will be advanced to 100%!
+    </div>
+
+    <div class="card shadow mb-3">
+        <div class="card-header py-3">
+            <p class="text-primary m-0 fw-bold">JOB CARD PROGRESS</p>
+        </div>
+        <div class="card-body">
+            <form id="progressForm" autocomplete="off" method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label" for="JOB_CARD_NUMBER"><strong>Job Card Number</strong></label>
+                        <input class="form-control" type="text" id="JOB_CARD_NUMBER" name="JOB_CARD_NUMBER" placeholder="Ex: FTO-00000-000-0000.00" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label" for="DISCIPLINE"><strong>Discipline</strong></label>
+                        <input class="form-control" type="text" id="DISCIPLINE" name="DISCIPLINE" readonly>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label" for="LOCATION"><strong>Location</strong></label>
+                        <input class="form-control" type="text" id="LOCATION" name="LOCATION" readonly>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label" for="TAG"><strong>Tag</strong></label>
+                        <input class="form-control" type="text" id="TAG" name="TAG" readonly>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label" for="STATUS"><strong>Status</strong></label>
+                        <input class="form-control" type="text" id="STATUS" name="STATUS" readonly>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label" for="COMPLETED"><strong>Completed</strong></label>
+                        <input class="form-control" type="text" id="COMPLETED" name="COMPLETED" readonly>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="PREPARED_BY"><strong>Prepared By</strong></label>
+                        <input class="form-control" type="text" id="PREPARED_BY" name="PREPARED_BY" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="DATE_PREPARED"><strong>Date Prepared</strong></label>
+                        <input class="form-control" type="text" id="DATE_PREPARED" name="DATE_PREPARED" readonly>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <label class="form-label" for="WORKING_CODE_DESCRIPTION"><strong>Working Code Description</strong></label>
+                        <input class="form-control" type="text" id="WORKING_CODE_DESCRIPTION" name="WORKING_CODE_DESCRIPTION" readonly>
+                    </div>
+                </div>
+                <div class="mb-3 text-end">
+                    <button class="btn btn-primary btn-sm" type="button" id="advanceBtn">Advance</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CONFIRMATION -->
+<div class="modal fade" id="confirmAdvanceModal" tabindex="-1" aria-labelledby="confirmAdvanceModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Advance JobCard</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to advance this JobCard to 100%?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" id="confirmAdvanceBtn">Yes, Advance</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let debounceTimeout = null;
+
+    document.getElementById('JOB_CARD_NUMBER').addEventListener('input', function() {
+        const jobcard = this.value.trim();
+        if (!jobcard) {
+            // Limpa os campos se apagou tudo
+            [
+                'DISCIPLINE', 'LOCATION', 'TAG', 'WORKING_CODE_DESCRIPTION',
+                'STATUS', 'COMPLETED', 'PREPARED_BY', 'DATE_PREPARED'
+            ].forEach(id => document.getElementById(id).value = '');
+            return;
+        }
+
+        // Debounce: só executa se parar de digitar por 400ms
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            fetch(`/api/jobcard/${jobcard}/`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data || data.error) {
+                    [
+                        'DISCIPLINE', 'LOCATION', 'TAG', 'WORKING_CODE_DESCRIPTION',
+                        'STATUS', 'COMPLETED', 'PREPARED_BY', 'DATE_PREPARED'
+                    ].forEach(id => document.getElementById(id).value = '');
+                    return;
+                }
+                document.getElementById('DISCIPLINE').value = data.discipline || '';
+                document.getElementById('LOCATION').value = data.location || '';
+                document.getElementById('TAG').value = data.tag || '';
+                document.getElementById('WORKING_CODE_DESCRIPTION').value = data.working_code_description || '';
+                document.getElementById('STATUS').value = data.jobcard_status || '';
+                document.getElementById('COMPLETED').value = data.completed || '';
+                document.getElementById('PREPARED_BY').value = data.prepared_by || '';
+                document.getElementById('DATE_PREPARED').value = data.date_prepared || '';
+            });
+        }, 400);
+    });
+
+    document.getElementById('advanceBtn').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('confirmAdvanceModal'));
+        modal.show();
+    });
+
+    document.getElementById('confirmAdvanceBtn').addEventListener('click', function() {
+        const form = document.getElementById('progressForm');
+        const jobcard = document.getElementById('JOB_CARD_NUMBER').value;
+        fetch(`/api/jobcard/advance/${jobcard}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': form.querySelector('[name="csrfmiddlewaretoken"]').value,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ completed: 'YES' })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('JobCard advanced to 100%!');
+                document.getElementById('COMPLETED').value = 'YES';
+            } else {
+                alert('Failed to advance JobCard.');
+            }
+            bootstrap.Modal.getInstance(document.getElementById('confirmAdvanceModal')).hide();
+        });
+    });
+});
+
+</script>
+{% endblock %}

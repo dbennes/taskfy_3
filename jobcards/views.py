@@ -34,6 +34,9 @@ from django.http import JsonResponse
 from .models import MaterialBase, JobCard
 import pandas as pd
 from django.utils import timezone
+from django.views.decorators.http import require_GET, require_POST
+
+
 
 
 
@@ -683,35 +686,34 @@ def import_materials(request):
             'comments', 'sequenc_no_procurement', 'status_procurement', 'mto_item_no',
             'basic_material', 'description', 'project_code', 'nps1', 'qty', 'unit', 'po'
         ]
-        # item é opcional — só inclua se quiser importar a coluna "item" do Excel/CSV.
-
-        # Valida colunas
         missing = [col for col in required_columns if col not in df.columns]
         if missing:
             return JsonResponse({'status': 'error', 'message': f"Missing columns: {', '.join(missing)}"})
 
-        # Pega o job_card_number da primeira linha
-        job_card_number = str(df['job_card_number'].iloc[0]).strip()
-        if not JobCard.objects.filter(job_card_number=job_card_number).exists():
-            return JsonResponse({'status': 'error', 'message': f"Job Card '{job_card_number}' does not exist."})
+        # Pegue todos os jobcards distintos da planilha
+        df['job_card_number'] = df['job_card_number'].astype(str).str.strip().str.upper()
+        jobcards_in_file = df['job_card_number'].unique()
+        errors = []
+        # Validar existência de todos os jobcards antes de qualquer alteração
+        for jc in jobcards_in_file:
+            if not JobCard.objects.filter(job_card_number__iexact=jc).exists():
+                errors.append(f"Job Card '{jc}' does not exist.")
 
-        materials_exist = MaterialBase.objects.filter(job_card_number=job_card_number).exists()
+        if errors:
+            return JsonResponse({'status': 'error', 'message': " | ".join(errors)})
 
-        # Se já existe material e não é overwrite, pede confirmação
-        if materials_exist and not overwrite:
-            return JsonResponse({'status': 'duplicate', 'message': 'Materials already registered for this Job Card.'})
+        # Para cada jobcard, overwrite se pedido
+        for jc in jobcards_in_file:
+            if overwrite:
+                MaterialBase.objects.filter(job_card_number__iexact=jc).delete()
 
-        # Se é overwrite, apaga antes de inserir os novos
-        if overwrite and materials_exist:
-            MaterialBase.objects.filter(job_card_number=job_card_number).delete()
-
-        # Insere os novos materiais
+        # Agora insere todos os materiais de todas as jobcards válidas
         for idx, row in df.iterrows():
             try:
+                jc = str(row['job_card_number']).strip().upper()
                 MaterialBase.objects.create(
-                    # Se quiser importar 'item', descomente a linha abaixo:
                     # item = row.get('item') if 'item' in row else None,
-                    job_card_number = str(row['job_card_number']).strip().upper(),
+                    job_card_number = jc,
                     working_code = str(row.get('working_code', '')).strip().upper(),
                     discipline = str(row.get('discipline', '')).strip().upper(),
                     tag_jobcard_base = str(row.get('tag_jobcard_base', '')).strip().upper(),
@@ -1236,6 +1238,8 @@ def delete_discipline(request, pk):
     discipline.delete()
     return redirect('disciplines_list')  # Nome da URL que lista Disciplines
 
+# --------- DELETAR DADOS -------------- #
+
 # System Delete
 def delete_system(request, pk):
     system = get_object_or_404(System, pk=pk)
@@ -1394,3 +1398,36 @@ def jobcards_tam(request):
     }
     return render(request, 'sistema/jobcards.html', context)
 
+# --------- AVANÇAR JOBCARDS --------------- #
+
+def jobcard_progress(request):
+    return render(request, 'sistema/avancar/jobcard_progress.html')
+
+@require_GET
+def api_jobcard_detail(request, jobcard_number):
+    try:
+        job = JobCard.objects.get(job_card_number=jobcard_number)
+    except JobCard.DoesNotExist:
+        return JsonResponse({'error': 'JobCard not found'}, status=404)
+
+    data = {
+        'job_card_number': job.job_card_number,
+        'discipline': job.discipline,
+        'location': job.location,
+        'tag': job.tag,
+        'jobcard_status': job.jobcard_status,
+        'completed': job.completed,
+        'prepared_by': job.prepared_by,
+        'date_prepared': job.date_prepared.strftime('%Y-%m-%d') if job.date_prepared else '',
+    }
+    return JsonResponse(data)
+
+@require_POST
+def api_jobcard_advance(request, jobcard_number):
+    try:
+        job = JobCard.objects.get(job_card_number=jobcard_number)
+    except JobCard.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'JobCard not found'}, status=404)
+    job.completed = 'YES'
+    job.save()
+    return JsonResponse({'success': True})

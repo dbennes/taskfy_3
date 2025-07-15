@@ -6,7 +6,7 @@ from .views import (
     DisciplineListView,
     AreaListView,
     WorkingCodeListView,
-    SystemListView,
+    SystemListView, jobcard_progress
 )
 
 urlpatterns = [
@@ -65,5 +65,8 @@ urlpatterns = [
     #REPORTS
     path('jobcards/tam/', views.jobcards_tam, name='jobcards_tam'),
 
-
+    #AVANÇAR JOBCARDS
+    path('jobcard_progress/', views.jobcard_progress, name='jobcard_progress'),  # tela principal
+    path('api/jobcard/<str:jobcard_number>/', views.api_jobcard_detail, name='api_jobcard_detail'),
+    path('api/jobcard/advance/<str:jobcard_number>/', views.api_jobcard_advance, name='api_jobcard_advance'),
 ]
