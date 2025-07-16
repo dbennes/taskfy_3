@@ -1,53 +1,89 @@
 <!-- Sidebar -->
-<nav class="navbar align-items-start sidebar sidebar-dark accordion bg-gradient-primary p-0 navbar-dark" style="background: #14191c;">
-    <div class="container-fluid d-flex flex-column p-0">
-        <!-- Marca -->
-        <a class="navbar-brand d-flex justify-content-center align-items-center sidebar-brand m-0" href="#">
-            <div class="sidebar-brand-icon rotate-n-15"></div>
-            <div class="sidebar-brand-text mx-3">
-                <span style="color: rgb(255,255,255);">TASK<span style="color: #879aff;">FY</span></span>
-            </div>
+<nav class="sidebar-taskfy">
+    <!-- Marca -->
+    <div class="sidebar-brand mb-2">
+        TASK<span style="color: #879aff;">FY</span>
+    </div>
+
+    <!-- General -->
+    <div class="sidebar-section">General</div>
+    <ul class="sidebar-menu">
+        <li>
+            <a class="sidebar-link" href="{% url 'dashboard' %}">
+                <i class="fas fa-chart-pie"></i>
+                Dashboard
+            </a>
+        </li>
+        <li>
+            <a class="sidebar-link" href="{% url 'jobcards_list' %}">
+                <i class="fas fa-clipboard-list"></i>
+                Jobcards List
+            </a>
+        </li>
+        <li>
+            <a class="sidebar-link" href="{% url 'jobcard_progress' %}">
+                <i class="fas fa-check-square"></i>
+                Report Progress
+            </a>
+        </li>
+        <li>
+            <a class="sidebar-link" href="{% url 'create_impediment' %}">
+                <i class="fas fa-exclamation-triangle"></i>
+                Report Impediment
+            </a>
+        </li>
+        <li>
+            <a class="sidebar-link" href="{% url 'impediments_list' %}">
+                <i class="fas fa-th-list"></i>
+                Impediment List
+            </a>
+        </li>
+        <li>
+            <a class="sidebar-link" target="_blank" href="#">
+                <i class="fas fa-chart-bar"></i>
+                Power BI
+            </a>
+        </li>
+    </ul>
+
+    <!-- Bases -->
+    <div class="sidebar-section">Bases</div>
+    <ul class="sidebar-menu">
+        <li><a class="sidebar-link" href="{% url 'jobcards_overview' %}"><i class="fas fa-database"></i>Jobcard Base</a></li>
+        <li><a class="sidebar-link" href="{% url 'materials_list' %}"><i class="fas fa-cube"></i>Material Base</a></li>
+        <li><a class="sidebar-link" href="{% url 'manpower_list' %}"><i class="fas fa-users"></i>Manpower Base</a></li>
+        <li><a class="sidebar-link" href="{% url 'tools_list' %}"><i class="fas fa-tools"></i>Tools Base</a></li>
+        <li><a class="sidebar-link" href="{% url 'engineering_list' %}"><i class="fas fa-drafting-compass"></i>Engineering Base</a></li>
+        <li><a class="sidebar-link" href="{% url 'task_list' %}"><i class="fas fa-tasks"></i>Task Base</a></li>
+    </ul>
+
+    <!-- Users -->
+    <div class="sidebar-section">Users</div>
+    <ul class="sidebar-menu">
+        <li>
+            <a class="sidebar-link" href="#">
+                <i class="fas fa-user-circle"></i>
+                Profile
+            </a>
+        </li>
+        <li>
+            <a class="sidebar-link" href="#">
+                <i class="fas fa-cog"></i>
+                Settings
+            </a>
+        </li>
+    </ul>
+
+    
+    <!-- Sair -->
+    <div class="sidebar-logout">
+        <a href="#" class="sidebar-link">
+            <i class="fas fa-sign-out-alt"></i>
+            Log Out
         </a>
-
-        <hr class="sidebar-divider my-0">
-
-        <!-- Sidebar Menu -->
-        <ul class="navbar-nav text-light" id="accordionSidebar">
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'dashboard' %}">
-                    <i class="fas fa-chart-pie fa-2x text-gray-300"></i>
-                    <span>&nbsp;Dashboard</span>
-                </a>
-                <a class="nav-link" href="{% url 'jobcards_list' %}">
-                    <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
-                    <span>&nbsp;Jobcards List</span>
-                </a>
-                
-                <a class="nav-link" href="{% url 'jobcard_progress' %}">
-                    <i class="fas fa-check-square fa-2x text-gray-300" style="color: #ffffff;"></i>
-                    <span style="color: #ffffff;">&nbsp;Report Progress</span>
-                </a>
-                
-                <a class="nav-link" href="{% url 'create_impediment'  %}">
-                    <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
-                    <span>&nbsp;Report Impediment</span>
-                </a>
-                <a class="nav-link" href="#">
-                    <i class="fas fa-th-list fa-2x text-gray-300"></i>
-                    <span>&nbsp;Blockers</span>
-                </a>
-                <a class="nav-link" target="_blank" href="#">
-                    <i class="fas fa-chart-pie fa-2x text-gray-300"></i>
-                    <span>&nbsp;Power BI</span>
-                </a>
-            </li>
-        </ul>
-
-        <div class="text-center d-none d-md-inline">
-            <button class="btn rounded-circle border-0" id="sidebarToggle" type="button"></button>
-        </div>
     </div>
 </nav>
+
 
 <!-- Conteúdo principal -->
 <div class="d-flex flex-column" id="content-wrapper">
@@ -111,31 +147,9 @@
 
 
                     
-                    <!-- Bases -->
-                    <li class="nav-item dropdown no-arrow">
+                    
 
-                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
-                            <span class="d-none d-lg-inline me-2 text-gray-600 small">
-                                Databases <i class="fas fa-chevron-down fa-sm fa-fw me-2 text-gray-400"></i>
-                            </span>
-                        </a>
-
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item" href="{% url 'jobcards_overview' %}">Jobcard Base</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'materials_list' %}">Material Base</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'manpower_list' %}">Manpower Base</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'tools_list' %}">Tools Base</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'engineering_list' %}">Engineering Base</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'task_list' %}">Task Base</a>
-                        </div>
-                    </li>
-
-                    <!-- Bases -->
+                    <!-- allocated  -->
                     <li class="nav-item dropdown no-arrow">
 
                         <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
@@ -187,14 +201,110 @@
                     <li class="nav-item dropdown no-arrow">
                         <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
                             <span class="d-none d-lg-inline me-2 text-gray-600 small">{{user.username}}</span>
+                            <i class="fas fa-user-circle" style="font-size:18px"></i>
                         </a>
-                        <div class="dropdown-menu shadow dropdown-menu-end">
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-gray-400"></i>&nbsp;Logout
-                            </a>
-                        </div>
                     </li>
                 </ul>
             </div>
         </nav>
+
+        <style>
+.sidebar-taskfy {
+    width: 250px;
+    background: #ffffffff;
+    border-radius: 0 0 0 0;
+    box-shadow: 1px 0 6px 0 rgba(40,60,90,0.06);
+    padding: 40px 0 7px 15px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-size: 13px;
+}
+.sidebar-brand {
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: .5px;
+    color: #222;
+    padding-left: 22px;
+    margin-bottom: 15px;
+    font-family: Montserrat, Arial, sans-serif;
+    padding-bottom: 15px;
+}
+.sidebar-section {
+    font-size: 11px;
+    color: #b2b7c7;
+    padding: 11px 18px 2px 22px;
+    font-weight: 700;
+    margin-top: 10px;
+    margin-bottom: 0;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+.sidebar-menu {
+    list-style: none;
+    margin: 0 0 0 0;
+    padding: 0;
+    
+}
+.sidebar-menu li {
+    width: 100%;
+}
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #4d4f63;
+    text-decoration: none;
+    border-radius: 7px;
+    padding: 7px 13px 7px 38px;
+    margin: 1px 0;
+    font-weight: 500;
+    transition: background 0.13s, color 0.13s;
+}
+.sidebar-link .fas,
+.sidebar-link .fa-solid {
+    font-size: 13px;
+    color: #b0b4c5;
+    min-width: 14px;
+    transition: color 0.13s;
+}
+.sidebar-link.active,
+.sidebar-link:focus,
+.sidebar-link:hover {
+    background: #e9f0ff;
+    color: #2c3e50;
+}
+.sidebar-link.active .fas,
+.sidebar-link:focus .fas,
+.sidebar-link:hover .fas {
+    color: #3758e4;
+}
+.sidebar-logout {
+    margin-top: auto;
+    padding: 7px 0 0 0;
+    border-top: 1px solid #ececf1;
+}
+.sidebar-logout .sidebar-link {
+    color: #a3a7b7;
+    padding-left: 22px;
+}
+.sidebar-logout .sidebar-link .fas {
+    color: #a3a7b7;
+}
+.sidebar-logout .sidebar-link:hover,
+.sidebar-logout .sidebar-link:focus {
+    background: #eee;
+    color: #d42f2f;
+}
+.sidebar-logout .sidebar-link:hover .fas {
+    color: #d42f2f;
+}
+/* Responsivo */
+@media (max-width: 991px) {
+    .sidebar-taskfy, #wrapper {
+        width: 100% !important;
+        border-radius: 0;
+    }
+}
+</style>

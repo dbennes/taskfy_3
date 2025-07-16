@@ -25,7 +25,7 @@ from django.conf import settings
 from .models import (
     JobCard, TaskBase, ManpowerBase, MaterialBase, ToolsBase, EngineeringBase,
     AllocatedEngineering, AllocatedManpower, AllocatedMaterial, AllocatedTool, AllocatedTask,
-    Discipline, Area, WorkingCode, System,
+    Discipline, Area, WorkingCode, System, Impediments
 )
 import tempfile
 from django.db.models import Sum
@@ -68,12 +68,22 @@ def login(request):
     return render(request, 'login.html')
 
 # - PARTE DO DASHBOARD
-@login_required(login_url='dashboard') # EXIGE O USUARIO A ESTAR LOGADO
+@login_required(login_url='dashboard')  # EXIGE O USUARIO A ESTAR LOGADO
 def dashboard(request):
     # Summary cards
     total_jobcards = JobCard.objects.count()
-    not_checked_count = JobCard.objects.filter(jobcard_status='NO CHECKED').count()
     checked_count = JobCard.objects.filter(jobcard_status='checked').count()
+    not_checked_count = total_jobcards - checked_count
+
+    # JobCards with Material (jobcards únicos presentes na base de material)
+    jobcards_with_material = (
+        MaterialBase.objects
+        .exclude(job_card_number__isnull=True)
+        .exclude(job_card_number__exact='')
+        .values('job_card_number')
+        .distinct()
+        .count()
+    )
 
     # Charts
     not_checked_qs = (
@@ -110,11 +120,22 @@ def dashboard(request):
         Q(date_prepared__isnull=True)
     )
     alerta_count = jobcards_incompletos.count()
+    
+    # Gráfico JobCards por Área (location)
+    area_qs = (
+        JobCard.objects
+        .values('location')
+        .annotate(count=Count('id'))
+        .order_by('location')
+    )
+    labels_areas = [entry['location'] or '—' for entry in area_qs]
+    data_areas   = [entry['count'] for entry in area_qs]
 
     context = {
         'total_jobcards': total_jobcards,
         'not_checked_count': not_checked_count,
         'checked_count': checked_count,
+        'jobcards_with_material': jobcards_with_material,
         'labels_not_checked': labels_not_checked,
         'data_not_checked': data_not_checked,
         'labels_total': labels_total,
@@ -122,6 +143,8 @@ def dashboard(request):
         'awp_data': awp_data,
         'jobcards_incompletos': jobcards_incompletos,
         'alerta_count': alerta_count,
+        'labels_areas': labels_areas,
+        'data_areas': data_areas,
     }
     return render(request, 'sistema/dashboard.html', context)
 
@@ -1460,3 +1483,68 @@ def create_impediment(request):
         'jobcard': jobcard,
         'error': error,
     })
+    
+    
+@login_required(login_url='login')
+def impediments_list(request):
+    search = request.GET.get('search', '')
+    items_per_page = int(request.GET.get('items_per_page', 10))
+    page = request.GET.get('page', 1)
+
+    qs = Impediments.objects.all().order_by('-created_at')
+
+    if search:
+        qs = qs.filter(
+            Q(jobcard_number__icontains=search) |
+            Q(notes__icontains=search) |
+            Q(other__icontains=search)
+        )
+
+    paginator = Paginator(qs, items_per_page)
+    impediments = paginator.get_page(page)
+    
+    items_options = [5, 10, 20, 50, 100]
+
+    context = {
+        'impediments': impediments,
+        'search': search,
+        'items_per_page': items_per_page,
+        'paginator': paginator,
+        'items_options': items_options,
+    }
+    return render(request, 'sistema/impediments/impediments_list.html', context)
+
+@csrf_exempt
+@login_required(login_url='login')
+def impediment_update(request):
+    if request.method == 'POST':
+        id = request.POST.get('id')
+        try:
+            imped = Impediments.objects.get(id=id)
+        except Impediments.DoesNotExist:
+            return JsonResponse({'success': False, 'msg': 'Not found'})
+
+        imped.jobcard_number = request.POST.get('jobcard_number', imped.jobcard_number)
+        imped.scaffold      = request.POST.get('scaffold') == 'true'
+        imped.material      = request.POST.get('material') == 'true'
+        imped.engineering   = request.POST.get('engineering') == 'true'
+        imped.other         = request.POST.get('other', '')
+        imped.origin_shell  = request.POST.get('origin_shell') == 'true'
+        imped.origin_utc    = request.POST.get('origin_utc') == 'true'
+        imped.notes         = request.POST.get('notes', '')
+        imped.save()
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False})
+
+@csrf_exempt
+@login_required(login_url='login')
+def impediment_delete(request):
+    if request.method == 'POST':
+        id = request.POST.get('id')
+        try:
+            imped = Impediments.objects.get(id=id)
+            imped.delete()
+            return JsonResponse({'success': True})
+        except Impediments.DoesNotExist:
+            return JsonResponse({'success': False, 'msg': 'Not found'})
+    return JsonResponse({'success': False})

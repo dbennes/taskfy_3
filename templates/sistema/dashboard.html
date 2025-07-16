@@ -3,158 +3,333 @@
 
 {% block content %}
 <style>
-  .apple-card {
-    background: #f9f9f9;
-    border-radius: 12px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
-    transition: transform .15s ease-in-out;
-  }
-  .apple-card:hover { transform: translateY(-2px);}
-  .minimal-alert-badge {
-    background: #ffc107;
-    color: #3b3a39;
-    border-radius: 5px;
-    padding: 3px 10px;
-    font-size: 0.97em;
-    font-weight: 600;
-    display: inline-block;
-    margin-bottom: 6px;
-  }
-  .minimal-table th, .minimal-table td { font-size: 0.97em; padding: 3px 7px; }
-  .minimal-table { margin-bottom: 2px;}
+body, .container-fluid {
+  background: #f7f8fa !important;
+}
+.dashboard-row {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -8px;
+}
+.dashboard-card {
+  flex: 1 1 25%;
+  min-width: 220px;
+  margin: 0 8px 18px 8px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.07);
+  padding: 28px 22px 22px 32px;
+  min-height: 130px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  transition: box-shadow .15s, transform .12s;
+}
+.dashboard-card.selected {
+  background: #23272e;
+  color: #fff !important;
+  box-shadow: 0 2px 24px 0 rgba(40,40,50,0.12);
+}
+.dashboard-card .card-icon {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+  font-size: 26px;
+  color: #d8dbe7;
+  opacity: .85;
+}
+.dashboard-card.selected .card-icon {
+  color: #fff;
+  opacity: .98;
+}
+.dashboard-card .metric {
+  font-size: 2.3rem;
+  font-weight: bold;
+  margin-bottom: 4px;
+  margin-top: 10px;
+  letter-spacing: -1px;
+}
+.dashboard-card.selected .metric,
+.dashboard-card.selected .desc {
+  color: #fff;
+}
+.dashboard-card .desc {
+  font-size: 1.12rem;
+  font-weight: 600;
+  opacity: 0.92;
+  letter-spacing: .02em;
+}
+@media (max-width: 991px) {
+  .dashboard-card { flex-basis: 48%; min-width: 180px;}
+  .dashboard-row { margin: 0 -4px; }
+  .dashboard-card { margin: 0 4px 12px 4px;}
+}
+@media (max-width: 600px) {
+  .dashboard-card { flex-basis: 100%; min-width: 0; }
+  .dashboard-row { flex-direction: column;}
+}
+
+.dashboard-section-title {
+  font-size: 1.18rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin-bottom: 12px;
+  color: #232323;
+}
+.dashboard-graph-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+  border: none;
+  padding: 20px 18px 10px 20px;
+  min-height: 240px;
+  margin-bottom: 8px;
+}
+.chart-title {
+  font-weight: 600;
+  color: #232323;
+  font-size: 1rem;
+  margin-bottom: 8px;
+  letter-spacing: 0.01em;
+}
+.modern-alert-badge {
+  background: #879aff96;
+  color: #3b3a39;
+  border-radius: 5px;
+  padding: 3px 10px;
+  font-size: 0.97em;
+  font-weight: 600;
+  display: inline-block;
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+.modern-table th, .modern-table td { font-size: 0.97em; padding: 3px 7px; }
+.modern-table { margin-bottom: 2px;}
+.modern-table thead th {
+  border: none;
+  background: #f4f5f8;
+  font-weight: 600;
+  color: #232323;
+  font-size: .97em;
+}
+.modern-table td {
+  background: transparent !important;
+}
+.text-muted {
+  color: #b8bcc3 !important;
+  opacity: .96;
+}
 </style>
 
-<div class="container-fluid py-4">
+<div class="container-fluid ">
 
-  <!-- Linha dos cards do topo -->
-  <div class="row mb-3 gx-4">
-    <div class="col-md-4 mb-2">
-      <div class="apple-card text-center p-4 h-100">
-        <h1 class="fw-bold">{{ total_jobcards }}</h1>
-        <p>Total JobCards</p>
-      </div>
-    </div>
-    <div class="col-md-4 mb-2">
-      <div class="apple-card text-center p-4 h-100">
-        <h1 class="fw-bold text-danger">{{ not_checked_count }}</h1>
-        <p>Not Checked</p>
-      </div>
-    </div>
-    <div class="col-md-4 mb-2">
-      <div class="apple-card text-center p-4 h-100">
-        <h1 class="fw-bold text-success">{{ checked_count }}</h1>
-        <p>Checked</p>
-      </div>
+  <!-- Top metrics cards -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-6 col-lg-3">
+    <div class="dashboard-card text-start">
+      <span class="metric">{{ total_jobcards }}</span>
+      <span class="desc">Total JobCards</span>
+      <i class="fas fa-layer-group card-icon"></i>
     </div>
   </div>
+  <div class="col-12 col-md-6 col-lg-3">
+    <div class="dashboard-card text-start selected">
+      <span class="metric">{{ checked_count }}</span>
+      <span class="desc">JobCards Checked</span>
+      <i class="fas fa-check card-icon"></i>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-lg-3">
+    <div class="dashboard-card text-start">
+      <span class="metric">{{ not_checked_count }}</span>
+      <span class="desc">JobCards Not Checked</span>
+      <i class="fas fa-hourglass-half card-icon"></i>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-lg-3">
+    <div class="dashboard-card text-start">
+      <span class="metric">{{ jobcards_with_material }}</span>
+      <span class="desc">JobCards with Material</span>
+      <i class="fas fa-cubes card-icon"></i>
+    </div>
+  </div>
+</div>
 
-  <!-- Linha dos gráficos e alertas -->
+
+
+
+  <!-- Main row: Graphs -->
   <div class="row gx-4">
-    <!-- Coluna de Gráficos -->
-    
-    <!-- Coluna de Gráficos -->
-  <div class="col-lg-8 mb-4">
-    <div class="apple-card p-4 h-100">
-      <div class="row">
-        <!-- Gráfico 1 -->
-        <div class="col-md-6 mb-3">
-          <h6 class="fw-bold text-primary">Not Checked by Discipline</h6>
-          <div style="position: relative; height:200px;">
-            <canvas id="notCheckedBar"></canvas>
-          </div>
+    <!-- Gráfico: JobCards por Área -->
+    <div class="col-lg-7 mb-4">
+      <div class="dashboard-graph-card h-100">
+        <div class="chart-title mb-2">JobCards per Area</div>
+        <div style="position: relative; height:210px;">
+          <canvas id="areaBar"></canvas>
         </div>
-        <!-- Gráfico 2 -->
-        <div class="col-md-6 mb-3">
-          <h6 class="fw-bold text-info">JobCards per Discipline</h6>
-          <div style="position: relative; height:200px;">
-            <canvas id="totalPie"></canvas>
-          </div>
+      </div>
+    </div>
+    <!-- Bar Chart: Today's Status (by Discipline, for example) -->
+    <div class="col-lg-5 mb-4">
+      <div class="dashboard-graph-card h-100">
+        <div class="chart-title mb-2">JobCards per Discipline</div>
+        <div style="position: relative; height:210px;">
+          <canvas id="totalBar"></canvas>
         </div>
       </div>
     </div>
   </div>
 
-
-    <!-- Alerts Column -->
-  <div class="col-lg-4 mb-4">
-    <div class="apple-card p-3 h-100">
-      <h6 class="fw-bold mb-3" style="color:#d68607;">Incomplete Data Alerts</h6>
-      {% if alerta_count > 0 %}
-        <div class="minimal-alert-badge" style="width:100%">
-          ⚠️ {{ alerta_count }} incomplete JobCard{{ alerta_count|pluralize:"s" }}
-        </div>
-        <table class="table table-sm table-bordered minimal-table mt-2">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>JobCard</th>
-              <th>Discipline</th>
-              <th>Prepared by</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for jc in jobcards_incompletos|slice:":7" %}
-            <tr>
-              <td>{{ forloop.counter }}</td>
-              <td>{% if not jc.job_card_number %}<span style="color:red;">⚠️</span>{% endif %}{{ jc.job_card_number|default:"—" }}</td>
-              <td>{% if not jc.discipline %}<span style="color:red;">⚠️</span>{% endif %}{{ jc.discipline|default:"—" }}</td>
-              <td>{% if not jc.prepared_by %}<span style="color:red;">⚠️</span>{% endif %}{{ jc.prepared_by|default:"—" }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        {% if alerta_count > 7 %}
-          <div class="text-end" style="font-size:0.9em;">...and {{ alerta_count|add:"-7" }} more JobCard{{ alerta_count|add:"-7"|pluralize:"s" }}</div>
+  <!-- Alerts and Recent Activity Table -->
+  <div class="row gx-4">
+    <div class="col-lg-12 mb-4">
+      <div class="dashboard-graph-card h-100">
+        <div class="dashboard-section-title mb-1">Incomplete Data Alerts</div>
+        {% if alerta_count > 0 %}
+          <div class="modern-alert-badge" style="width:100%">
+            ⚠️ {{ alerta_count }} incomplete JobCard{{ alerta_count|pluralize:"s" }}
+          </div>
+          <table class="table table-sm modern-table mt-2">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>JobCard</th>
+                <th>Discipline</th>
+                <th>Prepared by</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for jc in jobcards_incompletos|slice:":7" %}
+              <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{% if not jc.job_card_number %}<span style="color:red;">⚠️</span>{% endif %}{{ jc.job_card_number|default:"—" }}</td>
+                <td>{% if not jc.discipline %}<span style="color:red;">⚠️</span>{% endif %}{{ jc.discipline|default:"—" }}</td>
+                <td>{% if not jc.prepared_by %}<span style="color:red;">⚠️</span>{% endif %}{{ jc.prepared_by|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% if alerta_count > 7 %}
+            <div class="text-end" style="font-size:0.92em; color:#b8bcc3;">...and {{ alerta_count|add:"-7" }} more JobCard{{ alerta_count|add:"-7"|pluralize:"s" }}</div>
+          {% endif %}
+        {% else %}
+          <div class="text-muted">No incomplete JobCard alerts :)</div>
         {% endif %}
-      {% else %}
-        <div class="text-muted">No incomplete JobCard alerts :)</div>
-      {% endif %}
+      </div>
     </div>
   </div>
-
-
 </div>
 
 <!-- Chart.js scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script>
-  // Not Checked Bar
-  new Chart(document.getElementById('notCheckedBar'), {
-    type: 'bar',
-    data: {
-      labels: {{ labels_not_checked|safe }},
-      datasets: [{
-        label: 'Not Checked',
-        data: {{ data_not_checked|safe }},
-        backgroundColor: '#e74a3b'
-      }]
-    },
-    options: {
-      maintainAspectRatio: false,
-      scales: {
-        y: { beginAtZero: true, ticks: { stepSize: 1 } }
-      },
-      plugins: { legend: { display: false } }
-    }
-  });
+function alternatingColors(n) {
+  const colors = [];
+  for(let i=0;i<n;i++) {
+    colors.push(i%2===0 ? '#23272e' : '#cececeff');
+  }
+  return colors;
+}
 
-  // Total Pie
-  new Chart(document.getElementById('totalPie'), {
-    type: 'pie',
-    data: {
-      labels: {{ labels_total|safe }},
-      datasets: [{
-        data: {{ data_total|safe }},
-        backgroundColor: [
-          '#4e73df','#1cc88a','#36b9cc',
-          '#f6c23e','#e74a3b','#858796'
-        ]
-      }]
+// Função para calcular se o label deve ser branco ou preto (opcional)
+function contrastColor(context) {
+  // se a cor da barra for escura, label branco. Se for clara, label preto.
+  const bg = context.dataset.backgroundColor[context.dataIndex];
+  return (bg === '#23272e') ? '#fff' : '#23272e';
+}
+
+// Vertical bar: JobCards per Area
+new Chart(document.getElementById('areaBar'), {
+  type: 'bar',
+  data: {
+    labels: {{ labels_areas|safe }},
+    datasets: [{
+      label: 'JobCards',
+      data: {{ data_areas|safe }},
+      backgroundColor: alternatingColors({{ data_areas|length }}),
+      borderRadius: 7
+    }]
+  },
+  options: {
+    indexAxis: 'x',
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true },
+      datalabels: {
+        anchor: 'end',
+        align: 'end',
+        color: function(ctx) {
+          const bg = ctx.dataset.backgroundColor[ctx.dataIndex];
+          return (bg === '#23272e') ? '#23272e' : '#23272e'; // sempre preto fora
+        },
+        font: { weight: 'bold', size: 14 },
+        formatter: function(value) { return value; },
+        clip: false,
+        clamp: true,
+        padding: {top: 2, right: 2, bottom: 2, left: 2}
+      }
     },
-    options: {
-      maintainAspectRatio: false,
-      plugins: { legend: { position: 'right' } }
+    y: {
+      grid: { color:'#ececec' },
+      beginAtZero: true,
+      suggestedMax: Math.max(...({{ data_areas|safe }})) + 1, // ou +2 para espaço, opcional
+      ticks: { stepSize: 1, color:'#444' }
+    },
+    scales: {
+      x: { grid: {display: false}, ticks: {color:'#444', font:{weight:200}}},
+      y: { grid: {color:'#ececec'}, beginAtZero: true, ticks: { stepSize: 1, color:'#444' } }
     }
-  });
+  },
+  plugins: [ChartDataLabels]
+});
+
+// Horizontal bar: Today's Status (agora com os mesmos padrões do primeiro)
+const dataTotal = {{ data_total|safe }};
+const maxX = Math.max(...dataTotal) + 1;
+
+new Chart(document.getElementById('totalBar'), {
+  type: 'bar',
+  data: {
+    labels: {{ labels_total|safe }},
+    datasets: [{
+      label: "JobCards per Discipline",
+      data: dataTotal,
+      backgroundColor: alternatingColors(dataTotal.length),
+      borderRadius: 7
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true },
+      datalabels: {
+        anchor: 'end',
+        align: 'right', // <- sempre à direita da barra!
+        color: '#23272e', // <- sempre preto para garantir contraste fora da barra
+        font: { weight: 'bold', size: 14 },
+        formatter: function(value) { return value; },
+        display: true, // <- sempre mostra o rótulo
+        clip: false,
+        clamp: true,
+        padding: {left: 6}
+      }
+    },
+    scales: {
+      x: { 
+        grid: {color:'#e8e9ed'}, 
+        beginAtZero: true, 
+        suggestedMax: maxX, 
+        ticks: {color:'#444'} 
+      },
+      y: { grid: {display: false}, ticks: {color:'#444', font:{weight:600}} }
+    }
+  },
+  plugins: [ChartDataLabels]
+});
 </script>
+
 {% endblock %}

@@ -74,4 +74,7 @@ urlpatterns = [
 
     #IMPEDIMENTOS
     path('impediments/create/', create_impediment, name='create_impediment'),
+    path('impediments/', views.impediments_list, name='impediments_list'),
+    path('impediments/update/', views.impediment_update, name='impediment_update'),
+    path('impediments/delete/', views.impediment_delete, name='impediment_delete'),
 ]
