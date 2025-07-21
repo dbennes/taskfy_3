@@ -34,7 +34,7 @@
         <form id="filterForm" class="d-flex flex-wrap align-items-center gap-1 p-2 border rounded">
             <input type="text" id="filterDiscipline" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Discipline">
             <input type="text" id="filterDocument" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Document">
-            <input type="text" id="filterTag" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Tag">
+            <input type="text" id="filterJobcard" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Jobcard">
             <button style="font-size: 9px" type="button" id="applyFilters" class="btn btn-apply btn-sm">Apply</button>
         </form>
         <div class="d-flex align-items-center gap-1 p-2 border rounded">
@@ -141,7 +141,7 @@
         $('#applyFilters').click(function () {
             table.column(1).search($('#filterDiscipline').val());
             table.column(2).search($('#filterDocument').val());
-            table.column(3).search($('#filterTag').val());
+            table.column(3).search($('#filterJobcard').val()); // <- atualizado
             table.draw();
         });
 
@@ -245,7 +245,7 @@ function baixarModeloEngineering() {
         "item",
         "discipline",
         "document",
-        "jobcard",
+        "jobcard_number",
         "rev",
         "status"
     ];

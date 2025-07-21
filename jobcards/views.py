@@ -1076,7 +1076,7 @@ def import_engineering(request):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': f'Could not read file: {str(e)}'})
 
-        required_fields = ["item", "discipline", "document", "jobcard", "rev", "status"]
+        required_fields = ["item", "discipline", "document", "jobcard_number", "rev", "status"]
         file_fields = list(df.columns)
 
         missing = [f for f in required_fields if f not in file_fields]
@@ -1093,19 +1093,19 @@ def import_engineering(request):
         for _, row in df.iterrows():
             exists = EngineeringBase.objects.filter(
                 document=row["document"],
-                jobcard=row["jobcard"]
+                jobcard_number=row["jobcard_number"]
             ).exists()
 
             if exists and not overwrite:
                 return JsonResponse({
                     'status': 'duplicate',
-                    'message': f"Document '{row['document']}' already registered for jobcard '{row['jobcard']}'. Overwrite?"
+                    'message': f"Document '{row['document']}' already registered for jobcard '{row['jobcard_number']}'. Overwrite?"
                 })
 
             if exists and overwrite:
                 eng = EngineeringBase.objects.get(
                     document=row["document"],
-                    jobcard=row["jobcard"]
+                    jobcard_number=row["jobcard_number"]
                 )
                 for field in required_fields:
                     setattr(eng, field, row[field])
