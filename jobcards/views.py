@@ -1080,7 +1080,7 @@ def import_engineering(request):
             "item",
             "discipline",
             "document",
-            "tag",
+            "jobcard",
             "rev",
             "status"
         ]
@@ -1103,7 +1103,7 @@ def import_engineering(request):
         for _, row in df.iterrows():
             exists = EngineeringBase.objects.filter(
                 document=row["document"],
-                tag=row["tag"]
+                tag=row["jobcard"]
             ).exists()
 
             if exists and not overwrite:
@@ -1115,7 +1115,7 @@ def import_engineering(request):
             if exists and overwrite:
                 eng = EngineeringBase.objects.get(
                     document=row["document"],
-                    tag=row["tag"]
+                    jobcard=row["jobcard"]
                 )
                 for field in required_fields:
                     setattr(eng, field, row[field])
@@ -1483,8 +1483,7 @@ def create_impediment(request):
         'jobcard': jobcard,
         'error': error,
     })
-    
-    
+        
 @login_required(login_url='login')
 def impediments_list(request):
     search = request.GET.get('search', '')
@@ -1548,3 +1547,5 @@ def impediment_delete(request):
         except Impediments.DoesNotExist:
             return JsonResponse({'success': False, 'msg': 'Not found'})
     return JsonResponse({'success': False})
+
+# --------- AREA DE TASKS --------------- #

@@ -8,7 +8,8 @@ from .views import (
     WorkingCodeListView,
     SystemListView, 
     jobcard_progress, 
-    create_impediment
+    create_impediment,
+
 )
 
 urlpatterns = [
@@ -77,4 +78,7 @@ urlpatterns = [
     path('impediments/', views.impediments_list, name='impediments_list'),
     path('impediments/update/', views.impediment_update, name='impediment_update'),
     path('impediments/delete/', views.impediment_delete, name='impediment_delete'),
+    
+    #TASKS
+   
 ]

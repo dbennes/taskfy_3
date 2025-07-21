@@ -226,3 +226,4 @@ class Impediments(models.Model):
 
     def __str__(self):
         return f'Impediment for {self.jobcard_number}'
+

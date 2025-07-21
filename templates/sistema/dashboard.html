@@ -286,7 +286,7 @@ new Chart(document.getElementById('areaBar'), {
   plugins: [ChartDataLabels]
 });
 
-// Horizontal bar: Today's Status (agora com os mesmos padrões do primeiro)
+// Horizontal bar: JobCards per Discipline (garantindo todas as disciplinas visíveis)
 const dataTotal = {{ data_total|safe }};
 const maxX = Math.max(...dataTotal) + 1;
 
@@ -308,11 +308,11 @@ new Chart(document.getElementById('totalBar'), {
       legend: { display: true },
       datalabels: {
         anchor: 'end',
-        align: 'right', // <- sempre à direita da barra!
-        color: '#23272e', // <- sempre preto para garantir contraste fora da barra
+        align: 'right',
+        color: '#23272e',
         font: { weight: 'bold', size: 14 },
         formatter: function(value) { return value; },
-        display: true, // <- sempre mostra o rótulo
+        display: true,
         clip: false,
         clamp: true,
         padding: {left: 6}
@@ -325,7 +325,14 @@ new Chart(document.getElementById('totalBar'), {
         suggestedMax: maxX, 
         ticks: {color:'#444'} 
       },
-      y: { grid: {display: false}, ticks: {color:'#444', font:{weight:600}} }
+      y: { 
+        grid: {display: false},
+        ticks: {
+          color:'#444',
+          font:{weight:600},
+          autoSkip: false // <--- GARANTE TODOS OS LABELS
+        }
+      }
     }
   },
   plugins: [ChartDataLabels]
