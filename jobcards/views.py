@@ -36,6 +36,7 @@ import pandas as pd
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from datetime import datetime
+from datetime import date
 
 
 
@@ -131,6 +132,13 @@ def dashboard(request):
     labels_areas = [entry['location'] or '—' for entry in area_qs]
     data_areas   = [entry['count'] for entry in area_qs]
 
+    level_xx_count = JobCard.objects.filter(level__iexact='XX').count()
+    activity_to_be_verified_count = JobCard.objects.filter(activity_id__iexact='to be verified').count()
+    start_1900_count = JobCard.objects.filter(start=date(1900, 1, 1)).count()
+    finish_1900_count = JobCard.objects.filter(finish=date(1900, 1, 1)).count()
+    system_to_be_verified_count = JobCard.objects.filter(system__iexact='to be verified').count()
+    subsystem_to_be_verified_count = JobCard.objects.filter(subsystem__iexact='to be verified').count()
+
     context = {
         'total_jobcards': total_jobcards,
         'not_checked_count': not_checked_count,
@@ -145,6 +153,12 @@ def dashboard(request):
         'alerta_count': alerta_count,
         'labels_areas': labels_areas,
         'data_areas': data_areas,
+        'level_xx_count': level_xx_count,
+        'activity_to_be_verified_count': activity_to_be_verified_count,
+        'start_1900_count': start_1900_count,
+        'finish_1900_count': finish_1900_count,
+        'system_to_be_verified_count': system_to_be_verified_count,
+        'subsystem_to_be_verified_count': subsystem_to_be_verified_count,
     }
     return render(request, 'sistema/dashboard.html', context)
 
@@ -1061,6 +1075,7 @@ def import_toolsbase(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
 @login_required
+@login_required
 def import_engineering(request):
     if request.method == "POST":
         overwrite = request.POST.get("overwrite") == "1"
@@ -1084,20 +1099,18 @@ def import_engineering(request):
         if extra:
             return JsonResponse({'status': 'error', 'message': f"Extra/unexpected columns: {', '.join(extra)}"})
 
-        duplicates = EngineeringBase.objects.filter(
-            document__in=df['document'].unique()
-        ).exists()
+        # Verificar duplicatas por jobcard_number
+        jobcards_in_file = df['jobcard_number'].unique().tolist()
+        duplicates = EngineeringBase.objects.filter(jobcard_number__in=jobcards_in_file).exists()
 
         if duplicates and not overwrite:
             return JsonResponse({
                 'status': 'duplicate',
-                'message': 'Some documents already exist in the system. Do you want to overwrite them?'
+                'message': 'Some jobcards already exist in the system. Do you want to overwrite them?'
             })
 
         if overwrite:
-            EngineeringBase.objects.filter(
-                document__in=df['document'].unique()
-            ).delete()
+            EngineeringBase.objects.filter(jobcard_number__in=jobcards_in_file).delete()
 
         for _, row in df.iterrows():
             EngineeringBase.objects.create(
@@ -1110,6 +1123,7 @@ def import_engineering(request):
             )
 
         return JsonResponse({'status': 'ok'})
+    
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
 
 

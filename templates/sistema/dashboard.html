@@ -121,12 +121,37 @@ body, .container-fluid {
   color: #b8bcc3 !important;
   opacity: .96;
 }
+
+.dashboard-card.mini-card {
+  padding: 18px 14px 14px 18px;
+  min-height: 90px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+.dashboard-card.mini-card .metric {
+  font-size: 1.4rem;
+  margin-bottom: 2px;
+}
+
+.dashboard-card.mini-card .desc {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.dashboard-card.mini-card .card-icon {
+  font-size: 18px;
+  top: 12px;
+  right: 16px;
+}
+
+
+
 </style>
 
 <div class="container-fluid ">
 
   <!-- Top metrics cards -->
-<div class="row g-3 mb-4">
+<div class="row g-3 mb-1">
   <div class="col-12 col-md-6 col-lg-3">
     <div class="dashboard-card text-start">
       <span class="metric">{{ total_jobcards }}</span>
@@ -156,6 +181,54 @@ body, .container-fluid {
     </div>
   </div>
 </div>
+
+<div class="row g-3 mb-1">
+  <div class="col-12 col-md-6 col-lg-2">
+    <div class="dashboard-card text-start mini-card">
+      <span class="metric">{{ level_xx_count }}</span>
+      <span class="desc">Level</span>
+      <i class="fas fa-sort-amount-up card-icon"></i>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-lg-2">
+    <div class="dashboard-card text-start mini-card">
+      <span class="metric">{{ activity_to_be_verified_count }}</span>
+      <span class="desc">Activity ID</span>
+      <i class="fas fa-tasks card-icon"></i>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-lg-2">
+    <div class="dashboard-card text-start mini-card">
+      <span class="metric">{{ start_1900_count }}</span>
+      <span class="desc">Start</span>
+      <i class="fas fa-play card-icon"></i>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-lg-2">
+    <div class="dashboard-card text-start mini-card">
+      <span class="metric">{{ finish_1900_count }}</span>
+      <span class="desc">Finish</span>
+      <i class="fas fa-flag-checkered card-icon"></i>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-lg-2">
+    <div class="dashboard-card text-start mini-card">
+      <span class="metric">{{ system_to_be_verified_count }}</span>
+      <span class="desc">System</span>
+      <i class="fas fa-network-wired card-icon"></i>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-lg-2">
+    <div class="dashboard-card text-start mini-card">
+      <span class="metric">{{ subsystem_to_be_verified_count }}</span>
+      <span class="desc">Subsystem</span>
+      <i class="fas fa-project-diagram card-icon"></i>
+    </div>
+  </div>
+</div>
+
+
+
 
 
 
