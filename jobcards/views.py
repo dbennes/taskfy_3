@@ -132,12 +132,12 @@ def dashboard(request):
     labels_areas = [entry['location'] or '—' for entry in area_qs]
     data_areas   = [entry['count'] for entry in area_qs]
 
-    level_xx_count = JobCard.objects.filter(level__iexact='XX').count()
-    activity_to_be_verified_count = JobCard.objects.filter(activity_id__iexact='to be verified').count()
-    start_1900_count = JobCard.objects.filter(start=date(1900, 1, 1)).count()
-    finish_1900_count = JobCard.objects.filter(finish=date(1900, 1, 1)).count()
-    system_to_be_verified_count = JobCard.objects.filter(system__iexact='to be verified').count()
-    subsystem_to_be_verified_count = JobCard.objects.filter(subsystem__iexact='to be verified').count()
+    level_xx_count = JobCard.objects.exclude(level__iexact='XX').count()
+    activity_to_be_verified_count = JobCard.objects.exclude(activity_id__iexact='to be verified').count()
+    start_1900_count = JobCard.objects.exclude(start=date(1900, 1, 1)).count()
+    finish_1900_count = JobCard.objects.exclude(finish=date(1900, 1, 1)).count()
+    system_to_be_verified_count = JobCard.objects.exclude(system__iexact='to be verified').count()
+    subsystem_to_be_verified_count = JobCard.objects.exclude(subsystem__iexact='to be verified').count()
 
     context = {
         'total_jobcards': total_jobcards,
