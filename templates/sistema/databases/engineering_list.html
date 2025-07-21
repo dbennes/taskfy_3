@@ -93,6 +93,25 @@
   </div>
 </div>
 
+<div class="modal fade" id="overwriteModalEngineering" tabindex="-1" aria-labelledby="overwriteModalEngineeringLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title" id="overwriteModalEngineeringLabel">Overwrite Existing Documents?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Some documents already exist in the system. Do you want to overwrite them?
+      </div>
+      <div class="modal-footer">
+        <button id="confirmOverwriteBtnEngineering" type="button" class="btn btn-danger">Yes, Overwrite</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
@@ -268,6 +287,8 @@ function baixarModeloEngineering() {
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('importEngineeringForm');
+    let fileToUpload = null;
+
     form.addEventListener('submit', function(e) {
         e.preventDefault();
 
@@ -294,43 +315,46 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.location.reload();
             } else if (data.status === 'duplicate') {
                 $('#importEngineeringModal').modal('hide');
-                
-                // Exibe a pergunta ao usuário
-                if (confirm(data.message)) {
-                    const overwriteFormData = new FormData();
-                    overwriteFormData.append('file', document.getElementById('importEngineeringFile').files[0]);
-                    overwriteFormData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-                    overwriteFormData.append('overwrite', '1');  // importante
-
-                    fetch("{% url 'import_engineering' %}", {
-                        method: "POST",
-                        body: overwriteFormData
-                    })
-                    .then(res => res.json())
-                    .then(overwriteResponse => {
-                        if (overwriteResponse.status === 'ok') {
-                            alert("Update successful!");
-                            window.location.reload();
-                        } else {
-                            alert(overwriteResponse.message || "Something went wrong.");
-                        }
-                    })
-                    .catch(() => {
-                        alert("Error during overwrite.");
-                    });
-                } else {
-                    alert("Import cancelled.");
-                }
+                fileToUpload = file; // guarda para sobrescrever depois
+                $('#overwriteModalEngineering').modal('show');
             } else {
                 alert(data.message || "An error occurred!");
             }
         })
-        .catch(err => {
+        .catch(() => {
             alert("Error uploading file.");
+        });
+    });
+
+    document.getElementById('confirmOverwriteBtnEngineering').addEventListener('click', function () {
+        if (!fileToUpload) return;
+
+        const overwriteFormData = new FormData();
+        overwriteFormData.append('file', fileToUpload);
+        overwriteFormData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        overwriteFormData.append('overwrite', '1');
+
+        fetch("{% url 'import_engineering' %}", {
+            method: "POST",
+            body: overwriteFormData
+        })
+        .then(response => response.json())
+        .then(data => {
+            $('#overwriteModalEngineering').modal('hide');
+            if (data.status === 'ok') {
+                alert("Overwrite successful!");
+                window.location.reload();
+            } else {
+                alert(data.message || "Error during overwrite.");
+            }
+        })
+        .catch(() => {
+            alert("Error during overwrite.");
         });
     });
 });
 </script>
+
 
 
 

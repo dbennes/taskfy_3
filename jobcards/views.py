@@ -1063,7 +1063,7 @@ def import_toolsbase(request):
 @login_required
 def import_engineering(request):
     if request.method == "POST":
-        overwrite = request.POST.get('overwrite') == '1'
+        overwrite = request.POST.get("overwrite") == "1"
         file = request.FILES.get('file')
         if not file:
             return JsonResponse({'status': 'error', 'message': 'No file uploaded.'})
@@ -1077,46 +1077,41 @@ def import_engineering(request):
             return JsonResponse({'status': 'error', 'message': f'Could not read file: {str(e)}'})
 
         required_fields = ["item", "discipline", "document", "jobcard_number", "rev", "status"]
-        file_fields = list(df.columns)
-
-        missing = [f for f in required_fields if f not in file_fields]
-        extra = [f for f in file_fields if f not in required_fields]
+        missing = [f for f in required_fields if f not in df.columns]
+        extra = [f for f in df.columns if f not in required_fields]
         if missing:
             return JsonResponse({'status': 'error', 'message': f"Missing columns: {', '.join(missing)}"})
         if extra:
             return JsonResponse({'status': 'error', 'message': f"Extra/unexpected columns: {', '.join(extra)}"})
 
-        empty_fields = [f for f in required_fields if df[f].isnull().any() or (df[f] == '').any()]
-        if empty_fields:
-            return JsonResponse({'status': 'error', 'message': f"Please fill all required fields: {', '.join(empty_fields)}"})
+        duplicates = EngineeringBase.objects.filter(
+            document__in=df['document'].unique()
+        ).exists()
+
+        if duplicates and not overwrite:
+            return JsonResponse({
+                'status': 'duplicate',
+                'message': 'Some documents already exist in the system. Do you want to overwrite them?'
+            })
+
+        if overwrite:
+            EngineeringBase.objects.filter(
+                document__in=df['document'].unique()
+            ).delete()
 
         for _, row in df.iterrows():
-            exists = EngineeringBase.objects.filter(
-                document=row["document"],
-                jobcard_number=row["jobcard_number"]
-            ).exists()
-
-            if exists and not overwrite:
-                return JsonResponse({
-                    'status': 'duplicate',
-                    'message': f"Document '{row['document']}' already registered for jobcard '{row['jobcard_number']}'. Overwrite?"
-                })
-
-            if exists and overwrite:
-                eng = EngineeringBase.objects.get(
-                    document=row["document"],
-                    jobcard_number=row["jobcard_number"]
-                )
-                for field in required_fields:
-                    setattr(eng, field, row[field])
-                eng.save()
-            else:
-                data = {field: row[field] for field in required_fields}
-                EngineeringBase.objects.create(**data)
+            EngineeringBase.objects.create(
+                item=row["item"],
+                discipline=row["discipline"].strip(),
+                document=row["document"].strip(),
+                jobcard_number=row["jobcard_number"].strip(),
+                rev=str(row["rev"]).strip(),
+                status=row["status"].strip()
+            )
 
         return JsonResponse({'status': 'ok'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
 @login_required
 def import_taskbase(request):
