@@ -1076,16 +1076,9 @@ def import_engineering(request):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': f'Could not read file: {str(e)}'})
 
-        required_fields = [
-            "item",
-            "discipline",
-            "document",
-            "jobcard",
-            "rev",
-            "status"
-        ]
-
+        required_fields = ["item", "discipline", "document", "jobcard", "rev", "status"]
         file_fields = list(df.columns)
+
         missing = [f for f in required_fields if f not in file_fields]
         extra = [f for f in file_fields if f not in required_fields]
         if missing:
@@ -1093,23 +1086,20 @@ def import_engineering(request):
         if extra:
             return JsonResponse({'status': 'error', 'message': f"Extra/unexpected columns: {', '.join(extra)}"})
 
-        empty_fields = []
-        for field in required_fields:
-            if df[field].isnull().any() or (df[field] == '').any():
-                empty_fields.append(field)
+        empty_fields = [f for f in required_fields if df[f].isnull().any() or (df[f] == '').any()]
         if empty_fields:
             return JsonResponse({'status': 'error', 'message': f"Please fill all required fields: {', '.join(empty_fields)}"})
 
         for _, row in df.iterrows():
             exists = EngineeringBase.objects.filter(
                 document=row["document"],
-                tag=row["jobcard"]
+                jobcard=row["jobcard"]
             ).exists()
 
             if exists and not overwrite:
                 return JsonResponse({
                     'status': 'duplicate',
-                    'message': f"Document '{row['document']}' already registered for tag '{row['tag']}'. Overwrite?"
+                    'message': f"Document '{row['document']}' already registered for jobcard '{row['jobcard']}'. Overwrite?"
                 })
 
             if exists and overwrite:
@@ -1125,6 +1115,7 @@ def import_engineering(request):
                 EngineeringBase.objects.create(**data)
 
         return JsonResponse({'status': 'ok'})
+
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
 @login_required
