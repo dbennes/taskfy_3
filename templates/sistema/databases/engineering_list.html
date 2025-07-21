@@ -294,7 +294,33 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.location.reload();
             } else if (data.status === 'duplicate') {
                 $('#importEngineeringModal').modal('hide');
-                alert(data.message);
+                
+                // Exibe a pergunta ao usuário
+                if (confirm(data.message)) {
+                    const overwriteFormData = new FormData();
+                    overwriteFormData.append('file', document.getElementById('importEngineeringFile').files[0]);
+                    overwriteFormData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+                    overwriteFormData.append('overwrite', '1');  // importante
+
+                    fetch("{% url 'import_engineering' %}", {
+                        method: "POST",
+                        body: overwriteFormData
+                    })
+                    .then(res => res.json())
+                    .then(overwriteResponse => {
+                        if (overwriteResponse.status === 'ok') {
+                            alert("Update successful!");
+                            window.location.reload();
+                        } else {
+                            alert(overwriteResponse.message || "Something went wrong.");
+                        }
+                    })
+                    .catch(() => {
+                        alert("Error during overwrite.");
+                    });
+                } else {
+                    alert("Import cancelled.");
+                }
             } else {
                 alert(data.message || "An error occurred!");
             }
