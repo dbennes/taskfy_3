@@ -11,13 +11,13 @@
         </div>
         <div class="d-flex align-items-center" style="gap: 8px;">
             <button type="button" class="btn btn-outline-light btn-sm" onclick="baixarModeloMaterialBase()">
-                <i class="fa fa-download me-1"></i> Modelo
+                <i class="fa fa-download me-1"></i> Template
             </button>
             <button type="button" 
                     class="btn btn-success btn-sm" 
                     data-bs-toggle="modal" 
                     data-bs-target="#importModal">
-                <i class="fa fa-upload me-1"></i> Importar
+                <i class="fa fa-upload me-1"></i> Import
             </button>
         </div>
     </div>
@@ -47,7 +47,7 @@
         
         <div class="ms-auto d-flex align-items-center gap-1 p-2 border rounded" id="customButtons">
             <button type="button" class="btn btn-success" onclick="exportarExcelDoBanco()">
-                Exportar Excel do Banco
+                Export Database
             </button>
 
         </div>
@@ -55,56 +55,58 @@
 
     <div class="table-responsive mt-2">
         <table id="materialsTable" class="table table-hover table-sm w-100 compact-table table-bordered-custom">
-            <thead class="table-light text-center table-header">
-                <tr>
-                    <th>Item</th>
-                    <th>Job Card Number</th>
-                    <th>Working Code</th>
-                    <th>Discipline</th>
-                    <th>Tag JobCard Base</th>
-                    <th>JobCard Required Qty</th>
-                    <th>Unit Req. Qty</th>
-                    <th>Weight (Kg)</th>
-                    <th>Material Segmentation</th>
-                    <th>Comments</th>
-                    <th>Sequenc. Nº Procurement</th>
-                    <th>Status Procurement</th>
-                    <th>MTO Item No</th>
-                    <th>Basic Material</th>
-                    <th>Description</th>
-                    <th>Project Code</th>
-                    <th>NPS 1</th>
-                    <th>Qty</th>
-                    <th>Unit</th>
-                    <th>PO</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for mat in materials %}
-                <tr>
-                    <td>{{ mat.item }}</td>
-                    <td>{{ mat.job_card_number }}</td>
-                    <td>{{ mat.working_code }}</td>
-                    <td>{{ mat.discipline }}</td>
-                    <td>{{ mat.tag_jobcard_base }}</td>
-                    <td>{{ mat.jobcard_required_qty|floatformat:2 }}</td>
-                    <td>{{ mat.unit_req_qty }}</td>
-                    <td>{{ mat.weight_kg|floatformat:2 }}</td>
-                    <td>{{ mat.material_segmentation }}</td>
-                    <td>{{ mat.comments }}</td>
-                    <td>{{ mat.sequenc_no_procurement }}</td>
-                    <td>{{ mat.status_procurement }}</td>
-                    <td>{{ mat.mto_item_no }}</td>
-                    <td>{{ mat.basic_material }}</td>
-                    <td>{{ mat.description }}</td>
-                    <td>{{ mat.project_code }}</td>
-                    <td>{{ mat.nps1 }}</td>
-                    <td>{{ mat.qty|floatformat:2 }}</td>
-                    <td>{{ mat.unit }}</td>
-                    <td>{{ mat.po }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
+                <thead class="table-light text-center table-header">
+                    <tr>
+                        <th>Item</th>
+                        <th>Job Card Number</th>
+                        <th>Working Code</th>
+                        <th>Discipline</th>
+                        <th>Tag JobCard Base</th>
+                        <th>JobCard Required Qty</th>
+                        <th>Unit Req. Qty</th>
+                        <th>Weight (Kg)</th>
+                        <th>Material Segmentation</th>
+                        <th>Comments</th>
+                        <th>Sequenc. Nº Procurement</th>
+                        <th>Status Procurement</th>
+                        <th>MR Number</th>
+                        <th>Basic Material</th>
+                        <th>Description</th>
+                        <th>Project Code</th>
+                        <th>NPS 1</th>
+                        <th>Qty</th>
+                        <th>Unit</th>
+                        <th>PO</th>
+                        <th>Reference Documents</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mat in materials %}
+                    <tr>
+                        <td>{{ mat.item }}</td>
+                        <td>{{ mat.job_card_number }}</td>
+                        <td>{{ mat.working_code }}</td>
+                        <td>{{ mat.discipline }}</td>
+                        <td>{{ mat.tag_jobcard_base }}</td>
+                        <td>{{ mat.jobcard_required_qty|floatformat:2 }}</td>
+                        <td>{{ mat.unit_req_qty }}</td>
+                        <td>{{ mat.weight_kg|floatformat:2 }}</td>
+                        <td>{{ mat.material_segmentation }}</td>
+                        <td>{{ mat.comments }}</td>
+                        <td>{{ mat.sequenc_no_procurement }}</td>
+                        <td>{{ mat.status_procurement }}</td>
+                        <td>{{ mat.mr_number }}</td>
+                        <td>{{ mat.basic_material }}</td>
+                        <td>{{ mat.description }}</td>
+                        <td>{{ mat.project_code }}</td>
+                        <td>{{ mat.nps1 }}</td>
+                        <td>{{ mat.qty|floatformat:2 }}</td>
+                        <td>{{ mat.unit }}</td>
+                        <td>{{ mat.po }}</td>
+                        <td>{{ mat.reference_documents }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
         </table>
     </div>
 </div>
@@ -330,17 +332,17 @@ function baixarModeloMaterialBase() {
         "comments",
         "sequenc_no_procurement",
         "status_procurement",
-        "mto_item_no",
+        "mr_number",  // <- ALTERADO
         "basic_material",
         "description",
         "project_code",
         "nps1",
         "qty",
         "unit",
-        "po"
+        "po",
+        "reference_documents"  // <- NOVO CAMPO
     ];
 
-    // Linha exemplo (opcional - remova se não quiser)
     const exemplo = [
         "JC-001",
         "WKC-01",
@@ -353,15 +355,17 @@ function baixarModeloMaterialBase() {
         "Sem comentários",
         "SEQ-01",
         "Pendente",
-        "MTO-10",
+        "MR-10",             // <- EXEMPLO PARA MR NUMBER
         "Aço Carbono",
         "Parafuso M8x40 Zincado",
         "PC-21",
         "3/4\"",
         "10",
         "kg",
-        "PO123456"
+        "PO123456",
+        "DOC-ENG-001, DOC-ENG-002" // <- EXEMPLO DE REFERENCIA
     ];
+
 
     const ws_data = [cabecalho, exemplo]; // Cabeçalho + linha de exemplo
     const ws = XLSX.utils.aoa_to_sheet(ws_data);

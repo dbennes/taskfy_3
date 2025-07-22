@@ -10,7 +10,7 @@
         <!-- Minimalist Header with 3 Dots (Apple Style) -->
         <div class="card-header py-3" style="background:#f5f5f7; border-bottom: 1px solid #d0d0d0; border-top-left-radius: 8px; border-top-right-radius: 8px;">
             <div class="d-flex align-items-center justify-content-between">
-                <span class="m-0 fw-bold fs-6 text-left w-100" style="margin-left: -60px;">Impediments List</span>
+                <span class="m-0 fw-bold fs-6 text-left w-100" style="margin-left: -60px;">Constraints List</span>
                 <div class="d-flex align-items-center gap-1">
                     <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
                     <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
@@ -37,23 +37,31 @@
                 <table class="table table-bordered table-hover my-0">
                     <thead style="font-size: 12px;">
                         <tr>
-                            <th>JobCard #</th>
-                            <th>Scaffold</th>
-                            <th>Material</th>
-                            <th>Engineering</th>
-                            <th>Other</th>
-                            <th>Shell Origin</th>
-                            <th>UTC Origin</th>
-                            <th>Actions</th>
+                            <th>JobCard #</th>         
+                            <th>Scaffold</th>          
+                            <th>Material</th>          
+                            <th>Engineering</th>       
+                            <th>Mainpower</th>         
+                            <th>Tools</th>            
+                            <th>Access</th>            
+                            <th>PWT</th>               
+                            <th>Other</th>             
+                            <th>Shell Origin</th>      
+                            <th>UTC Origin</th>        
+                            <th>Actions</th>           
                         </tr>
                     </thead>
                     <tbody id="tableBody" style="font-size: 12px;">
                         {% for i in impediments %}
-                        <tr data-id="{{ i.id }}">
+                        <tr data-id="{{ i.id }}" data-notes="{{ i.notes|default:'' }}">
                             <td>{{ i.jobcard_number }}</td>
                             <td>{{ i.scaffold|yesno:"YES,NO" }}</td>
                             <td>{{ i.material|yesno:"YES,NO" }}</td>
                             <td>{{ i.engineering|yesno:"YES,NO" }}</td>
+                            <td>{{ i.mainpower|yesno:"YES,NO" }}</td>
+                            <td>{{ i.tools|yesno:"YES,NO" }}</td>
+                            <td>{{ i.access|yesno:"YES,NO" }}</td>
+                            <td>{{ i.pwt|yesno:"YES,NO" }}</td>
                             <td>{{ i.other|default:"—" }}</td>
                             <td>{{ i.origin_shell|yesno:"YES,NO" }}</td>
                             <td>{{ i.origin_utc|yesno:"YES,NO" }}</td>
@@ -111,7 +119,7 @@
                         <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
                         <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
                     </div>
-                    <h5 class="modal-title mx-auto text-center w-100" style="font-size: 1.2rem;">Edit Impediment</h5>
+                    <h5 class="modal-title mx-auto text-center w-100" style="font-size: 1.2rem;">Edit Constraints </h5>
                     <button type="button" class="btn-close position-absolute end-0 me-2" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
             </div>
@@ -123,18 +131,36 @@
                             <label class="form-label mb-1">JobCard Number</label>
                             <input type="text" class="form-control" id="jobcard_number">
                         </div>
-                        <div class="col-md-6 d-flex flex-wrap align-items-end gap-3 ps-md-4 mt-md-4">
-                            <div class="form-check me-3">
-                                <input class="form-check-input" type="checkbox" id="scaffold">
-                                <label class="form-check-label" for="scaffold">Scaffold</label>
-                            </div>
-                            <div class="form-check me-3">
-                                <input class="form-check-input" type="checkbox" id="material">
-                                <label class="form-check-label" for="material">Material</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="engineering">
-                                <label class="form-check-label" for="engineering">Engineering</label>
+                        <div class="col-md-6">
+                            <div class="d-flex flex-wrap align-items-center gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="scaffold">
+                                    <label class="form-check-label" for="scaffold">Scaffold</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="material">
+                                    <label class="form-check-label" for="material">Material</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="engineering">
+                                    <label class="form-check-label" for="engineering">Engineering</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="mainpower">
+                                    <label class="form-check-label" for="mainpower">Mainpower</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="tools">
+                                    <label class="form-check-label" for="tools">Tools</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="access">
+                                    <label class="form-check-label" for="access">Access</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="pwt">
+                                    <label class="form-check-label" for="pwt">PWT</label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -143,8 +169,8 @@
                             <label class="form-label mb-1">Other</label>
                             <input type="text" class="form-control" id="other">
                         </div>
-                        <div class="col-md-6 d-flex flex-wrap align-items-end gap-3 ps-md-4 mt-md-4">
-                            <div class="form-check me-3">
+                        <div class="col-md-6 d-flex flex-wrap align-items-center gap-3">
+                            <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="origin_shell">
                                 <label class="form-check-label" for="origin_shell">Shell Origin</label>
                             </div>
@@ -168,6 +194,7 @@
     </div>
 </div>
 
+
 <script>
 document.getElementById('itemsPerPage').addEventListener('change', function() {
     location.href = '?items_per_page=' + this.value + '&search=' + document.getElementById('filterInput').value;
@@ -185,13 +212,19 @@ document.querySelectorAll('.edit-impediment').forEach(btn => {
         var row = this.closest('tr');
         document.getElementById('impedimentId').value = row.dataset.id;
         document.getElementById('jobcard_number').value = row.cells[0].textContent.trim();
-        document.getElementById('scaffold').checked = row.cells[1].textContent.trim() === 'YES';
-        document.getElementById('material').checked = row.cells[2].textContent.trim() === 'YES';
-        document.getElementById('engineering').checked = row.cells[3].textContent.trim() === 'YES';
-        document.getElementById('other').value = row.cells[4].textContent.trim() !== '—' ? row.cells[4].textContent.trim() : '';
-        document.getElementById('origin_shell').checked = row.cells[5].textContent.trim() === 'YES';
-        document.getElementById('origin_utc').checked = row.cells[6].textContent.trim() === 'YES';
-        document.getElementById('notes').value = row.dataset.notes || '';
+        document.getElementById('scaffold').checked   = row.cells[1].textContent.trim() === 'YES';
+        document.getElementById('material').checked   = row.cells[2].textContent.trim() === 'YES';
+        document.getElementById('engineering').checked= row.cells[3].textContent.trim() === 'YES';
+        document.getElementById('mainpower').checked  = row.cells[4].textContent.trim() === 'YES';
+        document.getElementById('tools').checked      = row.cells[5].textContent.trim() === 'YES';
+        document.getElementById('access').checked     = row.cells[6].textContent.trim() === 'YES';
+        document.getElementById('pwt').checked        = row.cells[7].textContent.trim() === 'YES';
+        document.getElementById('other').value        = row.cells[8].textContent.trim() !== '—' ? row.cells[8].textContent.trim() : '';
+        document.getElementById('origin_shell').checked = row.cells[9].textContent.trim() === 'YES';
+        document.getElementById('origin_utc').checked   = row.cells[10].textContent.trim() === 'YES';
+        document.getElementById('notes').value        = row.dataset.notes || '';
+
+
         $('#impedimentModal').modal('show');
     });
 });
@@ -208,6 +241,10 @@ document.getElementById('saveImpediment').onclick = function() {
         origin_shell: document.getElementById('origin_shell').checked,
         origin_utc: document.getElementById('origin_utc').checked,
         notes: document.getElementById('notes').value,
+        mainpower: document.getElementById('mainpower').checked,
+        tools: document.getElementById('tools').checked,
+        access: document.getElementById('access').checked,
+        pwt: document.getElementById('pwt').checked,
         csrfmiddlewaretoken: '{{ csrf_token }}'
     };
     $.post("{% url 'impediment_update' %}", data, function(response) {

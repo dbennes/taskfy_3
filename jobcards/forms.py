@@ -84,8 +84,8 @@ class ImpedimentsForm(forms.ModelForm):
     class Meta:
         model = Impediments
         fields = [
-            'jobcard_number', 'scaffold', 'material', 'engineering', 'other',
-            'origin_shell', 'origin_utc', 'notes'
+            'jobcard_number', 'scaffold', 'material', 'engineering', 'mainpower',
+            'tools', 'access', 'pwt', 'other', 'origin_shell', 'origin_utc', 'notes'
         ]
         widgets = {
             'jobcard_number': forms.TextInput(attrs={

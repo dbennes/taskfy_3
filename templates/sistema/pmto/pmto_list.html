@@ -1,0 +1,419 @@
+{% extends 'sistema/base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-2">
+    <div class="d-flex align-items-center justify-content-between p-2 mb-3" style="background-color: #313131; border-radius: 8px;">
+        <div class="d-flex align-items-center me-3">
+            <span style="width: 10px; height: 10px; background-color: #ff5f57; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
+            <span style="width: 10px; height: 10px; background-color: #febc2e; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
+            <span style="width: 10px; height: 10px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+            <h6 class="mb-0 ms-3 text-white">PMTO Base - Complete Database View</h6>
+        </div>
+        <div class="d-flex gap-2 mb-2">
+            <button type="button" class="btn btn-outline-light btn-sm" onclick="baixarModeloPMTO()">
+                <i class="fa fa-download me-1"></i> Template
+            </button>
+            <form id="exportForm" method="get" action="{% url 'export_pmto_excel' %}">
+                <input type="hidden" name="pmto_code" id="export_pmto_code">
+                <input type="hidden" name="description" id="export_description">
+                <input type="hidden" name="material" id="export_material">
+                <button type="submit" class="btn btn-outline-light btn-sm">
+                    <i class="fa fa-file-excel me-1"></i> Export Excel
+                </button>
+            </form>
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importPMTOModal">
+                <i class="fa fa-upload me-1"></i> Import
+            </button>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-1">
+        <div class="d-flex align-items-center gap-1 p-2 border rounded" style="font-size: 9px;">
+            <label class="mb-0 small">Show</label>
+            <select id="rowsPerPage" class="form-select form-select-sm" style="width: 70px; font-size: 10px;">
+                <option value="10">10</option>
+                <option value="18" selected>18</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <label class="mb-0 small"> entries</label>
+        </div>
+
+        <form id="filterForm" class="d-flex flex-wrap align-items-center gap-1 p-2 border rounded">
+            <input type="text" id="filterPMTOCode" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="PMTO CODE">
+            <input type="text" id="filterDescription" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Descritivo">
+            <input type="text" id="filterMaterial" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Material">
+            <button style="font-size: 9px" type="button" id="applyFilters" class="btn btn-apply btn-sm">Apply</button>
+        </form>
+
+        <div class="ms-auto d-flex align-items-center gap-1 p-2 border rounded" id="customButtons"></div>
+    </div>
+
+    <div class="table-responsive mt-2">
+        <table id="pmtoTable" class="table table-hover table-sm w-100 compact-table table-bordered-custom">
+            <thead class="table-light text-center table-header">
+                <tr>
+                    <th>PMTO CODE</th>
+                    <th>DESCRIPTION</th>
+                    <th>MATERIAL</th>
+                    <th>QTY</th>
+                    <th>WEIGHT</th>
+                    <th>UNIT</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pmto_items %}
+                <tr>
+                    <td>{{ p.pmto_code }}</td>
+                    <td>{{ p.description }}</td>
+                    <td>{{ p.material }}</td>
+                    <td>{{ p.qty }}</td>
+                    <td>{{ p.weight }}</td>
+                    <td>{{ p.unit }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal fade" id="importPMTOModal" tabindex="-1" aria-labelledby="importPMTOModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form id="importPMTOForm" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="importPMTOModalLabel">Import PMTOBase</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Download the template, fill it out, and upload it here:</p>
+                        <input type="file" name="file" id="importPMTOFile" accept=".xlsx,.csv" required class="form-control" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-success">Import</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalPMTODuplicated" tabindex="-1" aria-labelledby="modalPMTODuplicatedLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalPMTODuplicatedLabel">
+                <i class="fa fa-exclamation-circle me-2"></i>Duplicate PMTO CODE
+                </h5>
+            </div>
+            <div class="modal-body">
+                <p>
+                The PMTO CODE you are trying to import already exists in the system.<br>
+                Please check your file. Duplicate PMTO CODEs are not allowed.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">OK</button>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalDescMatDuplicated" tabindex="-1" aria-labelledby="modalDescMatDuplicatedLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="modalDescMatDuplicatedLabel">
+                <i class="fa fa-exclamation-triangle me-2"></i>Duplicate DESCRIPTION + MATERIAL
+                </h5>
+            </div>
+            <div class="modal-body">
+                <p>
+                This combination of <b>DESCRIPTION</b> and <b>MATERIAL</b> is already registered for another PMTO CODE.<br>
+                Please verify your file.<br>
+                Each DESCRIPTION + MATERIAL pair can only be used once.
+                </p>
+                <div id="duplicatedDescMatDetail" class="mt-2" style="font-size:13px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" data-bs-dismiss="modal">OK</button>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalPMTOConfirmUpdate" tabindex="-1" aria-labelledby="modalPMTOConfirmUpdateLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="modalPMTOConfirmUpdateLabel">
+                <i class="fa fa-exclamation-triangle me-2"></i>PMTO CODE already exists
+                </h5>
+            </div>
+            <div class="modal-body">
+                <p>
+                The following PMTO CODE(s) already exist:<br>
+                <span id="duplicatedCodesDetail" class="text-danger"></span><br>
+                <b>Do you want to update their data with your file content?</b>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" id="confirmPMTOUpdateBtn">Yes, Update</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+            </div>
+        </div>
+    </div>
+
+
+
+</div>
+
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        let table = $('#pmtoTable').DataTable({
+            paging: true,
+            pageLength: 18,
+            autoWidth: true,
+            fixedHeader: true,
+            dom: 'Bfrtip',
+            buttons: [
+                {
+                    extend: 'pdfHtml5',
+                    title: 'PMTO Export',
+                    className: 'btn-minimal btn-pdf',
+                    text: '<i class="fa-solid fa-file-pdf me-2"></i> Export PDF',
+                    orientation: 'landscape',
+                    pageSize: 'A4'
+                },
+                {
+                    extend: 'print',
+                    title: 'PMTO Print',
+                    className: 'btn-minimal btn-print',
+                    text: '<i class="fa-solid fa-print me-2"></i> Print'
+                }
+            ]
+        });
+
+        table.buttons().container().appendTo('#customButtons');
+
+        $('#applyFilters').click(function () {
+            table.column(0).search($('#filterPMTOCode').val());
+            table.column(1).search($('#filterDescription').val());
+            table.column(2).search($('#filterMaterial').val());
+            table.draw();
+        });
+
+        $('#exportForm').on('submit', function () {
+            $('#export_pmto_code').val($('#filterPMTOCode').val());
+            $('#export_description').val($('#filterDescription').val());
+            $('#export_material').val($('#filterMaterial').val());
+        });
+
+        $('#rowsPerPage').change(function () {
+            table.page.len($(this).val()).draw();
+        });
+    });
+</script>
+
+<style>
+    .compact-table {
+        table-layout: auto !important;
+        border: 1px solid #ddd !important;
+        border-collapse: collapse !important;
+    }
+    .compact-table td, .compact-table th {
+        white-space: nowrap !important;
+        padding: 2px 4px !important;
+        line-height: 15px !important;
+        vertical-align: middle;
+        font-size: 8px;
+        border: 0.5px solid #ddd !important;
+    }
+    .table-header th {
+        font-size: 9px !important;
+        padding: 6px 4px !important;
+        background-color: #f0f0f0 !important;
+    }
+    .compact-table tbody tr:nth-child(odd) {
+        background-color: #f8f9fa;
+    }
+    .compact-table tbody tr:nth-child(even) {
+        background-color: #f1f1f1;
+    }
+    .compact-table tbody tr:hover {
+        background-color: #d9edf7;
+    }
+    .table-bordered-custom {
+        border: 1px solid #ccc !important;
+    }
+    div.dataTables_length, div.dataTables_filter {
+        display: none !important;
+    }
+    .dt-buttons {
+        margin-left: 10px;
+        display: flex;
+        gap: 5px;
+    }
+    .paginate_button {
+        background-color: #f5f5f5 !important;
+        border: 1px solid #ddd !important;
+        color: #333 !important;
+        padding: 4px 8px !important;
+        margin: 2px !important;
+        border-radius: 4px !important;
+    }
+    .paginate_button.current {
+        background-color: rgb(184, 184, 184) !important;
+        color: white !important;
+    }
+    .paginate_button:hover {
+        background-color: #e0e0e0 !important;
+        color: #000 !important;
+    }
+    .btn-minimal {
+        border: none !important;
+        padding: 4px 10px !important;
+        font-size: 11px !important;
+        color: white !important;
+        transition: background-color 0.3s ease !important;
+    }
+    .btn-excel {
+        background-color: #a2d5a2 !important;
+        color: black;
+    }
+    .btn-excel:hover {
+        background-color: rgb(104, 165, 104) !important;
+        color: black;
+    }
+    .btn-pdf {
+        background-color: #f5a9a9 !important;
+    }
+    .btn-pdf:hover {
+        background-color: #ec8383 !important;
+    }
+    .btn-print {
+        background-color: #c7c7c7 !important;
+    }
+    .btn-print:hover {
+        background-color: #a5a5a5 !important;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script>
+function baixarModeloPMTO() {
+    const cabecalho = [
+        "PMTOCODE",
+        "DESCRITIVO",
+        "MATERIAL",
+        "QTY",
+        "WEIGHT",
+        "unit"
+    ];
+    const exemplo = [
+        "PEACB.020.00002",
+        "STUD BOLT WITH 2 HEAVY HEXAGONAL NUTS...",
+        "ASTM D2996",
+        2.0,
+        1.0,
+        "KG"
+    ];
+
+    const ws_data = [cabecalho, exemplo];
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "PMTO_Template");
+    XLSX.writeFile(wb, "pmto_template.xlsx");
+}
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('importPMTOForm');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const fileInput = document.getElementById('importPMTOFile');
+        const file = fileInput.files[0];
+        if (!file) {
+            alert("Please select a file.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch("{% url 'import_pmto' %}", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                $('#importPMTOModal').modal('hide');
+                alert("Import successful!");
+                window.location.reload();
+
+            } else if (data.status === 'need_confirm') {
+                // Mostra modal de confirmação para atualizar PMTOs existentes
+                document.getElementById('duplicatedCodesDetail').innerHTML = data.duplicated_codes.join(', ');
+                const modal = new bootstrap.Modal(document.getElementById('modalPMTOConfirmUpdate'));
+                modal.show();
+                document.getElementById('confirmPMTOUpdateBtn').onclick = function() {
+                    modal.hide();
+                    // Envia novamente forçando update
+                    const confirmFormData = new FormData();
+                    confirmFormData.append('file', file);
+                    confirmFormData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+                    confirmFormData.append('force_update', 'true');
+                    fetch("{% url 'import_pmto' %}", {
+                        method: "POST",
+                        body: confirmFormData
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.status === 'ok') {
+                            $('#importPMTOModal').modal('hide');
+                            alert("Import successful!");
+                            window.location.reload();
+                        } else {
+                            alert(d.message || "Import error.");
+                        }
+                    });
+                };
+
+            } else if (data.status === 'pmto_duplicate') {
+                const modal = new bootstrap.Modal(document.getElementById('modalPMTODuplicated'));
+                modal.show();
+            } else if (data.status === 'descmat_duplicate') {
+                document.getElementById('duplicatedDescMatDetail').innerHTML = data.detail || '';
+                const modal = new bootstrap.Modal(document.getElementById('modalDescMatDuplicated'));
+                modal.show();
+            } else {
+                alert(data.message || "Erro durante o upload.");
+            }
+        })
+        .catch(() => {
+            alert("Erro ao enviar o arquivo.");
+        });
+    });
+});
+
+</script>
+
+{% endblock %}

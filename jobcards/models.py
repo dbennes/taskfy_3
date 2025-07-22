@@ -36,6 +36,11 @@ class JobCard(models.Model):
     comments = models.TextField(blank=True, null=True,)
     last_modified_by = models.CharField(max_length=150, blank=True, null=True)
     last_modified_at = models.DateTimeField(auto_now=True)
+    offshore_field_check = models.CharField(
+        max_length=3,
+        choices=[('NO', 'No'), ('YES', 'Yes')],
+        default='NO'
+    )
 
     def __str__(self):
         return f"{self.job_card_number} - {self.activity_id}"
@@ -84,20 +89,24 @@ class TaskBase(models.Model):
     def __str__(self):
         return f"{self.working_code} - {self.typical_task[:30]}..."
 
+# models.py
+
+# models.py
+
 class MaterialBase(models.Model):
     item                     = models.PositiveIntegerField(null=True, blank=True)
     job_card_number          = models.CharField("Job Card Number", max_length=50)
     working_code             = models.CharField("Working Code", max_length=50, blank=True)
     discipline               = models.CharField(max_length=50, blank=True)
     tag_jobcard_base         = models.CharField("Tag JobCard Base", max_length=100, blank=True)
-    jobcard_required_qty     = models.DecimalField("JobCard Required Qty", max_digits=12, decimal_places=2, null=True,blank=True)
+    jobcard_required_qty     = models.DecimalField("JobCard Required Qty", max_digits=12, decimal_places=2, null=True, blank=True)
     unit_req_qty             = models.CharField("Unit Req. Qty", max_length=20, blank=True)
-    weight_kg                = models.DecimalField("Weight (Kg)", max_digits=12,decimal_places=2,null=True,blank=True)
+    weight_kg                = models.DecimalField("Weight (Kg)", max_digits=12, decimal_places=2, null=True, blank=True)
     material_segmentation    = models.CharField("Material Segmentation", max_length=100, blank=True)
     comments                 = models.TextField(blank=True)
     sequenc_no_procurement   = models.CharField("Sequenc. Nº Procurement", max_length=50, blank=True)
     status_procurement       = models.CharField("Status Procurement", max_length=50, blank=True)
-    mto_item_no              = models.CharField("MTO Item No", max_length=50, blank=True)
+    mr_number                = models.CharField("MR Number", max_length=50, blank=True)   # <- RENOMEADO!
     basic_material           = models.CharField("Basic Material", max_length=100, blank=True)
     description              = models.TextField()
     project_code             = models.CharField("Project Code", max_length=50, blank=True)
@@ -105,6 +114,7 @@ class MaterialBase(models.Model):
     qty                      = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     unit                     = models.CharField(max_length=20, blank=True)
     po                       = models.CharField("PO", max_length=50, blank=True)
+    reference_documents      = models.TextField("Reference Documents", blank=True, null=True)  # <- NOVO CAMPO
 
     class Meta:
         verbose_name = "Material Base"
@@ -112,6 +122,8 @@ class MaterialBase(models.Model):
 
     def __str__(self):
         return f"{self.job_card_number} – {self.description[:30]}…"
+
+
     
 # BANCOS PARA ALOCAÇÃO DE RECURSOS E MATERIAIS E FERRAMENTAS
 
@@ -223,7 +235,82 @@ class Impediments(models.Model):
     notes = models.TextField(blank=True)
     created_by = models.CharField(max_length=150, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    mainpower = models.BooleanField(default=False)
+    tools = models.BooleanField(default=False)
+    access = models.BooleanField(default=False)
+    pwt = models.BooleanField(default=False)
 
     def __str__(self):
         return f'Impediment for {self.jobcard_number}'
 
+# BASE PARA ENGENHARIA E SUPRIMENTOS 
+
+class PMTOBase(models.Model):
+    pmto_code = models.CharField("PMTOCODE", max_length=100, unique=True)
+    description = models.TextField("DESCRITIVO")
+    material = models.CharField("MATERIAL", max_length=100)
+    qty = models.DecimalField("QTY", max_digits=10, decimal_places=2)
+    weight = models.DecimalField("WEIGHT", max_digits=10, decimal_places=2)
+    unit = models.CharField("Unit", max_length=20, default="KG")
+
+    def __str__(self):
+        return f"{self.pmto_code} – {self.description[:30]}"
+    
+class MRBase(models.Model):
+    mr_number = models.CharField("MR_NUMBER", max_length=100)
+    pmto_code = models.CharField("PMTOCODE", max_length=100)
+    type_items = models.CharField("TYPE ITEMS", max_length=100)
+    basic_material = models.CharField("BASIC MATERIAL", max_length=200)
+    description = models.TextField("DESCRIPTION")
+
+    nps1 = models.CharField("NPS 1", max_length=50)
+    length_ft_inch = models.CharField("LENGTH (FT' INCH\")", max_length=50)
+    thk_mm = models.CharField("THK (mm)", max_length=50)
+    pid = models.CharField("P&ID", max_length=100)
+    line_number = models.CharField("LINE Nº", max_length=50)
+    qty = models.DecimalField("QTY", max_digits=10, decimal_places=2)
+    unit = models.CharField("UNIT", max_length=20)
+    design_pressure_bar = models.CharField("DESIGN PRESSURE (Bar)", max_length=50)
+    design_temperature_c = models.CharField("DESIGN TEMPERATURE (ºC)", max_length=50)
+    service = models.CharField("SERVICE", max_length=100)
+    spec = models.TextField("SPEC")
+    proposer_sap_code = models.CharField("PROPOSER CODE (SAP CODE)", max_length=150)
+    rev = models.CharField("REV", max_length=20)
+    notes = models.TextField("NOTES", blank=True)
+
+    def __str__(self):
+        return f"{self.mr_number} - {self.pmto_code}"
+
+class ProcurementBase(models.Model):
+    mr_number = models.CharField("MR NUMBER", max_length=100)
+    latest_rev = models.CharField("LATEST REV.", max_length=20)
+    mto_item_no = models.CharField("MTO ITEM NO", max_length=50)
+    pmto_code = models.CharField("PMTOCODE", max_length=100)
+    type_items = models.CharField("TYPE ITEMS", max_length=100)
+    basic_material = models.CharField("BASIC MATERIAL", max_length=200)
+    description = models.TextField("DESCRIPTION")
+
+    nps1 = models.CharField("NPS 1", max_length=50, blank=True)
+    nps2 = models.CharField("NPS 2", max_length=50, blank=True)
+    sch1 = models.CharField("SCH 1", max_length=100, blank=True)
+    sch2 = models.CharField("SCH 2", max_length=100, blank=True)
+
+    unit = models.CharField("UNIT", max_length=20)
+
+    qty_mr = models.DecimalField("QTY_MR", max_digits=10, decimal_places=2)
+    qty_mr_unit = models.CharField("QTY_MR Unit", max_length=20, default="PCS")
+
+    qty_purchased = models.DecimalField("QTY PURCHASED", max_digits=10, decimal_places=2)
+    qty_purchased_unit = models.CharField("QTY PURCHASED Unit", max_length=20, default="PCS")
+
+    delivery_term = models.CharField("DELIVERY TERM", max_length=100)
+    delivery_time = models.CharField("DELIVERY TIME", max_length=100)
+
+    po_issue_date = models.DateField("PO ISSUE DATE")
+    po_number = models.CharField("PO NUMBER", max_length=100)
+
+    supplier_vendor = models.CharField("SUPPLIER/VENDOR", max_length=150)
+    status_remarks = models.TextField("STATUS / REMARKS", blank=True)
+
+    def __str__(self):
+        return f"{self.po_number} – {self.pmto_code}"

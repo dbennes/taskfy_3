@@ -25,7 +25,7 @@ from django.conf import settings
 from .models import (
     JobCard, TaskBase, ManpowerBase, MaterialBase, ToolsBase, EngineeringBase,
     AllocatedEngineering, AllocatedManpower, AllocatedMaterial, AllocatedTool, AllocatedTask,
-    Discipline, Area, WorkingCode, System, Impediments
+    Discipline, Area, WorkingCode, System, Impediments, PMTOBase, MRBase, ProcurementBase
 )
 import tempfile
 from django.db.models import Sum
@@ -37,6 +37,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from datetime import datetime
 from datetime import date
+import io
 
 
 
@@ -697,12 +698,12 @@ def allocated_task_list(request):
 @csrf_exempt
 def import_materials(request):
     if request.method == "POST":
-        overwrite = request.POST.get('overwrite') == '1'  # <-- Mantém decisão do usuário!
+        overwrite = request.POST.get('overwrite') == '1'
         file = request.FILES.get('file')
         if not file:
             return JsonResponse({'status': 'error', 'message': 'No file uploaded.'})
 
-        # Lê o arquivo
+        # Lê o arquivo (csv ou excel)
         try:
             if file.name.endswith('.csv'):
                 df = pd.read_csv(file)
@@ -711,12 +712,13 @@ def import_materials(request):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': f'Could not read file: {str(e)}'})
 
-        # Lista das colunas obrigatórias
+        # Lista das colunas obrigatórias (atualizadas!)
         required_columns = [
             'job_card_number', 'working_code', 'discipline', 'tag_jobcard_base',
             'jobcard_required_qty', 'unit_req_qty', 'weight_kg', 'material_segmentation',
-            'comments', 'sequenc_no_procurement', 'status_procurement', 'mto_item_no',
-            'basic_material', 'description', 'project_code', 'nps1', 'qty', 'unit', 'po'
+            'comments', 'sequenc_no_procurement', 'status_procurement', 'mr_number',
+            'basic_material', 'description', 'project_code', 'nps1', 'qty', 'unit', 'po',
+            'reference_documents'
         ]
         missing = [col for col in required_columns if col not in df.columns]
         if missing:
@@ -734,6 +736,15 @@ def import_materials(request):
         if errors:
             return JsonResponse({'status': 'error', 'message': " | ".join(errors)})
 
+        # NOVA VALIDAÇÃO: cada job_card_number só pode ter 1 working_code e 1 discipline
+        for jc in jobcards_in_file:
+            working_codes = df[df['job_card_number'].str.upper() == jc.upper()]['working_code'].astype(str).str.upper().unique()
+            disciplines = df[df['job_card_number'].str.upper() == jc.upper()]['discipline'].astype(str).str.upper().unique()
+            if len(working_codes) > 1:
+                return JsonResponse({'status': 'error', 'message': f"Job Card '{jc}' has more than one Working Code in the file: {', '.join(working_codes)}."})
+            if len(disciplines) > 1:
+                return JsonResponse({'status': 'error', 'message': f"Job Card '{jc}' has more than one Discipline in the file: {', '.join(disciplines)}."})
+
         # Confirma duplicidade para qualquer jobcard
         materials_exist = any(
             MaterialBase.objects.filter(job_card_number__iexact=jc).exists()
@@ -747,7 +758,7 @@ def import_materials(request):
             for jc in jobcards_in_file:
                 MaterialBase.objects.filter(job_card_number__iexact=jc).delete()
 
-        # Agora insere todos os materiais de todas as jobcards válidas
+        # Insere todos os materiais de todas as jobcards válidas
         for idx, row in df.iterrows():
             try:
                 jc = str(row['job_card_number']).strip().upper()
@@ -763,7 +774,7 @@ def import_materials(request):
                     comments = str(row.get('comments', '')).strip(),
                     sequenc_no_procurement = str(row.get('sequenc_no_procurement', '')).strip().upper(),
                     status_procurement = str(row.get('status_procurement', '')).strip().upper(),
-                    mto_item_no = str(row.get('mto_item_no', '')).strip().upper(),
+                    mr_number = str(row.get('mr_number', '')).strip().upper(),
                     basic_material = str(row.get('basic_material', '')).strip().upper(),
                     description = str(row.get('description', '')).strip().upper(),
                     project_code = str(row.get('project_code', '')).strip().upper(),
@@ -771,6 +782,7 @@ def import_materials(request):
                     qty = float(row.get('qty', 0)) if row.get('qty') not in [None, ''] else None,
                     unit = str(row.get('unit', '')).strip().upper(),
                     po = str(row.get('po', '')).strip().upper(),
+                    reference_documents = str(row.get('reference_documents', '')).strip()
                 )
             except Exception as e:
                 return JsonResponse({
@@ -780,6 +792,7 @@ def import_materials(request):
 
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
+
 
 
 @login_required
@@ -899,6 +912,7 @@ def import_jobcard(request):
                 data["status"] = "NO"
                 data["last_modified_by"] = request.user.username
                 data["last_modified_at"] = timezone.now()
+                data["offshore_field_check"] = "NO"
                 jobcard = JobCard.objects.create(**data)
 
         return JsonResponse({'status': 'ok'})
@@ -1075,7 +1089,6 @@ def import_toolsbase(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
 @login_required
-@login_required
 def import_engineering(request):
     if request.method == "POST":
         overwrite = request.POST.get("overwrite") == "1"
@@ -1125,7 +1138,6 @@ def import_engineering(request):
         return JsonResponse({'status': 'ok'})
     
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
-
 
 @login_required
 def import_taskbase(request):
@@ -1324,7 +1336,7 @@ def export_materials_excel(request):
             # Adicione outros campos que queira filtrar no global_search!
         )
 
-    # MONTA O DATAFRAME COM OS CAMPOS QUE QUER EXPORTAR
+    # MONTA O DATAFRAME COM OS CAMPOS QUE QUER EXPORTAR (já com MR Number e Reference Documents!)
     data = qs.values(
         'item',
         'job_card_number',
@@ -1338,14 +1350,15 @@ def export_materials_excel(request):
         'comments',
         'sequenc_no_procurement',
         'status_procurement',
-        'mto_item_no',
+        'mr_number',               # <-- NOVO CAMPO
         'basic_material',
         'description',
         'project_code',
         'nps1',
         'qty',
         'unit',
-        'po'
+        'po',
+        'reference_documents'      # <-- NOVO CAMPO
     )
 
     df = pd.DataFrame(list(data))
@@ -1361,6 +1374,93 @@ def export_materials_excel(request):
     df.to_excel(response, index=False)
     return response
 
+@login_required
+def export_manpower_excel (request):
+    discipline = request.GET.get('discipline', '')
+    working_code = request.GET.get('working_code', '')
+    direct_labor = request.GET.get('direct_labor', '')
+    global_search = request.GET.get('search', '')
+
+    qs = ManpowerBase.objects.all()
+
+    if discipline:
+        qs = qs.filter(discipline__icontains=discipline)
+    if working_code:
+        qs = qs.filter(working_code__icontains=working_code)
+    if direct_labor:
+        qs = qs.filter(direct_labor__icontains=direct_labor)
+    if global_search:
+        qs = qs.filter(
+            Q(discipline__icontains=global_search) |
+            Q(working_code__icontains=global_search) |
+            Q(working_description__icontains=global_search) |
+            Q(direct_labor__icontains=global_search)
+        )
+
+    data = qs.values(
+        'item',
+        'discipline',
+        'working_code',
+        'working_description',
+        'direct_labor',
+        'qty'
+    )
+
+    df = pd.DataFrame(list(data))
+
+    # Formatação de qty com 2 casas
+    if 'qty' in df.columns:
+        df['qty'] = df['qty'].apply(lambda x: '{:.2f}'.format(x) if pd.notnull(x) else '')
+
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename=manpower_base_export.xlsx'
+    df.to_excel(response, index=False)
+    return response
+
+@login_required
+def export_toolsbase_excel(request):
+    discipline = request.GET.get('discipline', '')
+    working_code = request.GET.get('working_code', '')
+    direct_labor = request.GET.get('direct_labor', '')
+    global_search = request.GET.get('search', '')
+
+    qs = ToolsBase.objects.all()
+
+    if discipline:
+        qs = qs.filter(discipline__icontains=discipline)
+    if working_code:
+        qs = qs.filter(working_code__icontains=working_code)
+    if direct_labor:
+        qs = qs.filter(direct_labor__icontains=direct_labor)
+    if global_search:
+        qs = qs.filter(
+            Q(discipline__icontains=global_search) |
+            Q(working_code__icontains=global_search) |
+            Q(direct_labor__icontains=global_search) |
+            Q(special_tooling__icontains=global_search)
+        )
+
+    data = qs.values(
+        'item',
+        'discipline',
+        'working_code',
+        'direct_labor',
+        'qty_direct_labor',
+        'special_tooling',
+        'qty'
+    )
+
+    df = pd.DataFrame(list(data))
+
+    # Formatação de qty com 2 casas decimais
+    for col in ['qty_direct_labor', 'qty']:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: '{:.2f}'.format(x) if pd.notnull(x) else '')
+
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename=toolsbase_export.xlsx'
+    df.to_excel(response, index=False)
+    return response
 
 # --------- AREA REPORTS --------------- #
 
@@ -1531,6 +1631,10 @@ def impediment_update(request):
         imped.origin_shell  = request.POST.get('origin_shell') == 'true'
         imped.origin_utc    = request.POST.get('origin_utc') == 'true'
         imped.notes         = request.POST.get('notes', '')
+        imped.mainpower = request.POST.get('mainpower') == 'true'
+        imped.tools = request.POST.get('tools') == 'true'
+        imped.access = request.POST.get('access') == 'true'
+        imped.pwt = request.POST.get('pwt') == 'true'
         imped.save()
         return JsonResponse({'success': True})
     return JsonResponse({'success': False})
@@ -1548,4 +1652,317 @@ def impediment_delete(request):
             return JsonResponse({'success': False, 'msg': 'Not found'})
     return JsonResponse({'success': False})
 
-# --------- AREA DE TASKS --------------- #
+# --------- AREA DE PMTO --------------- #
+
+def pmto_list(request):
+    pmto_items = PMTOBase.objects.all()
+    return render(request, 'sistema/pmto/pmto_list.html', {'pmto_items': pmto_items})
+
+@csrf_exempt
+def import_pmto(request):
+    if request.method == 'POST' and request.FILES.get('file'):
+        try:
+            file = request.FILES['file']
+            df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
+            force = request.POST.get('force_update') == 'true'
+
+            # Coleta todos os PMTOCODE do arquivo
+            pmto_codes = set(df['PMTOCODE'])
+            # Checa se já existem no banco
+            existing_codes = list(PMTOBase.objects.filter(pmto_code__in=pmto_codes).values_list('pmto_code', flat=True))
+
+            # Se existe e não está forçando update, retorna para pedir confirmação
+            if existing_codes and not force:
+                return JsonResponse({
+                    'status': 'need_confirm',
+                    'duplicated_codes': list(existing_codes)
+                })
+
+            # Agora, valida DESCRIPTION+MATERIAL para cada linha
+            for _, row in df.iterrows():
+                other_pmto = PMTOBase.objects.filter(
+                    description=row['DESCRITIVO'],
+                    material=row['MATERIAL']
+                ).exclude(pmto_code=row['PMTOCODE'])
+                if other_pmto.exists():
+                    return JsonResponse({
+                        'status': 'descmat_duplicate',
+                        'detail': (
+                            f"<b>DESCRIPTION:</b> {row['DESCRITIVO']}<br>"
+                            f"<b>MATERIAL:</b> {row['MATERIAL']}<br>"
+                            f"Already registered for <b>PMTO CODE:</b> {other_pmto.first().pmto_code}"
+                        )
+                    })
+
+            # Agora, faz o import normal (update_or_create)
+            for _, row in df.iterrows():
+                PMTOBase.objects.update_or_create(
+                    pmto_code=row['PMTOCODE'],
+                    defaults={
+                        'description': row['DESCRITIVO'],
+                        'material': row['MATERIAL'],
+                        'qty': row['QTY'],
+                        'weight': row['WEIGHT'],
+                        'unit': row['unit']
+                    }
+                )
+
+            return JsonResponse({'status': 'ok'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'invalid', 'message': 'No file uploaded'})
+
+@login_required
+def export_pmto_excel(request):
+    # CAPTURA OS FILTROS ENVIADOS PELO FRONT
+    pmto_code = request.GET.get('pmto_code', '')
+    description = request.GET.get('description', '')
+    material = request.GET.get('material', '')
+    global_search = request.GET.get('search', '')
+
+    # INICIA A QUERY
+    qs = PMTOBase.objects.all()
+
+    # FILTROS POR CAMPO INDIVIDUAL
+    if pmto_code:
+        qs = qs.filter(pmto_code__icontains=pmto_code)
+    if description:
+        qs = qs.filter(description__icontains=description)
+    if material:
+        qs = qs.filter(material__icontains=material)
+
+    # FILTRO GLOBAL (BUSCA EM VÁRIOS CAMPOS)
+    if global_search:
+        qs = qs.filter(
+            Q(pmto_code__icontains=global_search) |
+            Q(description__icontains=global_search) |
+            Q(material__icontains=global_search) |
+            Q(unit__icontains=global_search)
+        )
+
+    # MONTA O DATAFRAME COM OS CAMPOS QUE QUER EXPORTAR
+    data = qs.values(
+        'pmto_code',
+        'description',
+        'material',
+        'qty',
+        'weight',
+        'unit'
+    )
+
+    df = pd.DataFrame(list(data))
+
+    # FORMATAÇÃO NUMÉRICA: duas casas, vírgula
+    for col in ['qty', 'weight']:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: '{:.2f}'.format(x).replace('.', ',') if pd.notnull(x) else '')
+
+    # GERA O EXCEL PARA DOWNLOAD
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename=pmto_base_export.xlsx'
+    df.to_excel(response, index=False)
+    return response
+
+# --------- AREA DE MATERIAL REQUISITION --------------- #
+
+def mr_list(request):
+    mr_items = MRBase.objects.all()
+    return render(request, 'sistema/materialRequest/mr_list.html', {'mr_items': mr_items})
+
+@csrf_exempt
+def import_mr(request):
+    if request.method == 'POST' and request.FILES.get('file'):
+        try:
+            file = request.FILES['file']
+            df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
+            mr_rev_set = set(zip(df['MR_NUMBER'], df['REV']))
+
+            # Verifica se é preview ou overwrite:
+            force = request.POST.get('force_overwrite') == 'true'
+
+            # Verifica duplicidade
+            existentes = [
+                (mr, rev) for (mr, rev) in mr_rev_set
+                if MRBase.objects.filter(mr_number=mr, rev=rev).exists()
+            ]
+
+            if existentes and not force:
+                # Retorna para o frontend a lista de MR+REV que já existem
+                return JsonResponse({'status': 'need_confirm', 'mr_rev': existentes})
+
+            # Agora pode apagar e inserir
+            for mr_number, rev in mr_rev_set:
+                MRBase.objects.filter(mr_number=mr_number, rev=rev).delete()
+
+            for _, row in df.iterrows():
+                MRBase.objects.create(
+                    mr_number=row['MR_NUMBER'],
+                    pmto_code=row['PMTOCODE'],
+                    type_items=row['TYPE ITEMS'],
+                    basic_material=row['BASIC MATERIAL'],
+                    description=row['DESCRIPTION'],
+                    nps1=row['NPS 1'],
+                    length_ft_inch=row["LENGTH (FT' INCH\")"],
+                    thk_mm=row['THK (mm)'],
+                    pid=row['P&ID'],
+                    line_number=row['LINE Nº'],
+                    qty=row['QTY'],
+                    unit=row['UNIT'],
+                    design_pressure_bar=row['DESIGN PRESSURE (Bar)'],
+                    design_temperature_c=row['DESIGN TEMPERATURE (ºC)'],
+                    service=row['SERVICE'],
+                    spec=row['SPEC'],
+                    proposer_sap_code=row['PROPOSER CODE (SAP CODE)'],
+                    rev=row['REV'],
+                    notes=row.get('NOTES', '')
+                )
+            return JsonResponse({'status': 'ok'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'invalid', 'message': 'No file uploaded'})
+
+@login_required
+def export_mr_excel(request):
+    mr_number = request.GET.get('mr_number', '')
+    pmto_code = request.GET.get('pmto_code', '')
+    basic_material = request.GET.get('basic_material', '')
+    global_search = request.GET.get('search', '')
+
+    qs = MRBase.objects.all()
+
+    if mr_number:
+        qs = qs.filter(mr_number__icontains=mr_number)
+    if pmto_code:
+        qs = qs.filter(pmto_code__icontains=pmto_code)
+    if basic_material:
+        qs = qs.filter(basic_material__icontains=basic_material)
+
+    if global_search:
+        qs = qs.filter(
+            Q(mr_number__icontains=global_search) |
+            Q(pmto_code__icontains=global_search) |
+            Q(basic_material__icontains=global_search) |
+            Q(description__icontains=global_search)
+        )
+
+    data = qs.values(
+        'mr_number', 'pmto_code', 'type_items', 'basic_material', 'description',
+        'nps1', 'length_ft_inch', 'thk_mm', 'pid', 'line_number',
+        'qty', 'unit', 'design_pressure_bar', 'design_temperature_c',
+        'service', 'spec', 'proposer_sap_code', 'rev', 'notes'
+    )
+
+    df = pd.DataFrame(list(data))
+    if 'qty' in df.columns:
+        df['qty'] = df['qty'].apply(lambda x: '{:.2f}'.format(x).replace('.', ',') if pd.notnull(x) else '')
+
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename=mr_base_export.xlsx'
+    df.to_excel(response, index=False)
+    return response
+
+
+# --------- AREA DE PROCUREMENT BASE --------------- #
+
+def procurement_list(request):
+    procurement_items = ProcurementBase.objects.all()
+    return render(request, 'sistema/ProcurementBase/procurement_list.html', {'procurement_items': procurement_items})
+
+@csrf_exempt
+def import_procurement(request):
+    if request.method == 'POST' and request.FILES.get('file'):
+        try:
+            file = request.FILES['file']
+            df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
+            for _, row in df.iterrows():
+                ProcurementBase.objects.update_or_create(
+                    po_number=row['PO NUMBER'],
+                    po_issue_date=row['PO ISSUE DATE'],
+                    mr_number=row['MR NUMBER'],
+                    latest_rev=row['LATEST REV.'],
+                    mto_item_no=row['MTO ITEM NO'],
+                    pmto_code=row['PMTOCODE'],
+                    type_items=row['TYPE ITEMS'],
+                    basic_material=row['BASIC MATERIAL'],
+                    description=row['DESCRIPTION'],
+                    nps1=row.get('NPS 1', ''),
+                    nps2=row.get('NPS 2', ''),
+                    sch1=row.get('SCH 1', ''),
+                    sch2=row.get('SCH 2', ''),
+                    unit=row['UNIT'],
+                    qty_mr=row['QTY_MR'],
+                    qty_mr_unit=row['QTY_MR Unit'],
+                    qty_purchased=row['QTY PURCHASED'],
+                    qty_purchased_unit=row['QTY PURCHASED Unit'],
+                    delivery_term=row['DELIVERY TERM'],
+                    delivery_time=row['DELIVERY TIME'],
+                    supplier_vendor=row['SUPPLIER/VENDOR'],
+                    status_remarks=row.get('STATUS / REMARKS', ''),
+                )
+            return JsonResponse({'status': 'ok'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'invalid', 'message': 'No file uploaded'})
+
+@login_required
+def export_procurement_excel(request):
+    mr_number = request.GET.get('mr_number', '')
+    pmto_code = request.GET.get('pmto_code', '')
+    basic_material = request.GET.get('basic_material', '')
+    global_search = request.GET.get('search', '')
+
+    qs = ProcurementBase.objects.all()
+    if mr_number:
+        qs = qs.filter(mr_number__icontains=mr_number)
+    if pmto_code:
+        qs = qs.filter(pmto_code__icontains=pmto_code)
+    if basic_material:
+        qs = qs.filter(basic_material__icontains=basic_material)
+    if global_search:
+        qs = qs.filter(
+            Q(mr_number__icontains=global_search) |
+            Q(pmto_code__icontains=global_search) |
+            Q(basic_material__icontains=global_search) |
+            Q(description__icontains=global_search)
+        )
+
+    data = qs.values(
+        'mr_number',
+        'latest_rev',
+        'mto_item_no',
+        'pmto_code',
+        'type_items',
+        'basic_material',
+        'description',
+        'nps1',
+        'nps2',
+        'sch1',
+        'sch2',
+        'unit',
+        'qty_mr',
+        'qty_mr_unit',
+        'qty_purchased',
+        'qty_purchased_unit',
+        'delivery_term',
+        'delivery_time',
+        'po_issue_date',
+        'po_number',
+        'supplier_vendor',
+        'status_remarks'
+    )
+
+    df = pd.DataFrame(list(data))
+
+    # Formatação de QTYs (duas casas, vírgula)
+    for col in ['qty_mr', 'qty_purchased']:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: '{:.2f}'.format(x).replace('.', ',') if pd.notnull(x) else '')
+
+    # Formatação de data para exportação
+    if 'po_issue_date' in df.columns:
+        df['po_issue_date'] = pd.to_datetime(df['po_issue_date']).dt.strftime('%Y-%m-%d')
+
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename=procurement_base_export.xlsx'
+    df.to_excel(response, index=False)
+    return response

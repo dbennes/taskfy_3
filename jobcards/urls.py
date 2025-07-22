@@ -9,6 +9,7 @@ from .views import (
     SystemListView, 
     jobcard_progress, 
     create_impediment,
+    
 
 )
 
@@ -64,7 +65,9 @@ urlpatterns = [
     
     #EXPORTAÇÕES
     path('export_materials_excel/', views.export_materials_excel, name='export_materials_excel'),
-    
+    path('manpower/export/', views.export_manpower_excel, name='export_manpower_excel'),
+    path('toolsbase/export/', views.export_toolsbase_excel, name='export_toolsbase_excel'),
+
     #REPORTS
     path('jobcards/tam/', views.jobcards_tam, name='jobcards_tam'),
 
@@ -79,6 +82,19 @@ urlpatterns = [
     path('impediments/update/', views.impediment_update, name='impediment_update'),
     path('impediments/delete/', views.impediment_delete, name='impediment_delete'),
     
-    #TASKS
+    # PMTO Base
+    path('engineering/pmto/', views.pmto_list, name='pmto_list'),
+    path('engineering/pmto/import/', views.import_pmto, name='import_pmto'),
+    path('engineering/pmto/export/', views.export_pmto_excel, name='export_pmto_excel'),
+    
+    # MR Base
+    path('materialRequest/', views.mr_list, name='mr_list'),
+    path('mr/import/', views.import_mr, name='import_mr'),
+    path('mr/export/', views.export_mr_excel, name='export_mr_excel'),
+    
+    # PROCUREMENT Base
+    path('procurement/', views.procurement_list, name='procurement_list'),
+    path('procurement/import/', views.import_procurement, name='import_procurement'),
+    path('procurement/export/', views.export_procurement_excel, name='export_procurement_excel'),
    
 ]
