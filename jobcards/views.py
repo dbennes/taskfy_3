@@ -74,7 +74,7 @@ def login(request):
 def dashboard(request):
     # Summary cards
     total_jobcards = JobCard.objects.count()
-    checked_count = JobCard.objects.filter(jobcard_status='checked').count()
+    checked_count = JobCard.objects.exclude(jobcard_status='NO CHECKED').count()
     not_checked_count = total_jobcards - checked_count
 
     # JobCards with Material (jobcards únicos presentes na base de material)
