@@ -314,3 +314,64 @@ class ProcurementBase(models.Model):
 
     def __str__(self):
         return f"{self.po_number} – {self.pmto_code}"
+    
+        
+# E-CLIC
+
+
+class DocumentoControle(models.Model):
+    codigo = models.CharField(max_length=100)
+    codigo_secundario = models.CharField(max_length=100, blank=True, null=True)
+    titulo = models.CharField(max_length=255, blank=True, null=True)
+    disciplina = models.CharField(max_length=100, blank=True, null=True)
+    revisao = models.CharField(max_length=20, blank=True, null=True)
+    versao = models.CharField(max_length=20, blank=True, null=True)
+    nome_projeto = models.CharField(max_length=255, blank=True, null=True)
+    diretorio = models.CharField(max_length=255, blank=True, null=True)
+    formato_documento = models.CharField(max_length=100, blank=True, null=True)
+    a1_eq = models.CharField(max_length=50, blank=True, null=True)
+    status_documento = models.CharField(max_length=100, blank=True, null=True)
+    inicio_fluxo = models.CharField(max_length=50, blank=True, null=True)
+    fim_fluxo = models.CharField(max_length=50, blank=True, null=True)
+    responsavel_atividade = models.CharField(max_length=100, blank=True, null=True)
+    status_emissao = models.CharField(max_length=100, blank=True, null=True)
+    avanco_fisico = models.CharField(max_length=20, blank=True, null=True)
+    data_planejada = models.CharField(max_length=50, blank=True, null=True)
+    nome_arquivo = models.CharField(max_length=255, blank=True, null=True)
+    tamanho_arquivo = models.CharField(max_length=50, blank=True, null=True)
+    data_importacao = models.CharField(max_length=50, blank=True, null=True)
+    folhas = models.CharField(max_length=10, blank=True, null=True)
+    data_ultima_emissao = models.CharField(max_length=50, blank=True, null=True)
+    revisao_ultima_emissao = models.CharField(max_length=20, blank=True, null=True)
+    finalidade_ultima_emissao = models.CharField(max_length=100, blank=True, null=True)
+    data_recebimento_markup = models.CharField(max_length=50, blank=True, null=True)
+    revisao_recebimento_markup = models.CharField(max_length=20, blank=True, null=True)
+    tipo_markup = models.CharField(max_length=100, blank=True, null=True)
+    data_planejada_ultimo_markup = models.CharField(max_length=50, blank=True, null=True)
+    data_recebimento_as_built = models.CharField(max_length=50, blank=True, null=True)
+    data_atendimento_as_built = models.CharField(max_length=50, blank=True, null=True)
+    controle_copias = models.CharField(max_length=50, blank=True, null=True)
+    finalidade_proxima_emissao = models.CharField(max_length=100, blank=True, null=True)
+    plan_ifr = models.CharField(max_length=50, blank=True, null=True)
+    plan_ifa = models.CharField(max_length=50, blank=True, null=True)
+    plan_afc = models.CharField(max_length=50, blank=True, null=True)
+    tr_received = models.CharField(max_length=50, blank=True, null=True)
+    tr_rev = models.CharField(max_length=50, blank=True, null=True)
+    tr_date = models.CharField(max_length=50, blank=True, null=True)
+    issued_assai = models.CharField(max_length=50, blank=True, null=True)
+    assai_date = models.CharField(max_length=50, blank=True, null=True)
+    recvd_assai = models.CharField(max_length=50, blank=True, null=True)
+    recvd_date = models.CharField(max_length=50, blank=True, null=True)
+    code_11 = models.CharField(max_length=50, blank=True, null=True)
+    tr_issued = models.CharField(max_length=50, blank=True, null=True)
+    issued_date = models.CharField(max_length=50, blank=True, null=True)
+    ivb_required = models.CharField(max_length=10, blank=True, null=True)
+    ivb_priority = models.CharField(max_length=10, blank=True, null=True)
+
+    # Se preferir pode adicionar "auto_now=True" em data_importacao para timestamp real de importação
+
+    class Meta:
+        unique_together = ['codigo', 'nome_projeto']  # Pode ajustar para garantir unicidade
+
+    def __str__(self):
+        return f"{self.codigo} - Rev {self.revisao}"

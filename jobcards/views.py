@@ -70,7 +70,7 @@ def login(request):
     return render(request, 'login.html')
 
 # - PARTE DO DASHBOARD
-@login_required(login_url='dashboard')  # EXIGE O USUARIO A ESTAR LOGADO
+@login_required(login_url='login')  # EXIGE O USUARIO A ESTAR LOGADO
 def dashboard(request):
     # Summary cards
     total_jobcards = JobCard.objects.count()
@@ -139,7 +139,12 @@ def dashboard(request):
     finish_1900_count = JobCard.objects.exclude(finish=date(1900, 1, 1)).count()
     system_to_be_verified_count = JobCard.objects.exclude(system__iexact='to be verified').count()
     subsystem_to_be_verified_count = JobCard.objects.exclude(subsystem__iexact='to be verified').count()
-
+    preliminary_checked_count = JobCard.objects.filter(jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
+    planning_checked_count = JobCard.objects.filter(jobcard_status='PLANNING JOBCARD CHECKED').count()
+    offshore_checked_count = JobCard.objects.filter(jobcard_status='OFFSHORE FIELD JOBCARD CHECKED').count()
+    approved_to_execute_count = JobCard.objects.filter(jobcard_status='APPROVED TO EXECUTE').count()
+    finalized_count = JobCard.objects.filter(jobcard_status='JOBCARD FINALIZED').count()
+    
     context = {
         'total_jobcards': total_jobcards,
         'not_checked_count': not_checked_count,
@@ -160,10 +165,15 @@ def dashboard(request):
         'finish_1900_count': finish_1900_count,
         'system_to_be_verified_count': system_to_be_verified_count,
         'subsystem_to_be_verified_count': subsystem_to_be_verified_count,
+        'preliminary_checked_count': preliminary_checked_count,
+        'planning_checked_count': planning_checked_count,
+        'offshore_checked_count': offshore_checked_count,
+        'approved_to_execute_count': approved_to_execute_count,
+        'finalized_count': finalized_count,
     }
     return render(request, 'sistema/dashboard.html', context)
 
-@login_required(login_url='jobcards')
+@login_required(login_url='login')
 def jobcards_list(request):  
     qs = JobCard.objects.all()
 
@@ -218,16 +228,35 @@ def jobcards_list(request):
     return render(request, 'sistema/jobcards.html', context)
 
 # - PARTE DO DASHBOARD
-@login_required(login_url='create_jobcard') # EXIGE O USUARIO A ESTAR LOGADO
+@login_required(login_url='login') # EXIGE O USUARIO A ESTAR LOGADO
 def create_jobcard(request, jobcard_id=None):
     return render(request, 'sistema/create_jobcard.html')
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.db import transaction
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
+import re
+from collections import defaultdict
+from .models import (
+    JobCard, TaskBase, ManpowerBase, AllocatedManpower, AllocatedTask,
+    MaterialBase, AllocatedMaterial, ToolsBase, AllocatedTool,
+    EngineeringBase, AllocatedEngineering
+)
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.db import transaction
+from django.db.models import Sum
+from django.contrib.auth.decorators import login_required
+from collections import defaultdict
+import re
+from .models import JobCard, TaskBase, ManpowerBase, AllocatedManpower, AllocatedTask, MaterialBase, AllocatedMaterial, ToolsBase, AllocatedTool, EngineeringBase, AllocatedEngineering
 
 @login_required(login_url='login')
 def edit_jobcard(request, jobcard_id=None):
     job = get_object_or_404(JobCard, job_card_number=jobcard_id) if jobcard_id else None
 
     if request.method == 'POST' and job:
-        # Atualiza os campos principais da JobCard
         job.jobcard_status = request.POST.get('JOBCARD_STATUS', job.jobcard_status)
         job.discipline = request.POST.get('DISCIPLINE', job.discipline)
         job.discipline_code = request.POST.get('DISCIPLINE_CODE', job.discipline_code)
@@ -252,47 +281,47 @@ def edit_jobcard(request, jobcard_id=None):
         job.date_approved = request.POST.get('DATE_APPROVED') or None
         job.hot_work_required = request.POST.get('HOT_WORK_REQUIRED', job.hot_work_required)
 
-        # Incrementa a revisão
         if job.rev and job.rev.isdigit():
             job.rev = str(int(job.rev) + 1)
         else:
             job.rev = '1'
 
-        # Salva quem alterou
         job.last_modified_by = request.user.username
         job.save()
 
         def safe_float(s):
-            return float(s.replace('%', '')) if s and s.strip() else 0.0
+            return float(s.replace('%', '').replace(',', '.')) if s and s.strip() else 0.0
 
-        mp_pattern = re.compile(r'^mp-(\d+)-(\d+)-qty$')
+        mp_pattern = re.compile(r'^mp-(\d+)-(\d+)-qty$')  # task_order, manpower_id
 
         with transaction.atomic():
             AllocatedManpower.objects.filter(jobcard_number=job.job_card_number).delete()
             AllocatedTask.objects.filter(jobcard_number=job.job_card_number).delete()
             AllocatedMaterial.objects.filter(jobcard_number=job.job_card_number).delete()
+            AllocatedTool.objects.filter(jobcard_number=job.job_card_number).delete()
+            AllocatedEngineering.objects.filter(jobcard_number=job.job_card_number).delete()
 
-            task_list = TaskBase.objects.filter(working_code=job.working_code).order_by('item')
-            task_index_map = {str(idx): task.item for idx, task in enumerate(task_list, start=1)}
+            task_list = TaskBase.objects.filter(working_code=job.working_code).order_by('order')
+            task_orders = [str(task.order) for task in task_list]  # Lista com todos os task.order (string)
 
             not_applicable_tasks = set()
             for key in request.POST.keys():
                 if key.startswith('task-not-applicable-'):
-                    task_index = int(key.replace('task-not-applicable-', ''))
-                    not_applicable_tasks.add(task_index)
+                    task_order = key.replace('task-not-applicable-', '')
+                    not_applicable_tasks.add(task_order)
 
-            # Salvar manpowers
+            # Salva manpowers
             for key, val in request.POST.items():
                 match = mp_pattern.match(key)
                 if not match:
                     continue
 
-                task_idx, mp_id = match.group(1), int(match.group(2))
-                if int(task_idx) in not_applicable_tasks:
+                task_order, mp_id = match.group(1), int(match.group(2))
+                if task_order in not_applicable_tasks:
                     continue
 
                 qty = safe_float(val)
-                hh_key = f"mp-{task_idx}-{mp_id}-hh"
+                hh_key = f"mp-{task_order}-{mp_id}-hh"
                 hours = safe_float(request.POST.get(hh_key, ''))
 
                 if qty == 0.0 and hours == 0.0:
@@ -306,33 +335,33 @@ def edit_jobcard(request, jobcard_id=None):
                     direct_labor=mp.direct_labor,
                     qty=qty,
                     hours=hours,
-                    task_order=task_index_map.get(task_idx, int(task_idx)),
+                    task_order=int(task_order),  # task_order é o próprio order da task
                 )
 
-            # Salvar tarefas alocadas
-            for idx, task in enumerate(task_list, start=1):
-                max_hh = request.POST.get(f"hh-max-{idx}", '0')
-                total_hh = request.POST.get(f"hh-total-{idx}", '0')
-                percent = request.POST.get(f"hh-percent-{idx}", '0')
+            # Salva tarefas alocadas
+            for task in task_list:
+                max_hh = request.POST.get(f"hh-max-{task.order}", '0')
+                total_hh = request.POST.get(f"hh-total-{task.order}", '0')
+                percent = request.POST.get(f"hh-percent-{task.order}", '0')
 
-                if request.POST.get(f"task-not-applicable-{idx}") == 'on':
-                    continue
+                not_applicable = request.POST.get(f"task-not-applicable-{task.order}") == 'on'
 
                 AllocatedTask.objects.create(
                     jobcard_number=job.job_card_number,
-                    task_order=task.item,
+                    task_order=task.order,
                     description=task.typical_task,
                     max_hours=safe_float(max_hh),
                     total_hours=safe_float(total_hh),
                     percent=safe_float(percent),
+                    not_applicable=not_applicable,
                 )
 
-            # Salvar materiais alocados
+            # Salva materiais alocados
             project_codes = request.POST.getlist('project_code[]')
             descriptions = request.POST.getlist('description[]')
             jobcard_required_qtys = request.POST.getlist('jobcard_required_qty[]')
             comments = request.POST.getlist('comments[]')
-            nps1_list = request.POST.getlist('nps1[]')  # Captura o campo NPS1
+            nps1_list = request.POST.getlist('nps1[]')
 
             for code, desc, qty, comment, nps1 in zip(project_codes, descriptions, jobcard_required_qtys, comments, nps1_list):
                 AllocatedMaterial.objects.create(
@@ -343,11 +372,10 @@ def edit_jobcard(request, jobcard_id=None):
                     description=desc,
                     qty=float(qty.replace(',', '.')) if qty else 0.0,
                     comments=comment,
-                    nps1=nps1  # Aqui você passa o valor correto
+                    nps1=nps1
                 )
 
-
-            # Salvar ferramentas alocadas
+            # Salva ferramentas alocadas
             tool_items = request.POST.getlist('tool_item[]')
             tool_disciplines = request.POST.getlist('tool_discipline[]')
             tool_working_codes = request.POST.getlist('tool_working_code[]')
@@ -355,8 +383,6 @@ def edit_jobcard(request, jobcard_id=None):
             tool_qty_direct_labors = request.POST.getlist('tool_qty_direct_labor[]')
             tool_special_toolings = request.POST.getlist('tool_special_tooling[]')
             tool_qtys = request.POST.getlist('tool_qty[]')
-
-            AllocatedTool.objects.filter(jobcard_number=job.job_card_number).delete()
 
             for item, discipline, working_code, direct_labor, qty_dl, special_tooling, qty in zip(
                 tool_items, tool_disciplines, tool_working_codes, tool_direct_labors,
@@ -372,8 +398,7 @@ def edit_jobcard(request, jobcard_id=None):
                     qty=float(qty.replace(',', '.')) if qty else 0.0
                 )
 
-            AllocatedEngineering.objects.filter(jobcard_number=job.job_card_number).delete()
-
+            # Salva documentos de engenharia
             eng_disciplines = request.POST.getlist('eng_discipline[]')
             eng_documents = request.POST.getlist('eng_document[]')
             eng_tags = request.POST.getlist('eng_tag[]')
@@ -390,20 +415,16 @@ def edit_jobcard(request, jobcard_id=None):
                     status=status,
                 )
 
-        # Calcula o TOTAL DURATION (hs)
         total_duration_hs = AllocatedTask.objects.filter(jobcard_number=job.job_card_number).aggregate(total=Sum('max_hours'))['total'] or 0
-
-        # Calcula o TOTAL MAN-HOURS
         total_man_hours = AllocatedTask.objects.filter(jobcard_number=job.job_card_number).aggregate(total=Sum('total_hours'))['total'] or 0
 
-        # Salva na JobCard
         job.total_duration_hs = f'{total_duration_hs:.2f}'
         job.total_man_hours = f'{total_man_hours:.2f}'
         job.save(update_fields=['total_duration_hs', 'total_man_hours'])
 
         return redirect('generate_pdf', jobcard_id=job.job_card_number)
 
-    # GET: Prepara contexto
+    # --- GET ---
     disciplinas = JobCard.objects.values_list('discipline', flat=True).distinct().order_by('discipline')
     discipline_codes = JobCard.objects.values_list('discipline_code', flat=True).distinct().order_by('discipline_code')
     locations = JobCard.objects.values_list('location', flat=True).distinct().order_by('location')
@@ -413,7 +434,7 @@ def edit_jobcard(request, jobcard_id=None):
     subsystems = JobCard.objects.values_list('subsystem', flat=True).distinct().order_by('subsystem')
     workpacks = JobCard.objects.values_list('workpack_number', flat=True).distinct().order_by('workpack_number')
 
-    task_list = TaskBase.objects.filter(working_code=job.working_code) if job else []
+    task_list = TaskBase.objects.filter(working_code=job.working_code).order_by('order') if job else []
     manpowers = ManpowerBase.objects.filter(working_code__in=[t.working_code for t in task_list])
     manpowers_dict = defaultdict(list)
     for mp in manpowers:
@@ -422,6 +443,23 @@ def edit_jobcard(request, jobcard_id=None):
     materials_list = MaterialBase.objects.filter(job_card_number=job.job_card_number) if job else []
     tools_list = ToolsBase.objects.filter(working_code=job.working_code) if job else []
     engineering_list = EngineeringBase.objects.filter(jobcard_number=job.job_card_number) if job else []
+
+    all_manpowers = ManpowerBase.objects.all().order_by('direct_labor', 'id')
+    unique_manpowers = {}
+    for mp in all_manpowers:
+        if mp.direct_labor not in unique_manpowers:
+            unique_manpowers[mp.direct_labor] = mp
+
+    allocated_tasks_qs = AllocatedTask.objects.filter(jobcard_number=job.job_card_number)
+    allocated_tasks_dict = {t.task_order: t for t in allocated_tasks_qs}
+
+    allocated_manpowers_qs = AllocatedManpower.objects.filter(jobcard_number=job.job_card_number)
+    allocated_manpowers_dict = defaultdict(list)
+    for mp in allocated_manpowers_qs:
+        allocated_manpowers_dict[mp.task_order].append(mp)
+
+    def manpower_list_for_task(task):
+        return allocated_manpowers_dict.get(task.order) or manpowers_dict.get(task.working_code, [])
 
     context = {
         'job': job,
@@ -439,6 +477,10 @@ def edit_jobcard(request, jobcard_id=None):
         'materials_list': materials_list,
         'tools_list': tools_list,
         'engineering_list': engineering_list,
+        'unique_manpowers': unique_manpowers.values(),
+        'allocated_tasks_dict': allocated_tasks_dict,
+        'allocated_manpowers_dict': allocated_manpowers_dict,
+        'manpower_list_for_task': manpower_list_for_task,
     }
 
     return render(request, 'sistema/create_jobcard.html', context)
@@ -504,8 +546,8 @@ def generate_pdf(request, jobcard_id):
 
     barcode_url = f'file:///{barcode_path.replace("\\", "/")}'
 
-    if job.jobcard_status != 'checked':
-        job.jobcard_status = 'checked'
+    if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
+        job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
         job.save(update_fields=['jobcard_status'])
 
     allocated_manpowers = AllocatedManpower.objects.filter(jobcard_number=jobcard_id)
