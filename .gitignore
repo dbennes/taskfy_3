@@ -22,4 +22,5 @@ jobcards/migrations
 .web.config
 .wfastcgi.log
 .settings.py
+taskfy/settings.py
 static/barcodes/
