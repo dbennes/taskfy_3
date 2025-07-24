@@ -5,7 +5,7 @@ from datetime import datetime
 
 async def main():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=True)  # Use headless=True para rodar sem janela
         context = await browser.new_context(accept_downloads=True)
         page = await context.new_page()
         await page.goto("https://westpaq.e-clic.net/")
@@ -68,8 +68,7 @@ async def main():
         shutil.copy2(caminho_arquivo_principal, caminho_arquivo_backup)
         print(f"Backup salvo em: {caminho_arquivo_backup}")
 
-        # Mantém navegador aberto para debug
-        while True:
-            await asyncio.sleep(1)
+        # Encerra o navegador
+        await browser.close()
 
 asyncio.run(main())
