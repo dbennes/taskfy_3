@@ -180,7 +180,14 @@
                             <tr>
                                 <td style="text-align: center; border: 1px solid black;">{{ task.task_order }}</td>
                                 <td style="border: 1px solid black;">{{ task.description }}</td>
-                                <td style="text-align: center; border: 1px solid black;">{% if task.completed %}✔{% endif %}</td>
+                                <td style="text-align: center; border: 1px solid black;">
+                                    {% if task.completed %}
+                                        ✔
+                                    {% elif task.percent == 0 %}
+                                        <strong>N/A</strong>
+                                    {% endif %}
+                                </td>
+
                                 <td style="text-align: center; border: 1px solid black;">{{ task.percent }}%</td>
                             </tr>
                             {% empty %}

@@ -835,8 +835,6 @@ def import_materials(request):
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
-
-
 @login_required
 def import_jobcard(request):
     if request.method == "POST":
