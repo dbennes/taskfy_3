@@ -40,6 +40,25 @@ from datetime import date
 import io
 from jobcards.models import DocumentoRevisaoAlterada, DocumentoControle
 
+from django.shortcuts import render, get_object_or_404, redirect
+from django.db import transaction
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
+import re
+from collections import defaultdict
+from .models import (
+    JobCard, TaskBase, ManpowerBase, AllocatedManpower, AllocatedTask,
+    MaterialBase, AllocatedMaterial, ToolsBase, AllocatedTool,
+    EngineeringBase, AllocatedEngineering
+)
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.db import transaction
+from django.db.models import Sum
+from django.contrib.auth.decorators import login_required
+from collections import defaultdict
+import re
+from .models import JobCard, TaskBase, ManpowerBase, AllocatedManpower, AllocatedTask, MaterialBase, AllocatedMaterial, ToolsBase, AllocatedTool, EngineeringBase, AllocatedEngineering
 
 
 
@@ -255,25 +274,6 @@ def jobcards_list(request):
 def create_jobcard(request, jobcard_id=None):
     return render(request, 'sistema/create_jobcard.html')
 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.db import transaction
-from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
-import re
-from collections import defaultdict
-from .models import (
-    JobCard, TaskBase, ManpowerBase, AllocatedManpower, AllocatedTask,
-    MaterialBase, AllocatedMaterial, ToolsBase, AllocatedTool,
-    EngineeringBase, AllocatedEngineering
-)
-
-from django.shortcuts import render, get_object_or_404, redirect
-from django.db import transaction
-from django.db.models import Sum
-from django.contrib.auth.decorators import login_required
-from collections import defaultdict
-import re
-from .models import JobCard, TaskBase, ManpowerBase, AllocatedManpower, AllocatedTask, MaterialBase, AllocatedMaterial, ToolsBase, AllocatedTool, EngineeringBase, AllocatedEngineering
 
 @login_required(login_url='login')
 def edit_jobcard(request, jobcard_id=None):
@@ -303,11 +303,6 @@ def edit_jobcard(request, jobcard_id=None):
         job.approved_br = request.POST.get('APPROVED_BR', job.approved_br)
         job.date_approved = request.POST.get('DATE_APPROVED') or None
         job.hot_work_required = request.POST.get('HOT_WORK_REQUIRED', job.hot_work_required)
-
-        if job.rev and job.rev.isdigit():
-            job.rev = str(int(job.rev) + 1)
-        else:
-            job.rev = '1'
 
         job.last_modified_by = request.user.username
         job.save()
