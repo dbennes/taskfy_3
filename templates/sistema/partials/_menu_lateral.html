@@ -199,14 +199,25 @@
                     </li>
 
                     <div class="d-none d-sm-block topbar-divider"></div>
+                    <ul class="navbar-nav flex-nowrap ms-auto">
+                        <!-- Sininho de notificações de revisões -->
+                        <li class="nav-item mx-2" id="li-revisao-alerta">
+                            <a class="nav-link position-relative" href="{% url 'dashboard' %}#recent-revisions" title="Recent Document Revisions">
+                                <i class="fas fa-bell" style="font-size: 20px; color:#4953a7;"></i>
+                                <span id="contador-revisoes" class="position-absolute  translate-middle badge rounded-pill bg-danger" style="font-size:10px; display:none;">
+                                    0
+                                </span>
+                            </a>
+                        </li>
 
-                    <!-- Informações do usuário -->
-                    <li class="nav-item dropdown no-arrow">
-                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
-                            <span class="d-none d-lg-inline me-2 text-gray-600 small">{{user.username}}</span>
-                            <i class="fas fa-user-circle" style="font-size:18px"></i>
-                        </a>
-                    </li>
+                        <!-- Usuário -->
+                        <li class="nav-item dropdown no-arrow">
+                            <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
+                                <span class="d-none d-lg-inline me-2 text-gray-600 small">{{user.username}}</span>
+                                <i class="fas fa-user-circle" style="font-size:18px"></i>
+                            </a>
+                        </li>
+                    </ul>
                 </ul>
             </div>
         </nav>
@@ -310,4 +321,6 @@
         border-radius: 0;
     }
 }
+
+
 </style>

@@ -228,56 +228,92 @@ body, .container-fluid {
 
 </style>
 
+
+
+<style>
+#datatablesRevisoes th, #datatablesRevisoes td {
+    font-size: 0.97em;
+    padding: 5px 8px;
+    vertical-align: middle;
+}
+@media (max-width: 991px) {
+    .card.mb-4 { max-width: 98vw; }
+}
+</style>
+
 <div class="container-fluid ">
 
 <div class="row g-2 mb-2">
-  <div class="col-6 col-md-4 col-lg-2">
+  <!-- Total Jobcards (sem percentual nem ícone azul) -->
+  <div class="col">
     <div class="dashboard-card dashboard-mini">
       <span class="metric">{{ total_jobcards }}</span>
-      <span class="desc" style="font-size: 12px">Total</span>
+      <span class="desc" style="font-size: 12px">Total Jobcards</span>
       <i class="fas fa-layer-group card-icon"></i>
     </div>
   </div>
-  <div class="col-6 col-md-4 col-lg-2">
-    <div class="dashboard-card dashboard-mini">
-      <span class="metric">{{ not_checked_count }}</span>
-      <span class="desc" style="font-size: 12px">Not Checked</span>
-      <i class="fas fa-hourglass-half card-icon"></i>
-    </div>
-  </div>
-  <div class="col-6 col-md-4 col-lg-2">
-    <div class="dashboard-card dashboard-mini selected">
-      <span class="metric">{{ preliminary_checked_count }} <span style="font-size: 12px; color: #a7a7a7"> / {{ total_jobcards }}</span></span>
-      <span class="desc" style="font-size: 12px">Preliminary</span>
+
+  <!-- Preliminary Jobcard Checked -->
+  <div class="col">
+    <div class="dashboard-card dashboard-mini selected" style="position:relative;">
+      <span class="metric">
+        {{ preliminary_checked_count }} 
+        <span style="font-size: 12px; color: #a7a7a7"> / {{ total_jobcards }}</span>
+      </span>
+      <span class="desc" style="font-size: 12px">Preliminary Jobcard Checked</span>
+      <span style="position:absolute; right:48px; top:18px; font-size: 13px; color: #79a7f7; font-weight: 600;">
+        {{ preliminary_percent }}%
+      </span>
       <i class="fas fa-search card-icon"></i>
     </div>
   </div>
-  <div class="col-6 col-md-4 col-lg-2">
-    <div class="dashboard-card dashboard-mini">
-      <span class="metric">{{ planning_checked_count }} <span style="font-size: 12px; color: #a7a7a7"> / {{ total_jobcards }}</span></span>
-      <span class="desc" style="font-size: 12px">Planning</span>
+
+  <!-- Planning Jobcard Checked -->
+  <div class="col">
+    <div class="dashboard-card dashboard-mini" style="position:relative;">
+      <span class="metric">
+        {{ planning_checked_count }} 
+        <span style="font-size: 12px; color: #a7a7a7"> / {{ total_jobcards }}</span>
+      </span>
+      <span class="desc" style="font-size: 12px">Planning Jobcard Checked</span>
+      <span style="position:absolute; right:48px; top:18px; font-size: 13px; color: #79a7f7; font-weight: 600;">
+        {{ planning_percent }}%
+      </span>
       <i class="fas fa-calendar-check card-icon"></i>
     </div>
   </div>
-  <div class="col-6 col-md-4 col-lg-2">
-    <div class="dashboard-card dashboard-mini">
-      <span class="metric">{{ offshore_checked_count }} <span style="font-size: 12px; color: #a7a7a7"> / {{ total_jobcards }}</span></span>
-      <span class="desc" style="font-size: 12px">Offshore</span>
+
+  <!-- Offshore Field Jobcard Checked -->
+  <div class="col">
+    <div class="dashboard-card dashboard-mini" style="position:relative;">
+      <span class="metric">
+        {{ offshore_checked_count }} 
+        <span style="font-size: 12px; color: #a7a7a7"> / {{ total_jobcards }}</span>
+      </span>
+      <span class="desc" style="font-size: 12px">Offshore Field Jobcard Checked</span>
+      <span style="position:absolute; right:48px; top:18px; font-size: 13px; color: #79a7f7; font-weight: 600;">
+        {{ offshore_percent }}%
+      </span>
       <i class="fas fa-anchor card-icon"></i>
     </div>
   </div>
-  <div class="col-6 col-md-4 col-lg-2">
-  <div class="dashboard-card dashboard-mini ">
-    <span class="metric">
-      {{ approved_to_execute_count }} 
-      <span style="font-size: 12px; color: #a7a7a7"> / {{ total_jobcards }}</span>
-    </span>
-    <span class="desc" style="font-size: 12px">Approved</span>
-    <i class="fas fa-thumbs-up card-icon"></i>
+
+  <!-- Approved Jobcard Checked -->
+  <div class="col">
+    <div class="dashboard-card dashboard-mini" style="position:relative;">
+      <span class="metric">
+        {{ approved_to_execute_count }} 
+        <span style="font-size: 12px; color: #a7a7a7"> / {{ total_jobcards }}</span>
+      </span>
+      <span class="desc" style="font-size: 12px">Approved Jobcard Checked</span>
+      <span style="position:absolute; right:48px; top:18px; font-size: 13px; color: #79a7f7; font-weight: 600;">
+        {{ approved_percent }}%
+      </span>
+      <i class="fas fa-thumbs-up card-icon"></i>
+    </div>
   </div>
 </div>
 
-</div>
 
 
 
@@ -330,71 +366,109 @@ body, .container-fluid {
 
 
 
+<div class="row gx-4">
+  <!-- COLUNA ESQUERDA -->
+  <div class="col-7">
+    <!-- Gráfico JobCards per Area -->
 
-
-  <!-- Main row: Graphs -->
-  <div class="row gx-4">
-    <!-- Gráfico: JobCards por Área -->
-    <div class="col-lg-7 mb-4">
-      <div class="dashboard-graph-card h-100">
-        <div class="chart-title mb-2">JobCards per Area</div>
-        <div style="position: relative; height:210px;">
-          <canvas id="areaBar"></canvas>
-        </div>
+    <div class="dashboard-graph-card  mb-4">
+      <div class="chart-title mb-2">JobCards per Area</div>
+      <div style="position: relative; height:210px;">
+        <canvas id="areaBar"></canvas>
       </div>
     </div>
-    <!-- Bar Chart: Today's Status (by Discipline, for example) -->
-    <div class="col-lg-5 mb-4">
-      <div class="dashboard-graph-card h-100">
-        <div class="chart-title mb-2">JobCards per Discipline</div>
-        <div style="position: relative; height:210px;">
-          <canvas id="totalBar"></canvas>
-        </div>
+
+    <!-- Gráfico JobCards per Discipline -->
+    <div class="dashboard-graph-card ">
+      <div class="chart-title mb-2">JobCards per Discipline</div>
+      <div style="position: relative; height:210px;">
+        <canvas id="totalBar"></canvas>
+      </div>
+      <div class="grafico-legenda " style="font-size:7px; display:flex; flex-wrap:wrap; gap:5px 5px;">
+        {% for code, name in discipline_legend %}
+          <span><b>{{ code }}</b> = {{ name }}</span>
+        {% endfor %}
       </div>
     </div>
   </div>
 
-  <!-- Alerts and Recent Activity Table -->
-  <div class="row gx-4">
-    <div class="col-lg-12 mb-4">
-      <div class="dashboard-graph-card h-100">
-        <div class="dashboard-section-title mb-1">Incomplete Data Alerts</div>
-        {% if alerta_count > 0 %}
-          <div class="modern-alert-badge" style="width:100%">
-            ⚠️ {{ alerta_count }} incomplete JobCard{{ alerta_count|pluralize:"s" }}
-          </div>
-          <table class="table table-sm modern-table mt-2">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>JobCard</th>
-                <th>Discipline</th>
-                <th>Prepared by</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for jc in jobcards_incompletos|slice:":7" %}
-              <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{% if not jc.job_card_number %}<span style="color:red;">⚠️</span>{% endif %}{{ jc.job_card_number|default:"—" }}</td>
-                <td>{% if not jc.discipline %}<span style="color:red;">⚠️</span>{% endif %}{{ jc.discipline|default:"—" }}</td>
-                <td>{% if not jc.prepared_by %}<span style="color:red;">⚠️</span>{% endif %}{{ jc.prepared_by|default:"—" }}</td>
-              </tr>
+  <!-- COLUNA DIREITA -->
+<div class="col-5">
+  <!-- Recent Document Revisions (tabela com DataTable) -->
+  <div class="card mb-4" style="width: 100%; height: 45%">
+    <div class="card-header py-2 px-3" style="font-size:1.08em; background:#f7f8fa; border-bottom:1px solid #ededed;">
+      <i class="fas fa-table me-1"></i> Recent Document Revisions
+    </div>
+    <div class="card-body" style="padding-bottom:12px;">
+      <div style="overflow-x:auto;">
+        <table id="datatablesRevisoes" class="datatable-table table table-sm table-hover modern-table" style="width:100%;">
+          <thead style="font-size:8px;">
+            <tr>
+              <th style="width:4%;">#</th>
+              <th style="width:32%;" class="d-none d-md-table-cell">Documents</th>
+              <th style="width:25%;" class="d-none d-md-table-cell">Project</th>
+              <th style="width:12%;">Old Rev.</th>
+              <th style="width:8%;">New Rev.</th>
+              <th style="width:18%;">Date</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-revisoes" style="font-size:07px;">
+            <tr>
+              <td colspan="6" class="text-center text-muted">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- EngineeringBase Documents encontrados em DocumentoControle -->
+  <div class="card mb-4" style="width: 100%;height:  50%">
+    <div class="card-header py-2 px-3" style="font-size:1.08em; background:#e8f3f7; border-bottom:1px solid #ededed;">
+      <i class="fas fa-drafting-compass me-1"></i> Engineering Base - Documents Synced
+    </div>
+    <div class="card-body" style="padding-bottom:12px;">
+      <div style="overflow-x:auto;">
+        <table class="table table-sm table-hover modern-table" style="width:100%;">
+          <thead style="font-size:8px;">
+            <tr>
+              <th style="width:5%;">#</th>
+              <th style="width:40%;">Document</th>
+              <th style="width:30%;">Discipline</th>
+              <th style="width:25%;">Revision</th>
+            </tr>
+          </thead>
+          <tbody style="font-size:11px;">
+            {% if engineering_synced_docs %}
+              {% for doc in engineering_synced_docs %}
+                <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ doc.document }}</td>
+                  <td>{{ doc.discipline }}</td>
+                  <td>{{ doc.rev }}</td>
+                </tr>
               {% endfor %}
-            </tbody>
-          </table>
-          {% if alerta_count > 7 %}
-            <div class="text-end" style="font-size:0.92em; color:#b8bcc3;">...and {{ alerta_count|add:"-7" }} more JobCard{{ alerta_count|add:"-7"|pluralize:"s" }}</div>
-          {% endif %}
-        {% else %}
-          <div class="text-muted">No incomplete JobCard alerts :)</div>
-        {% endif %}
+            {% else %}
+              <tr>
+                <td colspan="4" class="text-center text-muted">No synced documents found.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 </div>
 
+
+
+
+</div>
+
 <!-- Chart.js scripts -->
+<link href="https://cdn.jsdelivr.net/npm/simple-datatables@8.0.1/dist/style.css" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/simple-datatables@8.0.1" ></script>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script>
@@ -510,5 +584,42 @@ new Chart(document.getElementById('totalBar'), {
   plugins: [ChartDataLabels]
 });
 </script>
+
+<script>
+  function buscarRevisoesNovas() {
+      fetch('/api/revisoes_ultimas/')
+        .then(resp => resp.json())
+        .then(data => {
+          let linhas = '';
+          data.revisoes.forEach(function(rev, idx){
+            linhas += `<tr>
+              <td>${idx+1}</td>
+              <td class="d-none d-md-table-cell">${rev.codigo}</td>
+              <td class="d-none d-md-table-cell">${rev.nome_projeto}</td>
+              <td><span style="color:gray;">${rev.revisao_anterior||'—'}</span></td>
+              <td><span style="color:green;font-weight:600">${rev.revisao_nova}</span></td>
+              <td>${rev.data_mudanca}</td>
+            </tr>`;
+          });
+          document.getElementById("tbody-revisoes").innerHTML = linhas || '<tr><td colspan="6" class="text-center text-muted">No document revisions.</td></tr>';
+
+          // Inicializa/reinicializa o DataTable só uma vez (evita duplicar ao fazer polling)
+          if (window.revisaoTable) {
+              window.revisaoTable.destroy();
+          }
+          window.revisaoTable = new simpleDatatables.DataTable("#datatablesRevisoes", {
+              perPage: 7,
+              searchable: true,
+              fixedHeight: true,
+              perPageSelect: [5, 7, 10, 20]
+          });
+        });
+  }
+  setInterval(buscarRevisoesNovas, 5000); // Atualiza a cada 60s
+  window.onload = buscarRevisoesNovas;
+</script>
+
+
+
 
 {% endblock %}

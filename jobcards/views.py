@@ -38,6 +38,7 @@ from django.views.decorators.http import require_GET, require_POST
 from datetime import datetime
 from datetime import date
 import io
+from jobcards.models import DocumentoRevisaoAlterada, DocumentoControle
 
 
 
@@ -70,7 +71,8 @@ def login(request):
     return render(request, 'login.html')
 
 # - PARTE DO DASHBOARD
-@login_required(login_url='login')  # EXIGE O USUARIO A ESTAR LOGADO
+
+
 def dashboard(request):
     # Summary cards
     total_jobcards = JobCard.objects.count()
@@ -87,7 +89,16 @@ def dashboard(request):
         .count()
     )
 
-    # Charts
+    # Gráfico: JobCards por Disciplina (usando discipline_code)
+    # Pega todos os códigos de disciplina distintos e ordena
+    codigos = list(JobCard.objects.values_list('discipline_code', flat=True).distinct().order_by('discipline_code'))
+    labels_total = codigos
+    data_total = [
+        JobCard.objects.filter(discipline_code=cod).count()
+        for cod in codigos
+    ]
+
+    # Charts para não checkeds
     not_checked_qs = (
         JobCard.objects
         .filter(jobcard_status='NO CHECKED')
@@ -97,15 +108,6 @@ def dashboard(request):
     )
     labels_not_checked = [entry['discipline'] for entry in not_checked_qs]
     data_not_checked   = [entry['count']      for entry in not_checked_qs]
-
-    total_by_disc = (
-        JobCard.objects
-        .values('discipline')
-        .annotate(count=Count('id'))
-        .order_by('discipline')
-    )
-    labels_total = [entry['discipline'] for entry in total_by_disc]
-    data_total   = [entry['count']      for entry in total_by_disc]
 
     # AWP Monitor: System > WorkPack > JobCards
     awp_data = defaultdict(lambda: defaultdict(list))
@@ -145,6 +147,19 @@ def dashboard(request):
     approved_to_execute_count = JobCard.objects.filter(jobcard_status='APPROVED TO EXECUTE').count()
     finalized_count = JobCard.objects.filter(jobcard_status='JOBCARD FINALIZED').count()
     
+    # Pega todos os pares únicos (code, name)
+    discipline_legend = (
+        JobCard.objects
+        .values_list('discipline_code', 'discipline')
+        .distinct()
+        .order_by('discipline_code')
+    )
+    
+    # Encontra todos os documentos da EngineeringBase que também estão no DocumentoControle
+    engineering_synced_docs = EngineeringBase.objects.filter(
+        document__in=DocumentoControle.objects.values_list('codigo', flat=True)
+    )
+
     context = {
         'total_jobcards': total_jobcards,
         'not_checked_count': not_checked_count,
@@ -152,8 +167,8 @@ def dashboard(request):
         'jobcards_with_material': jobcards_with_material,
         'labels_not_checked': labels_not_checked,
         'data_not_checked': data_not_checked,
-        'labels_total': labels_total,
-        'data_total': data_total,
+        'labels_total': labels_total,    # códigos das disciplinas
+        'data_total': data_total,        # valores por código
         'awp_data': awp_data,
         'jobcards_incompletos': jobcards_incompletos,
         'alerta_count': alerta_count,
@@ -170,8 +185,16 @@ def dashboard(request):
         'offshore_checked_count': offshore_checked_count,
         'approved_to_execute_count': approved_to_execute_count,
         'finalized_count': finalized_count,
+        'discipline_legend': discipline_legend,
+        'engineering_synced_docs': engineering_synced_docs,
+        'preliminary_percent': f"{(preliminary_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
+    'planning_percent': f"{(planning_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
+    'offshore_percent': f"{(offshore_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
+    'approved_percent': f"{(approved_to_execute_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
+        
     }
     return render(request, 'sistema/dashboard.html', context)
+
 
 @login_required(login_url='login')
 def jobcards_list(request):  
@@ -2006,3 +2029,26 @@ def export_procurement_excel(request):
     response['Content-Disposition'] = 'attachment; filename=procurement_base_export.xlsx'
     df.to_excel(response, index=False)
     return response
+
+
+# AREA PARA NOTIFICAÇÕES DO USUARIO
+
+from jobcards.models import EngineeringBase, DocumentoRevisaoAlterada
+
+def api_revisoes_ultimas(request):
+    # Filtra apenas revisões cujo código existe na EngineeringBase.document
+    codigos_validos = EngineeringBase.objects.values_list('document', flat=True)
+    revisoes = DocumentoRevisaoAlterada.objects.filter(
+        codigo__in=codigos_validos
+    ).order_by('-data_mudanca')[:7]
+    data = [
+        {
+            "codigo": rev.codigo,
+            "nome_projeto": rev.nome_projeto,
+            "revisao_anterior": rev.revisao_anterior,
+            "revisao_nova": rev.revisao_nova,
+            "data_mudanca": rev.data_mudanca.strftime("%d/%m/%Y %H:%M"),
+        }
+        for rev in revisoes
+    ]
+    return JsonResponse({"revisoes": data})

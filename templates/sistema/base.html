@@ -27,6 +27,9 @@
 
     </head>
 
+    
+
+
     <body style="background: #14191c; min-height: 100vh; display: flex; flex-direction: column;">
 
     <div id="wrapper" class="d-flex flex-grow-1" style="min-height: 100vh; width: 100%;">
@@ -48,6 +51,27 @@
 
     <!-- Scripts do Bootstrap -->
     <script src="{% static 'assets/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+
+    <script>
+        function atualizarContadorRevisoes() {
+            fetch('/api/revisoes_ultimas/?count=1')  // Ajuste a URL da sua API se necessário!
+            .then(resp => resp.json())
+            .then(data => {
+                let qtd = data.revisoes ? data.revisoes.length : 0;
+                let badge = document.getElementById('contador-revisoes');
+                if (qtd > 0) {
+                    badge.innerText = qtd;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            });
+        }
+        setInterval(atualizarContadorRevisoes, 5000); // Atualiza a cada 60s
+        window.onload = atualizarContadorRevisoes;
+    </script>
+
+    
 
 </body>
 

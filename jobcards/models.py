@@ -91,8 +91,6 @@ class TaskBase(models.Model):
 
 # models.py
 
-# models.py
-
 class MaterialBase(models.Model):
     item                     = models.PositiveIntegerField(null=True, blank=True)
     job_card_number          = models.CharField("Job Card Number", max_length=50)
@@ -122,8 +120,6 @@ class MaterialBase(models.Model):
 
     def __str__(self):
         return f"{self.job_card_number} – {self.description[:30]}…"
-
-
     
 # BANCOS PARA ALOCAÇÃO DE RECURSOS E MATERIAIS E FERRAMENTAS
 
@@ -367,7 +363,7 @@ class DocumentoControle(models.Model):
     issued_date = models.CharField(max_length=50, blank=True, null=True)
     ivb_required = models.CharField(max_length=10, blank=True, null=True)
     ivb_priority = models.CharField(max_length=10, blank=True, null=True)
-
+    atualizado_em = models.DateTimeField(auto_now=True)
     # Se preferir pode adicionar "auto_now=True" em data_importacao para timestamp real de importação
 
     class Meta:
@@ -375,3 +371,16 @@ class DocumentoControle(models.Model):
 
     def __str__(self):
         return f"{self.codigo} - Rev {self.revisao}"
+
+class DocumentoRevisaoAlterada(models.Model):
+    codigo = models.CharField(max_length=100)
+    nome_projeto = models.CharField(max_length=255)
+    revisao_anterior = models.CharField(max_length=20, blank=True, null=True)
+    revisao_nova = models.CharField(max_length=20, blank=True, null=True)
+    data_mudanca = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-data_mudanca']
+
+    def __str__(self):
+        return f"{self.codigo} ({self.nome_projeto}): {self.revisao_anterior} → {self.revisao_nova}"

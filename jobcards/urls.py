@@ -1,6 +1,7 @@
 from django.urls import path
 from django.urls.conf import include
 from . import views
+from jobcards.views import api_revisoes_ultimas
 
 from .views import (
     DisciplineListView,
@@ -97,4 +98,6 @@ urlpatterns = [
     path('procurement/import/', views.import_procurement, name='import_procurement'),
     path('procurement/export/', views.export_procurement_excel, name='export_procurement_excel'),
    
+   # NOTIFICAÇÕES
+   path('api/revisoes_ultimas/', api_revisoes_ultimas, name='api_revisoes_ultimas'),
 ]
