@@ -347,7 +347,10 @@ def edit_jobcard(request, jobcard_id=None):
                 if qty == 0.0 and hours == 0.0:
                     continue
 
-                mp = ManpowerBase.objects.get(pk=mp_id)
+                mp = ManpowerBase.objects.filter(pk=mp_id).first()
+                if not mp:
+                    continue  # ignora os ids que foram apagados
+                
                 AllocatedManpower.objects.create(
                     jobcard_number=job.job_card_number,
                     discipline=mp.discipline,
