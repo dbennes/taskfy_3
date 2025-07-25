@@ -304,6 +304,8 @@ def edit_jobcard(request, jobcard_id=None):
         job.date_approved = request.POST.get('DATE_APPROVED') or None
         job.hot_work_required = request.POST.get('HOT_WORK_REQUIRED', job.hot_work_required)
 
+        job.rev = '1'
+
         job.last_modified_by = request.user.username
         job.save()
 
