@@ -277,9 +277,17 @@ def create_jobcard(request, jobcard_id=None):
 
 @login_required(login_url='login')
 def edit_jobcard(request, jobcard_id=None):
+    from collections import defaultdict
+    import re
+    from django.db.models import Sum
+
     job = get_object_or_404(JobCard, job_card_number=jobcard_id) if jobcard_id else None
 
+    def safe_float(s):
+        return float(s.replace('%', '').replace(',', '.')) if s and str(s).strip() else 0.0
+
     if request.method == 'POST' and job:
+        # Atualiza campos principais
         job.jobcard_status = request.POST.get('JOBCARD_STATUS', job.jobcard_status)
         job.discipline = request.POST.get('DISCIPLINE', job.discipline)
         job.discipline_code = request.POST.get('DISCIPLINE_CODE', job.discipline_code)
@@ -294,7 +302,6 @@ def edit_jobcard(request, jobcard_id=None):
         job.working_code_description = request.POST.get('WORKING_CODE_DESCRIPTION', job.working_code_description)
         job.tag = request.POST.get('TAG', job.tag)
         job.job_card_description = request.POST.get('JOB_CARD_DESCRIPTION', job.job_card_description)
-        
         job.comments = request.POST.get('COMMENTS', job.comments)
         job.total_weight = request.POST.get('TOTAL_WEIGHT', job.total_weight)
         job.unit = request.POST.get('UNIT', job.unit)
@@ -305,132 +312,182 @@ def edit_jobcard(request, jobcard_id=None):
         job.date_approved = request.POST.get('DATE_APPROVED') or None
         job.hot_work_required = request.POST.get('HOT_WORK_REQUIRED', job.hot_work_required)
         job.last_modified_by = request.user.username
-        
-        job.seq_number = f"{job.job_card_number.split('-')[-1]}"  # ou qualquer lógica sua
+        job.seq_number = f"{job.job_card_number.split('-')[-1]}"
 
-        
         job.save()
 
-        def safe_float(s):
-            return float(s.replace('%', '').replace(',', '.')) if s and s.strip() else 0.0
+            # … depois de salvar os campos do job e do safe_float …
 
-        mp_pattern = re.compile(r'^mp-(\d+)-(\d+)-qty$')  # task_order, manpower_id
+        ### --- AllocatedManpower --- ###
+        mp_pattern = re.compile(r'^mp-(\d+)-(\d+)-qty$')
+        posted_manpowers = {}
 
-        with transaction.atomic():
-            AllocatedManpower.objects.filter(jobcard_number=job.job_card_number).delete()
-            AllocatedTask.objects.filter(jobcard_number=job.job_card_number).delete()
-            AllocatedMaterial.objects.filter(jobcard_number=job.job_card_number).delete()
-            AllocatedTool.objects.filter(jobcard_number=job.job_card_number).delete()
-            AllocatedEngineering.objects.filter(jobcard_number=job.job_card_number).delete()
+        for key, val in request.POST.items():
+            m = mp_pattern.match(key)
+            if not m:
+                continue
+            task_order, mp_id = map(int, m.groups())
+            qty = safe_float(val)
+            hours = safe_float(request.POST.get(f"mp-{task_order}-{mp_id}-hh", '0'))
+            if hours <= 0 or qty <= 0:
+                continue
+            posted_manpowers[(task_order, mp_id)] = (qty, hours)
 
-            task_list = TaskBase.objects.filter(working_code=job.working_code).order_by('order')
-            task_orders = [str(task.order) for task in task_list]  # Lista com todos os task.order (string)
+        # Lista atual no banco
+        existing_allocated = {
+            (a.task_order, a.direct_labor): a
+            for a in AllocatedManpower.objects.filter(jobcard_number=job.job_card_number)
+        }
 
-            not_applicable_tasks = set()
-            for key in request.POST.keys():
-                if key.startswith('task-not-applicable-'):
-                    task_order = key.replace('task-not-applicable-', '')
-                    not_applicable_tasks.add(task_order)
-
-            # Salva manpowers
-            for key, val in request.POST.items():
-                match = mp_pattern.match(key)
-                if not match:
-                    continue
-
-                task_order, mp_id = match.group(1), int(match.group(2))
-                if task_order in not_applicable_tasks:
-                    continue
-
-                qty = safe_float(val)
-                hh_key = f"mp-{task_order}-{mp_id}-hh"
-                hours = safe_float(request.POST.get(hh_key, ''))
-
-                if qty == 0.0 and hours == 0.0:
-                    continue
-
-                mp = ManpowerBase.objects.filter(pk=mp_id).first()
-                if not mp:
-                    continue  # ignora os ids que foram apagados
-                
+        # Processa o que veio no POST
+        for (task_order, mp_id), (qty, hours) in posted_manpowers.items():
+            mp = ManpowerBase.objects.filter(pk=mp_id).first()
+            if not mp:
+                continue
+            key = (task_order, mp.direct_labor)
+            if key in existing_allocated:
+                obj = existing_allocated.pop(key)
+                if obj.qty != qty or obj.hours != hours:
+                    obj.qty = qty
+                    obj.hours = hours
+                    obj.save()
+            else:
                 AllocatedManpower.objects.create(
-                    jobcard_number=job.job_card_number,
-                    discipline=mp.discipline,
-                    working_code=mp.working_code,
-                    direct_labor=mp.direct_labor,
-                    qty=qty,
-                    hours=hours,
-                    task_order=int(task_order),  # task_order é o próprio order da task
+                    jobcard_number = job.job_card_number,
+                    discipline     = mp.discipline,
+                    working_code   = mp.working_code,
+                    direct_labor   = mp.direct_labor,
+                    qty            = qty,
+                    hours          = hours,
+                    task_order     = task_order,
                 )
 
-            # Salva tarefas alocadas
-            for task in task_list:
-                max_hh = request.POST.get(f"hh-max-{task.order}", '0')
-                total_hh = request.POST.get(f"hh-total-{task.order}", '0')
-                percent = request.POST.get(f"hh-percent-{task.order}", '0')
+       
+        ### --- fim AllocatedManpower --- ###
 
-                not_applicable = request.POST.get(f"task-not-applicable-{task.order}") == 'on'
 
+
+
+
+        ### --- AllocatedTask --- ###
+        task_list = TaskBase.objects.filter(working_code=job.working_code).order_by('order')
+        existing_tasks = {t.task_order: t for t in AllocatedTask.objects.filter(jobcard_number=job.job_card_number)}
+        updated_tasks = set()
+        for task in task_list:
+            max_hh = safe_float(request.POST.get(f"hh-max-{task.order}", '0'))
+            total_hh = safe_float(request.POST.get(f"hh-total-{task.order}", '0'))
+            percent = safe_float(request.POST.get(f"hh-percent-{task.order}", '0'))
+            not_applicable = request.POST.get(f"task-not-applicable-{task.order}") == 'on'
+            if task.order in existing_tasks:
+                obj = existing_tasks.pop(task.order)
+                if obj.max_hours != max_hh or obj.total_hours != total_hh or obj.percent != percent or obj.not_applicable != not_applicable:
+                    obj.max_hours = max_hh
+                    obj.total_hours = total_hh
+                    obj.percent = percent
+                    obj.not_applicable = not_applicable
+                    obj.save()
+            else:
                 AllocatedTask.objects.create(
                     jobcard_number=job.job_card_number,
                     task_order=task.order,
                     description=task.typical_task,
-                    max_hours=safe_float(max_hh),
-                    total_hours=safe_float(total_hh),
-                    percent=safe_float(percent),
+                    max_hours=max_hh,
+                    total_hours=total_hh,
+                    percent=percent,
                     not_applicable=not_applicable,
                 )
+            updated_tasks.add(task.order)
+        for task_order, obj in existing_tasks.items():
+            if task_order not in updated_tasks:
+                obj.delete()
 
-            # Salva materiais alocados
-            project_codes = request.POST.getlist('project_code[]')
-            descriptions = request.POST.getlist('description[]')
-            jobcard_required_qtys = request.POST.getlist('jobcard_required_qty[]')
-            comments = request.POST.getlist('comments[]')
-            nps1_list = request.POST.getlist('nps1[]')
-
-            for code, desc, qty, comment, nps1 in zip(project_codes, descriptions, jobcard_required_qtys, comments, nps1_list):
+        ### --- AllocatedMaterial --- ###
+        project_codes = request.POST.getlist('project_code[]')
+        descriptions = request.POST.getlist('description[]')
+        jobcard_required_qtys = request.POST.getlist('jobcard_required_qty[]')
+        comments = request.POST.getlist('comments[]')
+        nps1_list = request.POST.getlist('nps1[]')
+        existing_materials = list(AllocatedMaterial.objects.filter(jobcard_number=job.job_card_number))
+        new_keys = []
+        for code, desc, qty, comment, nps1 in zip(project_codes, descriptions, jobcard_required_qtys, comments, nps1_list):
+            key = (code, desc, nps1)
+            new_keys.append(key)
+            obj = next((m for m in existing_materials if (m.pmto_code, m.description, m.nps1) == key), None)
+            if obj:
+                if obj.qty != safe_float(qty):
+                    obj.qty = safe_float(qty)
+                    obj.comments = comment
+                    obj.save()
+                existing_materials.remove(obj)
+            else:
                 AllocatedMaterial.objects.create(
                     jobcard_number=job.job_card_number,
                     discipline=job.discipline,
                     working_code=job.working_code,
                     pmto_code=code,
                     description=desc,
-                    qty=float(qty.replace(',', '.')) if qty else 0.0,
+                    qty=safe_float(qty),
                     comments=comment,
                     nps1=nps1
                 )
+        for m in existing_materials:
+            m.delete()
 
-            # Salva ferramentas alocadas
-            tool_items = request.POST.getlist('tool_item[]')
-            tool_disciplines = request.POST.getlist('tool_discipline[]')
-            tool_working_codes = request.POST.getlist('tool_working_code[]')
-            tool_direct_labors = request.POST.getlist('tool_direct_labor[]')
-            tool_qty_direct_labors = request.POST.getlist('tool_qty_direct_labor[]')
-            tool_special_toolings = request.POST.getlist('tool_special_tooling[]')
-            tool_qtys = request.POST.getlist('tool_qty[]')
-
-            for item, discipline, working_code, direct_labor, qty_dl, special_tooling, qty in zip(
-                tool_items, tool_disciplines, tool_working_codes, tool_direct_labors,
-                tool_qty_direct_labors, tool_special_toolings, tool_qtys
-            ):
+        ### --- AllocatedTool --- ###
+        tool_items = request.POST.getlist('tool_item[]')
+        tool_disciplines = request.POST.getlist('tool_discipline[]')
+        tool_working_codes = request.POST.getlist('tool_working_code[]')
+        tool_direct_labors = request.POST.getlist('tool_direct_labor[]')
+        tool_qty_direct_labors = request.POST.getlist('tool_qty_direct_labor[]')
+        tool_special_toolings = request.POST.getlist('tool_special_tooling[]')
+        tool_qtys = request.POST.getlist('tool_qty[]')
+        existing_tools = list(AllocatedTool.objects.filter(jobcard_number=job.job_card_number))
+        new_tools_keys = []
+        for item, discipline, working_code, direct_labor, qty_dl, special_tooling, qty in zip(
+            tool_items, tool_disciplines, tool_working_codes, tool_direct_labors,
+            tool_qty_direct_labors, tool_special_toolings, tool_qtys
+        ):
+            key = (direct_labor, special_tooling)
+            new_tools_keys.append(key)
+            obj = next((t for t in existing_tools if (t.direct_labor, t.special_tooling) == key), None)
+            if obj:
+                if obj.qty != safe_float(qty):
+                    obj.qty = safe_float(qty)
+                    obj.qty_direct_labor = safe_float(qty_dl)
+                    obj.save()
+                existing_tools.remove(obj)
+            else:
                 AllocatedTool.objects.create(
                     jobcard_number=job.job_card_number,
                     discipline=discipline,
                     working_code=working_code,
                     direct_labor=direct_labor,
-                    qty_direct_labor=float(qty_dl.replace(',', '.')) if qty_dl else 0.0,
+                    qty_direct_labor=safe_float(qty_dl),
                     special_tooling=special_tooling,
-                    qty=float(qty.replace(',', '.')) if qty else 0.0
+                    qty=safe_float(qty)
                 )
 
-            # Salva documentos de engenharia
-            eng_disciplines = request.POST.getlist('eng_discipline[]')
-            eng_documents = request.POST.getlist('eng_document[]')
-            eng_tags = request.POST.getlist('eng_tag[]')
-            eng_revs = request.POST.getlist('eng_rev[]')
-            eng_statuses = request.POST.getlist('eng_status[]')
+        for t in existing_tools:
+            t.delete()
 
-            for discipline, document, tag, rev, status in zip(eng_disciplines, eng_documents, eng_tags, eng_revs, eng_statuses):
+        ### --- AllocatedEngineering --- ###
+        eng_disciplines = request.POST.getlist('eng_discipline[]')
+        eng_documents = request.POST.getlist('eng_document[]')
+        eng_tags = request.POST.getlist('eng_tag[]')
+        eng_revs = request.POST.getlist('eng_rev[]')
+        eng_statuses = request.POST.getlist('eng_status[]')
+        existing_engs = list(AllocatedEngineering.objects.filter(jobcard_number=job.job_card_number))
+        new_eng_keys = []
+        for discipline, document, tag, rev, status in zip(eng_disciplines, eng_documents, eng_tags, eng_revs, eng_statuses):
+            key = (document, tag, rev)
+            new_eng_keys.append(key)
+            obj = next((e for e in existing_engs if (e.document, e.tag, e.rev) == key), None)
+            if obj:
+                if obj.status != status:
+                    obj.status = status
+                    obj.save()
+                existing_engs.remove(obj)
+            else:
                 AllocatedEngineering.objects.create(
                     jobcard_number=job.job_card_number,
                     discipline=discipline,
@@ -439,10 +496,12 @@ def edit_jobcard(request, jobcard_id=None):
                     rev=rev,
                     status=status,
                 )
+        for e in existing_engs:
+            e.delete()
 
+        # Atualiza totais
         total_duration_hs = AllocatedTask.objects.filter(jobcard_number=job.job_card_number).aggregate(total=Sum('max_hours'))['total'] or 0
         total_man_hours = AllocatedTask.objects.filter(jobcard_number=job.job_card_number).aggregate(total=Sum('total_hours'))['total'] or 0
-
         job.total_duration_hs = f'{total_duration_hs:.2f}'
         job.total_man_hours = f'{total_man_hours:.2f}'
         job.rev = '1'
@@ -485,6 +544,7 @@ def edit_jobcard(request, jobcard_id=None):
         allocated_manpowers_dict[mp.task_order].append(mp)
 
     def manpower_list_for_task(task):
+        # Se houver allocated, mostra allocated, senão mostra base
         return allocated_manpowers_dict.get(task.order) or manpowers_dict.get(task.working_code, [])
 
     context = {
@@ -508,8 +568,8 @@ def edit_jobcard(request, jobcard_id=None):
         'allocated_manpowers_dict': allocated_manpowers_dict,
         'manpower_list_for_task': manpower_list_for_task,
     }
-
     return render(request, 'sistema/create_jobcard.html', context)
+
 
 def allocate_resources(request, jobcard_id):
     job = get_object_or_404(JobCard, job_card_number=jobcard_id)

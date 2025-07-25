@@ -2,6 +2,7 @@
 {% load static %}
 {% block content %}
 
+
 <div class="container-fluid">
   <div class="row">
     
@@ -24,7 +25,8 @@
         <div class="card-body">
           <form method="post" id="stepForm" action="{% url 'edit_jobcard' job.job_card_number %}">
             {% csrf_token %}
-            
+
+           
 
             {% include 'sistema/partials/jobcard_creator/step_1.html' %}
             {% include 'sistema/partials/jobcard_creator/step_2.html' %}
