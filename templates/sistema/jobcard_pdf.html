@@ -121,7 +121,7 @@
                         <tr>
                             <td style="border: 1px solid black;">SYSTEM: {{ job.system }}</td>
                             <td style="border: 1px solid black;">LOCATION: {{ job.location }}</td>
-                            <td style="border: 1px solid black;">SEQUENTIAL NUMBER: {{ job.sequential_number }}</td>
+                            <td style="border: 1px solid black;">SEQUENTIAL NUMBER: {{ job.seq_number|stringformat:"04d" }}</td>
                         </tr>
                         <tr>
                             <td style="border: 1px solid black;">TAG: {{ job.tag }}</td>
@@ -133,7 +133,7 @@
                     <!-- Subtabela: Descrição e Comentários -->
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
                         <tr>
-                            <td style="border: 1px solid black;">JOB CARD DESCRIPTION: {{ job.description }}</td>
+                            <td style="border: 1px solid black;">JOB CARD DESCRIPTION: {{ job.job_card_description }}</td>
                         </tr>
                         <tr>
                             <td style="border: 1px solid black;">COMMENTS: {{ job.comments }}</td>
