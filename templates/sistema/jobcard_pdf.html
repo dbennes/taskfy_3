@@ -116,7 +116,7 @@
                         <tr>
                             <td style="width: 33%; border: 1px solid black;">SUBSYSTEM: {{ job.subsystem }}</td>
                             <td style="width: 33%; border: 1px solid black;">DISCIPLINE: {{ job.discipline }}</td>
-                            <td style="width: 34%; border: 1px solid black;">WORKING CODE: {{ job.working_code }}</td>
+                            <td style="width: 34%; border: 1px solid black;">WORKING CODE: {{ job.working_code }} - {{ job.working_code_description }}</td>
                         </tr>
                         <tr>
                             <td style="border: 1px solid black;">SYSTEM: {{ job.system }}</td>
@@ -126,7 +126,7 @@
                         <tr>
                             <td style="border: 1px solid black;">TAG: {{ job.tag }}</td>
                             <td style="border: 1px solid black;">TOTAL MAN-HOURS: {{ job.total_man_hours }}</td>
-                            <td style="border: 1px solid black;">MATERIAL: {{ job.material }}</td>
+                            <td style="border: 1px solid black;">WEEK PLANNED: </td>
                         </tr>
                     </table>
 
@@ -153,6 +153,94 @@
             </tr>
         </tbody>
     </table>
+
+    <!-- ETAPA DAS CONDIÇÕES DE SEGURANÇA -->
+            <table style="font-size: 6px; width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th colspan="5" style="width: 20%; text-align: LEFT; margin-right: 5px; background: #cfcfcf; padding-left: 10px;  font-size: 8px">
+                            SAFETY - CONDITIONS & RECOMMENDATIONS
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> PPE E GENERAL
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> COLD WORK PERMIT
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> FIRE EXTINGUISHER
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> FALL PROTECTION
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> MARINE SAFETY
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> BLIND ISOLATION SYSTEM
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> HOT WORK PERMIT
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> FIRE WATCH
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> SPARK PROTECTION
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> SEVERE WEATHER PREP
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> JOB SAFETY ANALYSIS
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> BARRICADES
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> DIVER SAFETY
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> SIMULTANEOUSLY DRILL
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> ENVIRONMENTAL PROTECTION
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> GAS LEAK PROTECTION
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> LIFTING PLAN
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> HAZARDOUS MATERIAL
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> WEATHER PROTECTION REQUIRED
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
+                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> PPE SPECIAL
+                        </td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5" style="padding-left: 8px; vertical-align: top; padding-bottom: 20px;">OTHER/COMMENTS:</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <br/>
 
 
     <!-- DETAILED DESCRIPTION OF WORK -->
@@ -201,6 +289,7 @@
             </tr>
         </tbody>
     </table>
+
 
 
 
@@ -308,28 +397,30 @@
                     <tr>
                         <!-- Tabela da esquerda -->
                         <td style="width: 49%; border: none; vertical-align: top; padding-right: 5px;">
-                            <table style="width: 100%; border-collapse: collapse; border: 1px solid black; font-size: 7px;">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 10%; text-align: center;">ITEM</th>
-                                        <th style="width: 70%; text-align: center;">SPECIAL TOOLING</th>
-                                        <th style="width: 20%; text-align: center;">QTY</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for tool in allocated_tools %}
-                                    <tr style="page-break-inside: avoid;">
-                                        <td style="text-align: center; border: 1px solid black;">{{ forloop.counter }}</td>
-                                        <td style="border: 1px solid black;">{{ tool.special_tooling }}</td>
-                                        <td style="text-align: center; border: 1px solid black;">{{ tool.qty|floatformat:2 }}</td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="3" style="text-align: center; border: 1px solid black;">No equipment allocated.</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>    
+                            <table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 10px; font-size: 7px;">
+    <thead>
+        
+        <tr>
+            <th style="width: 10%; text-align: center;">ITEM</th>
+            <th style="width: 70%; text-align: center;">SPECIAL TOOLING</th>
+            <th style="width: 20%; text-align: center;">QTY</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for tool in allocated_tools %}
+        <tr>
+            <td style="text-align: center;">{{ forloop.counter }}</td>
+            <td>{{ tool.special_tooling }}</td>
+            <td style="text-align: center;">{{ tool.qty|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3" style="text-align: center;">No equipment allocated.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
                         </td>
                     </tr>
                 </table>
@@ -340,91 +431,7 @@
 
   
 
-            <!-- ETAPA DAS CONDIÇÕES DE SEGURANÇA -->
-            <table style="font-size: 6px; width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr>
-                        <th colspan="5" style="width: 20%; text-align: LEFT; margin-right: 5px; background: #cfcfcf; padding-left: 10px;  font-size: 8px">
-                            SAFETY - CONDITIONS & RECOMMENDATIONS
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> PPE E GENERAL
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> COLD WORK PERMIT
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> FIRE EXTINGUISHER
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> FALL PROTECTION
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> MARINE SAFETY
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> BLIND ISOLATION SYSTEM
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> HOT WORK PERMIT
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> FIRE WATCH
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> SPARK PROTECTION
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> SEVERE WEATHER PREP
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> JOB SAFETY ANALYSIS
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> BARRICADES
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> DIVER SAFETY
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> SIMULTANEOUSLY DRILL
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> ENVIRONMENTAL PROTECTION
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> GAS LEAK PROTECTION
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> LIFTING PLAN
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> HAZARDOUS MATERIAL
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> WEATHER PROTECTION REQUIRED
-                        </td>
-                        <td style="border: 1px solid black; text-align: left; padding: 2px;">
-                            <div style="display: inline-block; width: 8px; height: 8px; border: 1px solid black; margin-right: 4px;"></div> PPE SPECIAL
-                        </td>
-                    </tr>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="5" style="padding-left: 8px; vertical-align: top; padding-bottom: 20px;">OTHER/COMMENTS:</td>
-                    </tr>
-                </tfoot>
-            </table>
+            
 
             <br/>
 
@@ -447,7 +454,7 @@
             <!-- ENGINEERING DOCUMENTS REFERENCE -->
             <table style="margin-bottom:4px;">
                 <thead>
-                    <tr><th colspan="5" style="background:#cfcfcf; text-align:left; padding-left:5px;  font-size: 8px">ENGINEERING DOCUMENTS</th></tr>
+                    <tr><th colspan="5" style="background:#cfcfcf; text-align:left; padding-left:5px;  font-size: 8px">REFERENCE DOCUMENTS</th></tr>
                     <tr>
                         <th style="width:20%;">Discipline</th>
                         <th style="width:30%;">Document</th>
