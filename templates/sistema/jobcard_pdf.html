@@ -121,7 +121,7 @@
                         <tr>
                             <td style="border: 1px solid black;">SYSTEM: {{ job.system }}</td>
                             <td style="border: 1px solid black;">LOCATION: {{ job.location }}</td>
-                            <td style="border: 1px solid black;">SEQUENTIAL NUMBER: {{ job.seq_number|stringformat:"04d" }}</td>
+                            <td style="border: 1px solid black;">SEQUENTIAL NUMBER: {{ job.seq_number }}</td>
                         </tr>
                         <tr>
                             <td style="border: 1px solid black;">TAG: {{ job.tag }}</td>
@@ -295,7 +295,7 @@
             </table>
 
             <!-- EQUIPMENT AND SPECIAL TOOLING -->
-<table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 10px; font-size: 7px;">
+    <table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 10px; font-size: 7px;">
     <thead>
         <tr>
             <th style="text-align: left; background: #cfcfcf; padding: 4px;">EQUIPMENT & SPECIAL TOOLING</th>
@@ -308,7 +308,7 @@
                     <tr>
                         <!-- Tabela da esquerda -->
                         <td style="width: 49%; border: none; vertical-align: top; padding-right: 5px;">
-                            <table style="width: 100%; border-collapse: collapse; border: 1px solid black;">
+                            <table style="width: 100%; border-collapse: collapse; border: 1px solid black; font-size: 7px;">
                                 <thead>
                                     <tr>
                                         <th style="width: 10%; text-align: center;">ITEM</th>
@@ -317,45 +317,19 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for tool in allocated_tools_left %}
-                                    <tr>
-                                        <td style="text-align: center;">{{ forloop.counter }}</td>
-                                        <td>{{ tool.special_tooling }}</td>
-                                        <td style="text-align: center;">{{ tool.qty|floatformat:2 }}</td>
+                                    {% for tool in allocated_tools %}
+                                    <tr style="page-break-inside: avoid;">
+                                        <td style="text-align: center; border: 1px solid black;">{{ forloop.counter }}</td>
+                                        <td style="border: 1px solid black;">{{ tool.special_tooling }}</td>
+                                        <td style="text-align: center; border: 1px solid black;">{{ tool.qty|floatformat:2 }}</td>
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="3" style="text-align: center;">No equipment allocated.</td>
+                                        <td colspan="3" style="text-align: center; border: 1px solid black;">No equipment allocated.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
-                            </table>
-                        </td>
-
-                        <!-- Tabela da direita -->
-                        <td style="width: 49%; border: none; vertical-align: top; padding-left: 5px;">
-                            <table style="width: 100%; border-collapse: collapse; border: 1px solid black;">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 10%; text-align: center;">ITEM</th>
-                                        <th style="width: 70%; text-align: center;">SPECIAL TOOLING</th>
-                                        <th style="width: 20%; text-align: center;">QTY</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for tool in allocated_tools_right %}
-                                    <tr>
-                                        <td style="text-align: center;">{{ forloop.counter }}</td>
-                                        <td>{{ tool.special_tooling }}</td>
-                                        <td style="text-align: center;">{{ tool.qty|floatformat:2 }}</td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="3" style="text-align: center;">No equipment allocated.</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                            </table>    
                         </td>
                     </tr>
                 </table>

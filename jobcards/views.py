@@ -294,6 +294,7 @@ def edit_jobcard(request, jobcard_id=None):
         job.working_code_description = request.POST.get('WORKING_CODE_DESCRIPTION', job.working_code_description)
         job.tag = request.POST.get('TAG', job.tag)
         job.job_card_description = request.POST.get('JOB_CARD_DESCRIPTION', job.job_card_description)
+        
         job.comments = request.POST.get('COMMENTS', job.comments)
         job.total_weight = request.POST.get('TOTAL_WEIGHT', job.total_weight)
         job.unit = request.POST.get('UNIT', job.unit)
@@ -303,10 +304,11 @@ def edit_jobcard(request, jobcard_id=None):
         job.approved_br = request.POST.get('APPROVED_BR', job.approved_br)
         job.date_approved = request.POST.get('DATE_APPROVED') or None
         job.hot_work_required = request.POST.get('HOT_WORK_REQUIRED', job.hot_work_required)
-
-        job.rev = '1'
-
         job.last_modified_by = request.user.username
+        
+        job.seq_number = f"{job.job_card_number.split('-')[-1]}"  # ou qualquer lógica sua
+
+        
         job.save()
 
         def safe_float(s):
