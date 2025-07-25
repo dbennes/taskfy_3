@@ -440,7 +440,8 @@ def edit_jobcard(request, jobcard_id=None):
 
         job.total_duration_hs = f'{total_duration_hs:.2f}'
         job.total_man_hours = f'{total_man_hours:.2f}'
-        job.save(update_fields=['total_duration_hs', 'total_man_hours'])
+        job.rev = '1'
+        job.save(update_fields=['total_duration_hs', 'total_man_hours', 'rev'])
 
         return redirect('generate_pdf', jobcard_id=job.job_card_number)
 
