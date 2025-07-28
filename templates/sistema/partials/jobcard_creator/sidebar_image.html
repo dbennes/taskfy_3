@@ -462,25 +462,31 @@ function saveManpower(taskOrder, jobCardNumber) {
         }
     });
 
+    // CAPTURE OS CAMPOS DO ALLOCATED TASK QUE APARECEM NA TABELA PRINCIPAL
+    const max_hh = parseFloat(document.getElementById(`input-hh-max-${taskOrder}`).value) || 0;
+    const total_hh = parseFloat(document.getElementById(`input-hh-total-${taskOrder}`).value) || 0;
+    const percent = parseFloat(document.getElementById(`input-hh-percent-${taskOrder}`).value) || 0;
+    const not_applicable = document.getElementById(`task-not-applicable-${taskOrder}`).checked;
+
     fetch(`/jobcard/${jobCardNumber}/allocation/${taskOrder}/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')  // Use sua função para pegar o CSRF se for autenticado
+            'X-CSRFToken': getCookie('csrftoken')
         },
-        body: JSON.stringify({ manpowers })
+        body: JSON.stringify({ manpowers, max_hh, total_hh, percent, not_applicable })
     })
     .then(resp => resp.json())
     .then(data => {
         if (data.success) {
-            // Pode fechar modal, mostrar mensagem, etc
             $(`#modalAtividade${taskOrder}`).modal('hide');
-            // Atualizar tabela, etc
+            // Se quiser atualizar a tabela principal, faça reload de dados aqui
         } else {
             alert('Erro ao salvar!');
         }
     });
 }
+
 
 // Função para capturar CSRF token se for necessário
 function getCookie(name) {

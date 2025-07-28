@@ -4,10 +4,13 @@
 
 
 <div class="container-fluid">
+  <form method="post" id="stepForm" action="{% url 'edit_jobcard' job.job_card_number %}">
+  {% csrf_token %}
+
   <div class="row">
     
     <!-- Botão download -->
-    
+
     <!-- Formulário principal -->
     <div class="col-7">
       <div class="card shadow mb-3" style="width: 100%; color:#7a8093">
@@ -102,6 +105,7 @@
 
         </div>
     </div>
+  </form>
 </div>
 
 <!-- Modal de Validação para PDF Minimalista -->
@@ -226,6 +230,14 @@
   });
 
   document.getElementById('stepForm').addEventListener('submit', function(e) {
+
+    // --- ADICIONE ESSAS DUAS LINHAS ---
+    updatePercentage();
+    updateSummaryFields();
+    // ----------------------------------
+
+    console.log(document.getElementById('input-hh-max-1').value); // teste!
+
     if (currentStep !== totalSteps) {
       e.preventDefault();
       currentStep++;
@@ -291,6 +303,12 @@ document.getElementById('submitBtn').addEventListener('click', function (e) {
 
     const confirmSaveBtn = document.getElementById('confirmSaveBtn');
     confirmSaveBtn.onclick = function () {
+
+        // --- ADICIONE ESSAS DUAS LINHAS ---
+        updatePercentage();
+        updateSummaryFields();
+        // ----------------------------------
+
         confirmModal.hide();
 
         // Gera o PDF imediatamente (o submit envia o POST que baixa o PDF)

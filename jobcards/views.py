@@ -370,8 +370,6 @@ def edit_jobcard(request, jobcard_id=None):
 
 
 
-
-
         ### --- AllocatedTask --- ###
         task_list = TaskBase.objects.filter(working_code=job.working_code).order_by('order')
         existing_tasks = {t.task_order: t for t in AllocatedTask.objects.filter(jobcard_number=job.job_card_number)}
@@ -403,6 +401,9 @@ def edit_jobcard(request, jobcard_id=None):
         for task_order, obj in existing_tasks.items():
             if task_order not in updated_tasks:
                 obj.delete()
+
+
+
 
         ### --- AllocatedMaterial --- ###
         project_codes = request.POST.getlist('project_code[]')
@@ -571,6 +572,8 @@ def edit_jobcard(request, jobcard_id=None):
         'allocated_manpowers_dict': allocated_manpowers_dict,
         'manpower_list_for_task': manpower_list_for_task,
     }
+    
+    print('POST DATA:', request.POST)
     return render(request, 'sistema/create_jobcard.html', context)
 
 
@@ -2120,27 +2123,65 @@ def api_revisoes_ultimas(request):
     return JsonResponse({"revisoes": data})
 
 
+
 @csrf_exempt
 def save_allocation(request, jobcard_id, task_order):
     if request.method == 'POST':
         data = json.loads(request.body)
-        # data = {"manpowers": [{"mp_id": 12, "qty": 1.5, "hours": 2.0}, ...]}
-
         # Remove todos os manpowers antigos daquela tarefa
         AllocatedManpower.objects.filter(jobcard_number=jobcard_id, task_order=task_order).delete()
 
-        # Cria/Atualiza os manpowers enviados
+        total_hours = 0.0
+        max_hours = 0.0
+
+        # Cria/Atualiza os manpowers enviados e calcula totals
         for mp in data.get('manpowers', []):
+            qty = float(mp["qty"])
+            hours = float(mp["hours"])
+            total = qty * hours
+            total_hours += total
+            max_hours = max(max_hours, hours)
             AllocatedManpower.objects.update_or_create(
                 jobcard_number=jobcard_id,
                 task_order=task_order,
                 direct_labor=mp["direct_labor"],
                 defaults={
-                    "qty": mp["qty"],
-                    "hours": mp["hours"],
-                    # preencha os outros campos se quiser, como 'discipline': ..., 'working_code': ...
+                    "qty": qty,
+                    "hours": hours,
                 }
+            )
+
+        # Usa o que veio do frontend (para manter a mesma lógica!)
+        max_hh = float(data.get('max_hh', max_hours))
+        total_hh = float(data.get('total_hh', total_hours))
+        percent = float(data.get('percent', 0))
+        not_applicable = data.get('not_applicable', False)
+
+        # Atualiza/Cria o AllocatedTask correspondente
+        try:
+            atask = AllocatedTask.objects.get(jobcard_number=jobcard_id, task_order=task_order)
+            atask.max_hours = max_hh
+            atask.total_hours = total_hh
+            atask.percent = percent
+            atask.not_applicable = not_applicable
+            atask.save()
+        except AllocatedTask.DoesNotExist:
+            # Busca a descrição correta da TaskBase
+            taskbase = TaskBase.objects.filter(
+                working_code=JobCard.objects.get(job_card_number=jobcard_id).working_code,
+                order=task_order
+            ).first()
+            description = taskbase.typical_task if taskbase else ''
+            atask = AllocatedTask.objects.create(
+                jobcard_number=jobcard_id,
+                task_order=task_order,
+                description=description,  # AGORA SALVA CORRETAMENTE
+                max_hours=max_hh,
+                total_hours=total_hh,
+                percent=percent,
+                not_applicable=not_applicable
             )
 
         return JsonResponse({'success': True})
     return JsonResponse({'error': 'Invalid method'}, status=400)
+

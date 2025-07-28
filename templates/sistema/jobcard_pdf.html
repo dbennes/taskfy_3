@@ -354,80 +354,68 @@
     </table>
       
 
-            <!-- ERECTION MATERIALS -->
-            <table style="margin-bottom:4px;">
-                <thead>
-                    <tr><th colspan="6" style="background:#cfcfcf; text-align:left; padding-left:5px;  font-size: 8px">ERECTION MATERIALS</th></tr>
-                    <tr>
-                        <th style="width:5%;">ITEM</th>
-                        <th style="width:45%;">DESCRIPTION</th>
-                        <th style="width:10%;">DIM</th>
-                        <th style="width:15%;">PMTO CODE</th>
-                        <th style="width:10%;">QTY</th>
-                        <th style="width:20%;">COMMENTS</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for mat in allocated_materials %}
-                    <tr>
-                        <td style="text-align:center;">{{ forloop.counter }}</td>
-                        <td>{{ mat.description }}</td>
-                        <td style="text-align:center;">{{ mat.nps1 }}</td>
-                        <td style="text-align:center;">{{ mat.pmto_code }}</td>
-                        <td style="text-align:center;">{{ mat.qty }}</td>
-                        <td>{{ mat.comments }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="5" style="text-align:center;">No materials allocated.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <!-- ERECTION MATERIALS -->
+    <table style="margin-bottom:4px;">
+        <thead>
+            <tr><th colspan="6" style="background:#cfcfcf; text-align:left; padding-left:5px;  font-size: 8px">ERECTION MATERIALS</th></tr>
+            <tr>
+                <th style="width:5%;">ITEM</th>
+                <th style="width:45%;">DESCRIPTION</th>
+                <th style="width:10%;">DIM</th>
+                <th style="width:15%;">PMTO CODE</th>
+                <th style="width:10%;">QTY</th>
+                <th style="width:20%;">COMMENTS</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mat in allocated_materials %}
+            <tr>
+                <td style="text-align:center;">{{ forloop.counter }}</td>
+                <td>{{ mat.description }}</td>
+                <td style="text-align:center;">{{ mat.nps1 }}</td>
+                <td style="text-align:center;">{{ mat.pmto_code }}</td>
+                <td style="text-align:center;">{{ mat.qty }}</td>
+                <td>{{ mat.comments }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" style="text-align:center;">No materials allocated.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
-            <!-- EQUIPMENT AND SPECIAL TOOLING -->
-    <table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 10px; font-size: 7px;">
-    <thead>
-        <tr>
-            <th style="text-align: left; background: #cfcfcf; padding: 4px;">EQUIPMENT & SPECIAL TOOLING</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td style="border: none; padding: 0;">
-                <table style="width: 100%; border-collapse: collapse; border: none;">
-                    <tr>
-                        <!-- Tabela da esquerda -->
-                        <td style="width: 49%; border: none; vertical-align: top; padding-right: 5px;">
-                            <table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 10px; font-size: 7px;">
-    <thead>
-        
-        <tr>
-            <th style="width: 10%; text-align: center;">ITEM</th>
-            <th style="width: 70%; text-align: center;">SPECIAL TOOLING</th>
-            <th style="width: 20%; text-align: center;">QTY</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for tool in allocated_tools %}
-        <tr>
-            <td style="text-align: center;">{{ forloop.counter }}</td>
-            <td>{{ tool.special_tooling }}</td>
-            <td style="text-align: center;">{{ tool.qty|floatformat:2 }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="3" style="text-align: center;">No equipment allocated.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+        <!-- Cabeçalho ou info fixa, se quiser -->
+        <table>
+            <thead>
+                <tr>
+                    <th style="text-align: left; background: #cfcfcf; padding: 4px;">EQUIPMENT & SPECIAL TOOLING</th>
+                </tr>
+            </thead>
+        </table>
 
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </tbody>
-</table>
+        <!-- Agora a tabela de dados, separada! -->
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 10px; font-size: 7px; page-break-inside:auto;">
+            <thead>
+                <tr>
+                    <th style="width: 10%; text-align: center;">ITEM</th>
+                    <th style="width: 70%; text-align: center;">SPECIAL TOOLING</th>
+                    <th style="width: 20%; text-align: center;">QTY</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tool in allocated_tools %}
+                <tr>
+                    <td style="text-align: center;">{{ forloop.counter }}</td>
+                    <td>{{ tool.special_tooling }}</td>
+                    <td style="text-align: center;">{{ tool.qty|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="text-align: center;">No equipment allocated.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
 
   
 
