@@ -3,6 +3,9 @@
 
 
 
+{% load static  %}
+{% load dict_extras %}
+
 <div class="step-content d-none" id="step-2" style="font-size: 12px;">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h6 class="mb-0">JobCard Overview & Basic Data</h6>
@@ -89,194 +92,10 @@
                 </div>
             </fieldset>
         </div>
-
         
-
-        <!-- Tabela de Tarefas à Direita -->
-        <div class="col-md-7">
-            <!-- RESUMO DOS TOTAIS PREVISTOS -->
-            <div class="row mb-2" style="font-size: 13px;">
-                <div class="col-md-6 d-flex align-items-center">
-                    <b>Planned Duration (hs):&nbsp;</b>
-                    <span id="duration-previsto" class="badge bg-primary" style="font-size: 14px;">0.00</span>
-                </div>
-                <div class="col-md-6 d-flex align-items-center">
-                    <b>Planned Man Hours:&nbsp;</b>
-                    <span id="manhours-previsto" class="badge bg-success" style="font-size: 14px;">0.00</span>
-                </div>
-            </div>
-
-            <table class="table table-sm table-bordered" style="font-size:10px;">
-                <thead class="table-light text-center">
-                    <tr>
-                        <th>Order</th>
-                        <th>Task Description</th>
-                        <th>Manpower</th>
-                        <th>Hours</th>
-                        <th>Total HH</th>
-                        <th>%M/h</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for task in task_list %}
-                    {% with allocated_task=allocated_tasks_dict|get_item:task.order %}
-                    <tr class="align-middle" style="border-bottom: 1px solid #dee2e6; font-size: 10px;">
-                        <td class="text-center text-secondary fw-semibold" style="width: 40px;">{{ task.order }}</td>
-                        <td style="padding-left: 15px; font-weight: 600; color: #2c3e50; width: 45%;">{{ task.typical_task }}</td>
-                        <td class="text-center" style="width: 50px;">
-                            <button type="button" class="btn btn-sm"
-                                data-bs-toggle="modal" data-bs-target="#modalAtividade{{ task.order }}">
-                                <i class="fa-solid fa-user-plus" style="color: #27ae60; font-size: 14px;"></i>
-                            </button>
-                        </td>
-                        <td class="text-center fw-bold text-primary" style="width: 70px; font-size: 10px;">
-                            <span id="hh-max-{{ task.order }}">{{ allocated_task.max_hours|default:"0.00" }}</span>
-                            <input type="hidden" name="hh-max-{{ task.order }}" id="input-hh-max-{{ task.order }}" value="{{ allocated_task.max_hours|default:"0.00" }}">
-                        </td>
-                        <td class="text-center fw-bold text-success" style="width: 70px; font-size: 10px;">
-                            <span id="hh-total-{{ task.order }}">{{ allocated_task.total_hours|default:"0.00" }}</span>
-                            <input type="hidden" name="hh-total-{{ task.order }}" id="input-hh-total-{{ task.order }}" value="{{ allocated_task.total_hours|default:"0.00" }}">
-                        </td>
-                        <td class="text-center fw-semibold text-warning" style="width: 70px; font-size: 10px;">
-                            <span id="hh-percent-{{ task.order }}">{{ allocated_task.percent|floatformat:2|default:"0.00" }}%</span>
-                            <input type="hidden" id="input-hh-percent-{{ task.order }}" name="hh-percent-{{ task.order }}" value="{{ allocated_task.percent|floatformat:2|default:"0.00" }}">
-                        </td>
-                        <td class="text-center">
-                            <input type="checkbox" name="task-not-applicable-{{ task.order }}"
-                                id="task-not-applicable-{{ task.order }}"
-                                class="form-check-input not-applicable-checkbox"
-                                onchange="handleNotApplicable({{ task.order }})"
-                                {% if allocated_task and allocated_task.not_applicable %}checked{% endif %}>
-                            <label for="task-not-applicable-{{ task.order }}" style="font-size:10px;">N/A</label>
-                        </td>
-                    </tr>
-                    {% endwith %}
-                {% endfor %}
-    
-
-                </tbody>
-            </table>
-        </div>
     </div>
-
-    <!-- Modais de Manpower por Task -->
-    {% for task in task_list %}
-        
-            <div class="modal fade" id="modalAtividade{{ task.order }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-lg modal-dialog-centered">
-                    <div class="modal-content">
-                    <div class="modal-header" style="background:#21262b; border-bottom: 1px solid rgb(255, 255, 255); border-top-left-radius: 8px; border-top-right-radius: 8px;">
-                        <h6 class="modal-title"> 
-                            <i class="fa-regular fa-rectangle-xmark me-2"></i>  
-                            Manpowers to "{{ task.typical_task }}"
-                        </h6>
-                        <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
-                            <div class="d-flex align-items-center gap-1">
-                                <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
-                                <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
-                                <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
-                            </div>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <table class="table table-sm table-bordered" style="font-size: 13px;">
-                        <thead>
-                            <tr>
-                                <th class="text-center">Item</th>
-                                <th class="text-center">Description</th>
-                                <th class="text-center" style="width: 120px;">Qty</th>
-                                <th class="text-center" style="width: 120px;">Hours</th>
-                                <th class="text-center" style="width: 100px;">Total Hh</th>
-                                <th class="text-center" style="width: 80px;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% with manpower_list=allocated_manpowers_dict|get_item:task.order %}
-                                {% if manpower_list %}
-                                    {% for manpower in manpower_list %}
-                                        <tr data-id="{{ manpower.id }}">
-                                            <td class="text-center">{{ forloop.counter }}</td>
-                                            <td>{{ manpower.direct_labor }}</td>
-                                            <td class="text-center">
-                                                <input type="number" step="any"
-                                                    name="mp-{{ task.order }}-{{ manpower.id }}-qty"
-                                                    class="form-control form-control-sm text-center manpower-qty-input"
-                                                    value="{{ manpower.qty|default:1|stringformat:'0.2f' }}">
-                                            </td>
-                                            <td class="text-center">
-                                                <input type="number" step="any"
-                                                    name="mp-{{ task.order }}-{{ manpower.id }}-hh"
-                                                    class="form-control form-control-sm text-center manpower-hh-input"
-                                                    value="{{ manpower.hours| default:1|stringformat:'0.2f' }}">
-                                            </td>
-                                            <td class="text-center manpower-total-hh">0.00</td>
-                                            <td class="text-center">
-                                                <button type="button"
-                                                        class="btn btn-sm btn-danger manpower-remove-btn">
-                                                <i class="fa-regular fa-trash-can"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                {% else %}
-                                <!-- Fallback: use dados base caso não tenha salvo ainda -->
-                                {% with base_manpower_list=manpowers_dict|get_item:task.working_code %}
-                                    {% for manpower in base_manpower_list %}
-                                        <tr data-id="{{ manpower.id }}">
-                                            <td class="text-center">{{ forloop.counter }}</td>
-                                            <td>{{ manpower.direct_labor }}</td>
-                                            
-                                            <td class="text-center">
-                                                <input type="number" step="any"
-                                                    name="mp-{{ task.order }}-{{ manpower.id }}-qty"
-                                                    class="form-control form-control-sm text-center manpower-qty-input"
-                                                    value="{{ manpower.qty|default:1|stringformat:'0.2f' }}">
-                                            </td>
-                                            <td class="text-center">
-                                                <input type="number" step="any"
-                                                    name="mp-{{ task.order }}-{{ manpower.id }}-hh"
-                                                    class="form-control form-control-sm text-center manpower-hh-input"
-                                                    value="">
-                                            </td>
-                                            <td class="text-center manpower-total-hh">0.00</td>
-                                            <td class="text-center">
-                                                <button type="button"
-                                                        class="btn btn-sm btn-danger manpower-remove-btn">
-                                                <i class="fa-regular fa-trash-can"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                {% endwith %}
-                            {% endif %}
-                        {% endwith %}
-
-                        </tbody>
-
-
-                        </table>
-                        <div class="mb-3 d-flex justify-content-between align-items-center">
-                            <select id="manpower-select-{{ task.order }}" class="form-select form-select-sm manpower-select" style="width: 60%;">
-                                <option value="">-- Select Manpower --</option>
-                                {% for mp in unique_manpowers %}
-                                    <option value="{{ mp.id }}" data-name="{{ mp.direct_labor }}">{{ mp.direct_labor }}</option>
-                                {% endfor %}
-                            </select>
-                            <button type="button" class="btn btn-light border shadow-sm rounded-pill px-3 py-1"
-                                style="font-size: 13px;" onclick="addManpower({{ task.order }})">
-                                <i class="fa-solid fa-plus me-2" style="color: #28c840;"></i> Add Manpower
-                            </button>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Save and Close</button>
-                    </div>
-                    </div>
-                </div>
-            </div>
-    {% endfor %}
 </div>
+
 
 <script>
 function updateTotals(taskIndex) {

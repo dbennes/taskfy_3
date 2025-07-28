@@ -59,7 +59,7 @@ from django.contrib.auth.decorators import login_required
 from collections import defaultdict
 import re
 from .models import JobCard, TaskBase, ManpowerBase, AllocatedManpower, AllocatedTask, MaterialBase, AllocatedMaterial, ToolsBase, AllocatedTool, EngineeringBase, AllocatedEngineering
-
+import json
 
 
 
@@ -2115,3 +2115,29 @@ def api_revisoes_ultimas(request):
         for rev in revisoes
     ]
     return JsonResponse({"revisoes": data})
+
+
+@csrf_exempt
+def save_allocation(request, jobcard_id, task_order):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        # data = {"manpowers": [{"mp_id": 12, "qty": 1.5, "hours": 2.0}, ...]}
+
+        # Remove todos os manpowers antigos daquela tarefa
+        AllocatedManpower.objects.filter(jobcard_number=jobcard_id, task_order=task_order).delete()
+
+        # Cria/Atualiza os manpowers enviados
+        for mp in data.get('manpowers', []):
+            AllocatedManpower.objects.update_or_create(
+                jobcard_number=jobcard_id,
+                task_order=task_order,
+                direct_labor=mp["direct_labor"],
+                defaults={
+                    "qty": mp["qty"],
+                    "hours": mp["hours"],
+                    # preencha os outros campos se quiser, como 'discipline': ..., 'working_code': ...
+                }
+            )
+
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'Invalid method'}, status=400)

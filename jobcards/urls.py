@@ -99,5 +99,7 @@ urlpatterns = [
     path('procurement/export/', views.export_procurement_excel, name='export_procurement_excel'),
    
    # NOTIFICAÇÕES
-   path('api/revisoes_ultimas/', api_revisoes_ultimas, name='api_revisoes_ultimas'),
+    path('api/revisoes_ultimas/', api_revisoes_ultimas, name='api_revisoes_ultimas'),
+    path('jobcard/<str:jobcard_id>/allocation/<int:task_order>/', views.save_allocation, name='save_allocation'),
+
 ]
