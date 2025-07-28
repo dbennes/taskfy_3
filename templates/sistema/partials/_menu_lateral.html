@@ -314,13 +314,53 @@
 .sidebar-logout .sidebar-link:hover .fas {
     color: #d42f2f;
 }
-/* Responsivo */
+
+<style>
+/* ... (restante do seu CSS igual) ... */
+
+/* NOVO: Para telas até 991px, transforma o sidebar em drawer */
 @media (max-width: 991px) {
-    .sidebar-taskfy, #wrapper {
-        width: 100% !important;
+    .sidebar-taskfy {
+        position: fixed;
+        left: -260px;
+        top: 0;
+        height: 100vh;
+        width: 230px;
+        z-index: 1060;
+        transition: left 0.22s cubic-bezier(.4,0,.2,1);
+        box-shadow: 2px 0 18px 0 rgba(40,60,90,0.12);
         border-radius: 0;
+        padding-top: 60px;
+        background: #fff;
+        min-height: 100vh;
+        font-size: 15px;
+    }
+    .sidebar-taskfy.open {
+        left: 0;
+    }
+    #sidebarOverlay {
+        display: block;
+        position: fixed;
+        z-index: 1059;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background: rgba(0,0,0,.15);
+        transition: opacity .18s;
+    }
+    #sidebarOverlay.hide {
+        display: none;
+    }
+    /* Esconde texto, mostra só ícones (opcional) */
+}
+@media (max-width: 600px) {
+    .sidebar-taskfy {
+        width: 93vw;
+        min-width: 0;
+        max-width: 400px;
     }
 }
+</style>
+
 
 
 </style>
