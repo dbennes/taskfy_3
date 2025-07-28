@@ -438,8 +438,8 @@ body, .container-fluid {
               <th style="width:4%;">#</th>
               <th style="width:32%;" class="d-none d-md-table-cell">Documents</th>
               <th style="width:25%;" class="d-none d-md-table-cell">Project</th>
-              <th style="width:12%;">Old Rev.</th>
-              <th style="width:8%;">New Rev.</th>
+              <th style="width:12%;">Old</th>
+              <th style="width:12%;">New</th>
               <th style="width:18%;">Date</th>
             </tr>
           </thead>
@@ -461,7 +461,7 @@ body, .container-fluid {
     <div class="card-body" style="padding-bottom:12px;">
       <div class="table-scroll-wrapper">
         <table class="table table-sm table-hover modern-table table-scroll" style="width:100%; margin-bottom:0;">
-          <thead style="font-size:8px;">
+          <thead style="font-size:7px;">
             <tr>
               <th style="width:5%;">#</th>
               <th style="width:40%;">Document</th>
@@ -469,14 +469,14 @@ body, .container-fluid {
               <th style="width:25%;">Revision</th>
             </tr>
           </thead>
-          <tbody style="font-size:11px;">
+          <tbody style="font-size:7px;">
             {% if engineering_synced_docs %}
               {% for doc in engineering_synced_docs %}
                 <tr>
-                  <td>{{ forloop.counter }}</td>
-                  <td>{{ doc.document }}</td>
-                  <td>{{ doc.discipline }}</td>
-                  <td>{{ doc.rev }}</td>
+                  <td style="width:5%;">{{ forloop.counter }}</td>
+                  <td style="width:40%;">{{ doc.document }}</td>
+                  <td style="width:30%;">{{ doc.discipline }}</td>
+                  <td style="width:25%;">{{ doc.rev }}</td>
                 </tr>
               {% endfor %}
             {% else %}
