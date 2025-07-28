@@ -639,7 +639,7 @@ def generate_pdf(request, jobcard_id):
         job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
         job.save(update_fields=['jobcard_status'])
 
-    allocated_manpowers = AllocatedManpower.objects.filter(jobcard_number=jobcard_id)
+    allocated_manpowers = AllocatedManpower.objects.filter(jobcard_number=jobcard_id).order_by('task_order')
     allocated_materials = AllocatedMaterial.objects.filter(jobcard_number=job.job_card_number)
     allocated_tools = AllocatedTool.objects.filter(jobcard_number=jobcard_id)
     allocated_tasks = AllocatedTask.objects.filter(jobcard_number=jobcard_id).order_by('task_order')
