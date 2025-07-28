@@ -228,6 +228,37 @@ body, .container-fluid {
 
 </style>
 
+<style>
+/* Torna tbody scrollável e thead fixo */
+.table-scroll-wrapper {
+  width: 100%;
+  overflow: hidden;
+}
+.table-scroll {
+  display: block;
+  max-height: 175px; /* ajuste a altura do scroll! */
+  overflow-y: auto;
+  width: 100%;
+}
+.table-scroll thead,
+.table-scroll tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+.table-scroll thead {
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f7f8fa;
+}
+.table-scroll tbody {
+  display: block;
+  width: 100%;
+}
+</style>
+
 
 
 <style>
@@ -392,16 +423,16 @@ body, .container-fluid {
     </div>
   </div>
 
-  <!-- COLUNA DIREITA -->
+<!-- COLUNA DIREITA -->
 <div class="col-5">
-  <!-- Recent Document Revisions (tabela com DataTable) -->
-  <div class="card mb-4" style="width: 100%; height: 45%">
+  <!-- Recent Document Revisions -->
+  <div class="card mb-4" style="width: 100%; height: 45%;">
     <div class="card-header py-2 px-3" style="font-size:1.08em; background:#f7f8fa; border-bottom:1px solid #ededed;">
       <i class="fas fa-table me-1"></i> Recent Document Revisions
     </div>
     <div class="card-body" style="padding-bottom:12px;">
-      <div style="overflow-x:auto;">
-        <table id="datatablesRevisoes" class="datatable-table table table-sm table-hover modern-table" style="width:100%;">
+      <div class="table-scroll-wrapper">
+        <table id="datatablesRevisoes" class="table table-sm table-hover modern-table table-scroll" style="width:100%; margin-bottom:0;">
           <thead style="font-size:8px;">
             <tr>
               <th style="width:4%;">#</th>
@@ -423,13 +454,13 @@ body, .container-fluid {
   </div>
 
   <!-- EngineeringBase Documents encontrados em DocumentoControle -->
-  <div class="card mb-4" style="width: 100%;height:  50%">
+  <div class="card mb-4" style="width: 100%; height: 50%;">
     <div class="card-header py-2 px-3" style="font-size:1.08em; background:#e8f3f7; border-bottom:1px solid #ededed;">
       <i class="fas fa-drafting-compass me-1"></i> Engineering Base - Documents Synced
     </div>
     <div class="card-body" style="padding-bottom:12px;">
-      <div style="overflow-x:auto;">
-        <table class="table table-sm table-hover modern-table" style="width:100%;">
+      <div class="table-scroll-wrapper">
+        <table class="table table-sm table-hover modern-table table-scroll" style="width:100%; margin-bottom:0;">
           <thead style="font-size:8px;">
             <tr>
               <th style="width:5%;">#</th>
@@ -459,7 +490,6 @@ body, .container-fluid {
     </div>
   </div>
 </div>
-
 
 
 
