@@ -55,10 +55,10 @@
                         <th></th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody >
                 {% for task in task_list %}
                     {% with allocated_task=allocated_tasks_dict|get_item:task.order %}
-                    <tr class="align-middle" style="border-bottom: 1px solid #dee2e6; font-size: 10px;">
+                    <tr class="align-middle" style="border-bottom: 1px solid #dee2e6; font-size: 8px;">
                         <td class="text-center text-secondary fw-semibold" style="width: 40px;">{{ task.order }}</td>
                         <td style="padding-left: 15px; font-weight: 600; color: #2c3e50; width: 45%;">{{ task.typical_task }}</td>
                         <td class="text-center" style="width: 50px;">
@@ -67,15 +67,15 @@
                                 <i class="fa-solid fa-user-plus" style="color: #27ae60; font-size: 14px;"></i>
                             </button>
                         </td>
-                        <td class="text-center fw-bold text-primary" style="width: 70px; font-size: 10px;">
+                        <td class="text-center fw-bold text-primary" style="width: 70px; font-size: 8px;">
                             <span id="hh-max-{{ task.order }}">{{ allocated_task.max_hours|default:"0.00" }}</span>
                             <input type="hidden" name="hh-max-{{ task.order }}" id="input-hh-max-{{ task.order }}" value="{{ allocated_task.max_hours|default:"0.00" }}">
                         </td>
-                        <td class="text-center fw-bold text-success" style="width: 70px; font-size: 10px;">
+                        <td class="text-center fw-bold text-success" style="width: 70px; font-size: 8px;">
                             <span id="hh-total-{{ task.order }}">{{ allocated_task.total_hours|default:"0.00" }}</span>
                             <input type="hidden" name="hh-total-{{ task.order }}" id="input-hh-total-{{ task.order }}" value="{{ allocated_task.total_hours|default:"0.00" }}">
                         </td>
-                        <td class="text-center fw-semibold text-warning" style="width: 70px; font-size: 10px;">
+                        <td class="text-center fw-semibold text-warning" style="width: 70px; font-size: 8px;">
                             <span id="hh-percent-{{ task.order }}">{{ allocated_task.percent|floatformat:2|default:"0.00" }}%</span>
                             <input type="hidden" id="input-hh-percent-{{ task.order }}" name="hh-percent-{{ task.order }}" value="{{ allocated_task.percent|floatformat:2|default:"0.00" }}">
                         </td>
@@ -85,7 +85,7 @@
                                 class="form-check-input not-applicable-checkbox"
                                 onchange="handleNotApplicable({{ task.order }})"
                                 {% if allocated_task and allocated_task.not_applicable %}checked{% endif %}>
-                            <label for="task-not-applicable-{{ task.order }}" style="font-size:10px;">N/A</label>
+                            <label for="task-not-applicable-{{ task.order }}" style="font-size:8px;">N/A</label>
                         </td>
                     </tr>
                     {% endwith %}
@@ -295,11 +295,9 @@ function updateSummaryFields() {
     let totalDuration = 0; // Soma dos max HH
     let totalManHours = 0; // Soma dos total HH
 
-    // Soma todos os max HH (duration)
     document.querySelectorAll('[id^="hh-max-"]').forEach(function(el) {
         totalDuration += parseFloat(el.textContent) || 0;
     });
-    // Soma todos os total HH (man hours)
     document.querySelectorAll('[id^="hh-total-"]').forEach(function(el) {
         totalManHours += parseFloat(el.textContent) || 0;
     });
@@ -309,6 +307,10 @@ function updateSummaryFields() {
     if (durationEl) durationEl.textContent = totalDuration.toFixed(2);
     const manhoursEl = document.getElementById('manhours-previsto');
     if (manhoursEl) manhoursEl.textContent = totalManHours.toFixed(2);
+
+    // Atualiza os inputs hidden para salvar no banco
+    document.getElementById('input-total-duration').value = totalDuration.toFixed(2);
+    document.getElementById('input-total-manhours').value = totalManHours.toFixed(2);
 }
 
 function addManpower(modalIndex) {

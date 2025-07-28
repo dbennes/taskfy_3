@@ -313,6 +313,9 @@ def edit_jobcard(request, jobcard_id=None):
         job.hot_work_required = request.POST.get('HOT_WORK_REQUIRED', job.hot_work_required)
         job.last_modified_by = request.user.username
         job.seq_number = f"{job.job_card_number.split('-')[-1]}"
+        
+        job.total_duration_hs = f"{float(request.POST.get('total_duration_hs', 0) or 0):.2f}"
+        job.total_man_hours = f"{float(request.POST.get('total_man_hours', 0) or 0):.2f}"
 
         job.save()
 
@@ -500,10 +503,10 @@ def edit_jobcard(request, jobcard_id=None):
             e.delete()
 
         # Atualiza totais
-        total_duration_hs = AllocatedTask.objects.filter(jobcard_number=job.job_card_number).aggregate(total=Sum('max_hours'))['total'] or 0
-        total_man_hours = AllocatedTask.objects.filter(jobcard_number=job.job_card_number).aggregate(total=Sum('total_hours'))['total'] or 0
-        job.total_duration_hs = f'{total_duration_hs:.2f}'
-        job.total_man_hours = f'{total_man_hours:.2f}'
+        #total_duration_hs = AllocatedTask.objects.filter(jobcard_number=job.job_card_number).aggregate(total=Sum('max_hours'))['total'] or 0
+        #total_man_hours = AllocatedTask.objects.filter(jobcard_number=job.job_card_number).aggregate(total=Sum('total_hours'))['total'] or 0
+        #job.total_duration_hs = f'{total_duration_hs:.2f}'
+        #job.total_man_hours = f'{total_man_hours:.2f}'
         job.rev = '1'
         job.save(update_fields=['total_duration_hs', 'total_man_hours', 'rev'])
 
