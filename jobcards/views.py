@@ -208,14 +208,26 @@ def dashboard(request):
             'percent_checked': percent
         })
 
-    area_summary = []
+    # Agrupa todas as áreas por area_code
+    area_groups = defaultdict(list)
     for a in Area.objects.all():
-        total = JobCard.objects.filter(location=a.area_code).count()
-        checked = JobCard.objects.filter(location=a.area_code, jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
+        area_groups[a.area_code].append(a)
+
+    area_summary = []
+    for area_code, areas in area_groups.items():
+        # Soma todos os JobCards que possuem location em QUALQUER código dessa área
+        area_codes = [a.area_code for a in areas]  # todos os codes do grupo (A01.MD, A01.UD, etc)
+        total = JobCard.objects.filter(location__in=area_codes).count()
+        checked = JobCard.objects.filter(location__in=area_codes, jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
         percent = (checked / total * 100) if total else 0
+        # Se quiser mostrar todas descrições juntas, pode juntar assim:
+        area_descriptions = ', '.join(sorted(set(a.location for a in areas)))
+        # Ou pega a primeira como “representante”
+        area_description = areas[0].location
+
         area_summary.append({
-            'area_code': a.area_code,
-            'area_description': a.location,
+            'area_code': area_code,
+            'area_description': area_description,   # ou area_descriptions
             'total_jobcard': total,
             'total_checked': checked,
             'percent_checked': percent
