@@ -210,11 +210,11 @@ def dashboard(request):
 
     area_summary = []
     for a in Area.objects.all():
-        total = JobCard.objects.filter(location=a.code).count()
-        checked = JobCard.objects.filter(location=a.code, jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
+        total = JobCard.objects.filter(location=a.area_code).count()
+        checked = JobCard.objects.filter(location=a.area_code, jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
         percent = (checked / total * 100) if total else 0
         area_summary.append({
-            'area_code': a.code,
+            'area_code': a.area_code,
             'area_description': a.location,
             'total_jobcard': total,
             'total_checked': checked,
