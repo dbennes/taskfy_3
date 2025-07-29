@@ -141,3 +141,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'jobcard_backups')
 
 JOB_BACKUP_DIR = os.path.join(BASE_DIR, 'jobcard_backups')
 os.makedirs(JOB_BACKUP_DIR, exist_ok=True)
+
+# ======= ADICIONE ABAIXO AS CREDENCIAIS DA AUTODESK (APS/Forge) =======
+
+APS_CLIENT_ID = 'E4dLpBFkeIJHaH6uP1qkdNYu1CypSy059KF6Y2hj2T3IzTOz'
+APS_CLIENT_SECRET = 'IRAG1Dm7MPTMW3LfB7ano7FUdlWIWT9rbpjAdyGdugxeMaGAAGzG70j4AIZIw7n7'
+APS_CALLBACK_URL = 'http://localhost:8080/api/auth/callback'

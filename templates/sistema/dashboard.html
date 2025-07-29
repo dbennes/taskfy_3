@@ -226,6 +226,7 @@ body, .container-fluid {
 
 
 
+
 </style>
 
 <style>
@@ -257,6 +258,7 @@ body, .container-fluid {
   display: block;
   width: 100%;
 }
+
 </style>
 
 
@@ -271,6 +273,10 @@ body, .container-fluid {
     .card.mb-4 { max-width: 98vw; }
 }
 </style>
+
+<script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.js"></script>
+<link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.min.css">
+
 
 <div class="container-fluid ">
 
@@ -397,99 +403,121 @@ body, .container-fluid {
 
 
 
-<div class="row gx-4">
-  <!-- COLUNA ESQUERDA -->
-  <div class="col-7">
-    <!-- Gráfico JobCards per Area -->
+<!-- Container principal precisa de altura mínima -->
+<div class="container-fluid" style="min-height: 65vh;">
 
-    <div class="dashboard-graph-card  mb-4">
-      <div class="chart-title mb-2">JobCards per Area</div>
-      <div style="position: relative; height:210px;">
-        <canvas id="areaBar"></canvas>
+  <!-- PRIMEIRA LINHA: GRÁFICOS E 3D -->
+  <div class="row gx-4 align-items-stretch" style="min-height: 360px;">
+    <!-- COLUNA GRÁFICOS -->
+    <div class="col-5 d-flex flex-column gap-3" style="min-height: 360px;">
+      <div class="dashboard-graph-card flex-fill mb-0">
+        <div class="chart-title mb-2">JobCards per Area</div>
+        <div style="position: relative; height:210px;">
+          <canvas id="areaBar"></canvas>
+        </div>
+      </div>
+      <div class="dashboard-graph-card flex-fill mb-0">
+        <div class="chart-title mb-2">JobCards per Discipline</div>
+        <div style="position: relative; height:210px;">
+          <canvas id="totalBar"></canvas>
+        </div>
+        <div class="grafico-legenda" style="font-size:7px; display:flex; flex-wrap:wrap; gap:5px 5px;">
+          {% for code, name in discipline_legend %}
+            <span><b>{{ code }}</b> = {{ name }}</span>
+          {% endfor %}
+        </div>
       </div>
     </div>
 
-    <!-- Gráfico JobCards per Discipline -->
-    <div class="dashboard-graph-card ">
-      <div class="chart-title mb-2">JobCards per Discipline</div>
-      <div style="position: relative; height:210px;">
-        <canvas id="totalBar"></canvas>
-      </div>
-      <div class="grafico-legenda " style="font-size:7px; display:flex; flex-wrap:wrap; gap:5px 5px;">
-        {% for code, name in discipline_legend %}
-          <span><b>{{ code }}</b> = {{ name }}</span>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-
-<!-- COLUNA DIREITA -->
-<div class="col-5">
-  <!-- Recent Document Revisions -->
-  <div class="card mb-4" style="width: 100%; height: 45%;">
-    <div class="card-header py-2 px-3" style="font-size:1.08em; background:#f7f8fa; border-bottom:1px solid #ededed;">
-      <i class="fas fa-table me-1"></i> Recent Document Revisions
-    </div>
-    <div class="card-body" style="padding-bottom:12px;">
-      <div class="table-scroll-wrapper">
-        <table id="datatablesRevisoes" class="table table-sm table-hover modern-table table-scroll" style="width:100%; margin-bottom:0;">
-          <thead style="font-size:8px;">
-            <tr>
-              <th style="width:4%;">#</th>
-              <th style="width:32%;" class="d-none d-md-table-cell">Documents</th>
-              <th style="width:25%;" class="d-none d-md-table-cell">Project</th>
-              <th style="width:12%;">Old</th>
-              <th style="width:12%;">New</th>
-              <th style="width:18%;">Date</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-revisoes" style="font-size:07px;">
-            <tr>
-              <td colspan="6" class="text-center text-muted">Loading...</td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- COLUNA 3D VIEWER -->
+  <div class="col-7 d-flex flex-column" >
+    <div class="card flex-fill mb-0"
+         style="background:#fff; border-radius:16px; box-shadow:0 2px 8px #0001; display:flex; flex-direction:column; height: 100%;">
+      
+      <div class="card-body p-0" style="flex:1 1 auto; min-height:0; overflow:hidden; height: 100%;">
+        <div id="viewerContainer" style="width:100%; height:100%; border-radius:10px; background:#151c22; min-height:0;">
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- EngineeringBase Documents encontrados em DocumentoControle -->
-  <div class="card mb-4" style="width: 100%; height: 50%;">
-    <div class="card-header py-2 px-3" style="font-size:1.08em; background:#e8f3f7; border-bottom:1px solid #ededed;">
-      <i class="fas fa-drafting-compass me-1"></i> Engineering Base - Documents Synced
-    </div>
-    <div class="card-body" style="padding-bottom:12px;">
-      <div class="table-scroll-wrapper">
-        <table class="table table-sm table-hover modern-table table-scroll" style="width:100%; margin-bottom:0;">
-          <thead style="font-size:7px;">
-            <tr>
-              <th style="width:5%;">#</th>
-              <th style="width:40%;">Document</th>
-              <th style="width:30%;">Discipline</th>
-              <th style="width:25%;">Revision</th>
-            </tr>
-          </thead>
-          <tbody style="font-size:7px;">
-            {% if engineering_synced_docs %}
-              {% for doc in engineering_synced_docs %}
+
+
+
+    
+  </div>
+
+  <!-- SEGUNDA LINHA: TABELAS -->
+  <div class="row gx-4 mb-3 mt-2 align-items-stretch">
+    <div class="col-6 d-flex flex-column">
+      <div class="card flex-fill mb-0" style="min-height:180px;">
+        <div class="card-header py-2 px-3" style="font-size:1.08em; background:#f7f8fa; border-bottom:1px solid #ededed;">
+          <i class="fas fa-table me-1"></i> Recent Document Revisions
+        </div>
+        <div class="card-body p-0" style="overflow:auto;">
+          <div class="table-scroll-wrapper" style="height: 170px;">
+            <table id="datatablesRevisoes" class="table table-sm table-hover modern-table" style="width:100%; margin-bottom:0;">
+              <thead style="font-size:8px;">
                 <tr>
-                  <td style="width:5%;">{{ forloop.counter }}</td>
-                  <td style="width:40%;">{{ doc.document }}</td>
-                  <td style="width:30%;">{{ doc.discipline }}</td>
-                  <td style="width:25%;">{{ doc.rev }}</td>
+                  <th style="width:4%;">#</th>
+                  <th style="width:32%;" class="d-none d-md-table-cell">Documents</th>
+                  <th style="width:25%;" class="d-none d-md-table-cell">Project</th>
+                  <th style="width:12%;">Old</th>
+                  <th style="width:12%;">New</th>
+                  <th style="width:18%;">Date</th>
                 </tr>
-              {% endfor %}
-            {% else %}
-              <tr>
-                <td colspan="4" class="text-center text-muted">No synced documents found.</td>
-              </tr>
-            {% endif %}
-          </tbody>
-        </table>
+              </thead>
+              <tbody id="tbody-revisoes" style="font-size:07px;">
+                <tr>
+                  <td colspan="6" class="text-center text-muted">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 d-flex flex-column">
+      <div class="card flex-fill mb-0" style="min-height:180px;">
+        <div class="card-header py-2 px-3" style="font-size:1.08em; background:#e8f3f7; border-bottom:1px solid #ededed;">
+          <i class="fas fa-drafting-compass me-1"></i> Engineering Base - Documents Synced
+        </div>
+        <div class="card-body p-0" style="overflow:auto;">
+          <div class="table-scroll-wrapper" style="height: 170px;">
+            <table class="table table-sm table-hover modern-table" style="width:100%; margin-bottom:0;">
+              <thead style="font-size:7px;">
+                <tr>
+                  <th style="width:5%;">#</th>
+                  <th style="width:40%;">Document</th>
+                  <th style="width:30%;">Discipline</th>
+                  <th style="width:25%;">Revision</th>
+                </tr>
+              </thead>
+              <tbody style="font-size:7px;">
+                {% if engineering_synced_docs %}
+                  {% for doc in engineering_synced_docs %}
+                    <tr>
+                      <td style="width:5%;">{{ forloop.counter }}</td>
+                      <td style="width:40%;">{{ doc.document }}</td>
+                      <td style="width:30%;">{{ doc.discipline }}</td>
+                      <td style="width:25%;">{{ doc.rev }}</td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td colspan="4" class="text-center text-muted">No synced documents found.</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
+
+
 
 
 
@@ -647,6 +675,25 @@ new Chart(document.getElementById('totalBar'), {
   }
   setInterval(buscarRevisoesNovas, 5000); // Atualiza a cada 60s
   window.onload = buscarRevisoesNovas;
+</script>
+
+<script>
+    Autodesk.Viewing.Initializer({
+      env: 'AutodeskProduction',
+      accessToken: '{{ token }}'
+    }, function() {
+      var viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('viewerContainer'));
+      viewer.start();
+      var urn = '{{ urn }}';
+      Autodesk.Viewing.Document.load(
+        'urn:' + urn,
+        function(doc) {
+          var viewables = doc.getRoot().getDefaultGeometry();
+          viewer.loadDocumentNode(doc, viewables);
+        },
+        function(err) { console.error(err); }
+      );
+    });
 </script>
 
 
