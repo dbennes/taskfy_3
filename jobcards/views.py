@@ -91,7 +91,7 @@ def login(request):
 
 # - PARTE DO DASHBOARD
 
-
+@login_required(login_url='login')
 def dashboard(request):
     # Summary cards
     total_jobcards = JobCard.objects.count()
@@ -179,7 +179,7 @@ def dashboard(request):
         document__in=DocumentoControle.objects.values_list('codigo', flat=True)
     )
     
-    # Token Forge 2-legged
+    # PARA O AUTODESK Token Forge 2-legged
     import requests
     resp = requests.post(
         "https://developer.api.autodesk.com/authentication/v2/token",
@@ -193,6 +193,45 @@ def dashboard(request):
     token = resp.json().get('access_token')
     # Substitua o URN pelo seu modelo!
     urn = 'dXJuOmFkc2sud2lwcHJvZDpmcy5maWxlOnZmLkRRelY3XzV0UmRpTDNQRjNVWFNMVmc_dmVyc2lvbj0x'
+    
+    #######################
+    
+    discipline_summary = []
+    for d in JobCard.objects.values('discipline').distinct():
+        total = JobCard.objects.filter(discipline=d['discipline']).count()
+        checked = JobCard.objects.filter(discipline=d['discipline'], jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
+        percent = (checked / total * 100) if total else 0
+        discipline_summary.append({
+            'discipline': d['discipline'],
+            'total_jobcard': total,
+            'total_checked': checked,
+            'percent_checked': percent
+        })
+
+    area_summary = []
+    for a in Area.objects.all():
+        total = JobCard.objects.filter(location=a.code).count()
+        checked = JobCard.objects.filter(location=a.code, jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
+        percent = (checked / total * 100) if total else 0
+        area_summary.append({
+            'area_code': a.code,
+            'area_description': a.location,
+            'total_jobcard': total,
+            'total_checked': checked,
+            'percent_checked': percent
+        })
+
+    workpack_summary = []
+    for w in JobCard.objects.values('workpack_number').distinct():
+        total = JobCard.objects.filter(workpack_number=w['workpack_number']).count()
+        checked = JobCard.objects.filter(workpack_number=w['workpack_number'], jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
+        percent = (checked / total * 100) if total else 0
+        workpack_summary.append({
+            'workpack': w['workpack_number'],
+            'total_jobcard': total,
+            'total_checked': checked,
+            'percent_checked': percent
+        })
 
 
     context = {
@@ -227,7 +266,10 @@ def dashboard(request):
         'offshore_percent': f"{(offshore_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
         'approved_percent': f"{(approved_to_execute_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
         'token': token,
-        'urn': urn,    
+        'urn': urn, 
+        'discipline_summary': discipline_summary,
+        'area_summary': area_summary,
+        'workpack_summary': workpack_summary,   
     }
     return render(request, 'sistema/dashboard.html', context)
 
@@ -640,6 +682,9 @@ def allocate_resources(request, jobcard_id):
 @login_required(login_url='login')
 def generate_pdf(request, jobcard_id):
     job = get_object_or_404(JobCard, job_card_number=jobcard_id)
+    
+    # Busca a área correspondente à localização (location == code)
+    area_info = Area.objects.filter(area_code=job.location).first() if job.location else None
 
     # Gerar código de barras
     barcode_folder = os.path.join(settings.BASE_DIR, 'static', 'barcodes')
@@ -680,6 +725,7 @@ def generate_pdf(request, jobcard_id):
         'allocated_engineerings': allocated_engineerings,
         'image_path': image_url,
         'barcode_image': barcode_url,
+        'area_info': area_info,  # <-- Adicione ao contexto!
     }
 
     html_string = render_to_string('sistema/jobcard_pdf.html', context, request=request)

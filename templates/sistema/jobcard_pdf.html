@@ -120,7 +120,14 @@
                         </tr>
                         <tr>
                             <td style="border: 1px solid black;">SYSTEM: {{ job.system }}</td>
-                            <td style="border: 1px solid black;">LOCATION: {{ job.location }}</td>
+                            <td style="border: 1px solid black;">
+                                LOCATION:
+                                {% if area_info %}
+                                    {{ area_info.area_code }} - {{ area_info.location }}
+                                {% else %}
+                                    {{ job.location }}
+                                {% endif %}
+                            </td>
                             <td style="border: 1px solid black;">SEQUENTIAL NUMBER: {{ job.seq_number }}</td>
                         </tr>
                         <tr>

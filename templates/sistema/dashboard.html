@@ -416,16 +416,54 @@ body, .container-fluid {
           <canvas id="areaBar"></canvas>
         </div>
       </div>
-      <div class="dashboard-graph-card flex-fill mb-0">
-        <div class="chart-title mb-2">JobCards per Discipline</div>
-        <div style="position: relative; height:210px;">
-          <canvas id="totalBar"></canvas>
-        </div>
-        <div class="grafico-legenda" style="font-size:7px; display:flex; flex-wrap:wrap; gap:5px 5px;">
-          {% for code, name in discipline_legend %}
-            <span><b>{{ code }}</b> = {{ name }}</span>
-          {% endfor %}
-        </div>
+
+      <!-- DISCIPLINE -->
+      <div class="col-12">
+          <div class="card shadow-sm">
+              <!-- HEADER APPLE STYLE -->
+              <div class="d-flex align-items-center justify-content-between" style="background: #f7f8fa; min-height: 46px; padding: 10px 18px 7px 16px;">
+                  <!-- Título à esquerda -->
+                  <div style="font-size: 13px; font-weight: 600; color: #272626ff; letter-spacing: .01em; margin-bottom:0;">
+                      Jobcard Checking per Discipline
+                  </div>
+                  <!-- Bolinhas à direita -->
+                  <div class="d-flex align-items-center gap-1">
+                      <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
+                      <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
+                      <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
+                  </div>
+              </div>
+              <div class="card-body p-2">
+                  <table class="table table-sm table-bordered align-middle text-center">
+                      <thead>
+                          <tr class="text-danger" style="font-size: 08px;">
+                              <th>DISCIPLINE</th>
+                              <th>TOTAL JOBCARD</th>
+                              <th>TOTAL CHECKED PRELIMINARY</th>
+                              <th>% CHECKED</th>
+                          </tr>
+                      </thead>
+                      <tbody   style="font-size: 08px;">
+                          {% for d in discipline_summary %}
+                          <tr >
+                              <td class="text-start" >{{ d.discipline }}</td>
+                              <td>{{ d.total_jobcard }}</td>
+                              <td>{{ d.total_checked }}</td>
+                              <td>
+                                  {% if d.total_jobcard %}
+                                      {{ d.percent_checked|floatformat:1 }}%
+                                  {% else %}
+                                      0%
+                                  {% endif %}
+                              </td>
+                          </tr>
+                          {% empty %}
+                          <tr><td colspan="4">No data.</td></tr>
+                          {% endfor %}
+                      </tbody>
+                  </table>
+              </div>
+          </div>
       </div>
     </div>
 
@@ -446,75 +484,141 @@ body, .container-fluid {
 
     
   </div>
+  <br/>
+  
+  <div class="row g-4" style="">
+        
 
-  <!-- SEGUNDA LINHA: TABELAS -->
-  <div class="row gx-4 mb-3 mt-2 align-items-stretch">
-    <div class="col-6 d-flex flex-column">
-      <div class="card flex-fill mb-0" style="min-height:180px;">
-        <div class="card-header py-2 px-3" style="font-size:1.08em; background:#f7f8fa; border-bottom:1px solid #ededed;">
-          <i class="fas fa-table me-1"></i> Recent Document Revisions
+        <!-- AREA -->
+<div class="col-5">
+    <div class="card shadow-sm" >
+        <!-- HEADER APPLE STYLE -->
+        <div class="d-flex align-items-center justify-content-between" style="background: #f7f8fa; min-height: 46px; padding: 10px 18px 7px 16px;">
+            <!-- Título à esquerda -->
+            <div style="font-size: 13px; font-weight: 600; color: #272626ff; letter-spacing: .01em; margin-bottom:0;">
+                Jobcard Checking per Area
+            </div>
+            <!-- Bolinhas à direita -->
+            <div class="d-flex align-items-center gap-1">
+                <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
+                <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
+                <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
+            </div>
         </div>
-        <div class="card-body p-0" style="overflow:auto;">
-          <div class="table-scroll-wrapper" style="height: 170px;">
-            <table id="datatablesRevisoes" class="table table-sm table-hover modern-table" style="width:100%; margin-bottom:0;">
-              <thead style="font-size:8px;">
-                <tr>
-                  <th style="width:4%;">#</th>
-                  <th style="width:32%;" class="d-none d-md-table-cell">Documents</th>
-                  <th style="width:25%;" class="d-none d-md-table-cell">Project</th>
-                  <th style="width:12%;">Old</th>
-                  <th style="width:12%;">New</th>
-                  <th style="width:18%;">Date</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-revisoes" style="font-size:07px;">
-                <tr>
-                  <td colspan="6" class="text-center text-muted">Loading...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 d-flex flex-column">
-      <div class="card flex-fill mb-0" style="min-height:180px;">
-        <div class="card-header py-2 px-3" style="font-size:1.08em; background:#e8f3f7; border-bottom:1px solid #ededed;">
-          <i class="fas fa-drafting-compass me-1"></i> Engineering Base - Documents Synced
-        </div>
-        <div class="card-body p-0" style="overflow:auto;">
-          <div class="table-scroll-wrapper" style="height: 170px;">
-            <table class="table table-sm table-hover modern-table" style="width:100%; margin-bottom:0;">
-              <thead style="font-size:7px;">
-                <tr>
-                  <th style="width:5%;">#</th>
-                  <th style="width:40%;">Document</th>
-                  <th style="width:30%;">Discipline</th>
-                  <th style="width:25%;">Revision</th>
-                </tr>
-              </thead>
-              <tbody style="font-size:7px;">
-                {% if engineering_synced_docs %}
-                  {% for doc in engineering_synced_docs %}
-                    <tr>
-                      <td style="width:5%;">{{ forloop.counter }}</td>
-                      <td style="width:40%;">{{ doc.document }}</td>
-                      <td style="width:30%;">{{ doc.discipline }}</td>
-                      <td style="width:25%;">{{ doc.rev }}</td>
+        <!-- FIM HEADER -->
+        <div class="card-body p-2">
+            <table class="table table-sm table-bordered align-middle text-center">
+                <thead>
+                    <tr class="text-danger" style="font-size:08px;">
+                        <th>AREA CODE</th>
+                        <th>AREA DESCRIPTION</th>
+                        <th>TOTAL JOBCARD</th>
+                        <th>TOTAL CHECKED PRELIMINARY</th>
+                        <th>% CHECKED</th>
                     </tr>
-                  {% endfor %}
-                {% else %}
-                  <tr>
-                    <td colspan="4" class="text-center text-muted">No synced documents found.</td>
-                  </tr>
-                {% endif %}
-              </tbody>
+                </thead>
+                <tbody style="font-size:08px;">
+                    {% for a in area_summary %}
+                    <tr>
+                        <td>{{ a.area_code }}</td>
+                        <td class="text-start">{{ a.area_description }}</td>
+                        <td>{{ a.total_jobcard }}</td>
+                        <td>{{ a.total_checked }}</td>
+                        <td>
+                            {% if a.total_jobcard %}
+                                {{ a.percent_checked|floatformat:1 }}%
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5">No data.</td></tr>
+                    {% endfor %}
+                </tbody>
             </table>
-          </div>
         </div>
-      </div>
     </div>
-  </div>
+</div>
+
+        <div class="col-7">
+
+        <!-- SEGUNDA LINHA: TABELAS -->
+          <div class="row gx-4 mb-3 align-items-stretch">
+            <div class="col-6 d-flex flex-column">
+              <div class="card flex-fill mb-0" style="min-height:180px;">
+                <div class="card-header py-2 px-3" style="font-size:1.08em; background:#f7f8fa; border-bottom:1px solid #ededed;">
+                  <i class="fas fa-table me-1"></i> Recent Document Revisions
+                </div>
+                <div class="card-body p-0" style="overflow:auto;">
+                  <div class="table-scroll-wrapper" style="height: 170px;">
+                    <table id="datatablesRevisoes" class="table table-sm table-hover modern-table" style="width:100%; margin-bottom:0;">
+                      <thead style="font-size:8px;">
+                        <tr>
+                          <th style="width:4%;">#</th>
+                          <th style="width:32%;" class="d-none d-md-table-cell">Documents</th>
+                          <th style="width:25%;" class="d-none d-md-table-cell">Project</th>
+                          <th style="width:12%;">Old</th>
+                          <th style="width:12%;">New</th>
+                          <th style="width:18%;">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody id="tbody-revisoes" style="font-size:07px;">
+                        <tr>
+                          <td colspan="6" class="text-center text-muted">Loading...</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 d-flex flex-column">
+              <div class="card flex-fill mb-0" style="min-height:180px;">
+                <div class="card-header py-2 px-3" style="font-size:1.08em; background:#e8f3f7; border-bottom:1px solid #ededed;">
+                  <i class="fas fa-drafting-compass me-1"></i> Engineering Base - Documents Synced
+                </div>
+                <div class="card-body p-0" style="overflow:auto;">
+                  <div class="table-scroll-wrapper" style="height: 170px;">
+                    <table class="table table-sm table-hover modern-table" style="width:100%; margin-bottom:0;">
+                      <thead style="font-size:7px;">
+                        <tr>
+                          <th style="width:5%;">#</th>
+                          <th style="width:40%;">Document</th>
+                          <th style="width:30%;">Discipline</th>
+                          <th style="width:25%;">Revision</th>
+                        </tr>
+                      </thead>
+                      <tbody style="font-size:7px;">
+                        {% if engineering_synced_docs %}
+                          {% for doc in engineering_synced_docs %}
+                            <tr>
+                              <td style="width:5%;">{{ forloop.counter }}</td>
+                              <td style="width:40%;">{{ doc.document }}</td>
+                              <td style="width:30%;">{{ doc.discipline }}</td>
+                              <td style="width:25%;">{{ doc.rev }}</td>
+                            </tr>
+                          {% endfor %}
+                        {% else %}
+                          <tr>
+                            <td colspan="4" class="text-center text-muted">No synced documents found.</td>
+                          </tr>
+                        {% endif %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        
+
+        
+    </div>
+
+  
 </div>
 
 
