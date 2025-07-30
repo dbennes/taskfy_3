@@ -570,7 +570,7 @@ body, .container-fluid {
               </tbody>
               <tfoot>
                 <tr style="font-weight: bold; background: #e9ecef;">
-                  <td>Total</td>
+                  <td>Total of {{ workpack_summary|length }} workpacks</td>
                   <td>{{ workpack_total_jobcard }}</td>
                   <td>{{ workpack_total_checked }}</td>
                   <td>{{ workpack_percent_checked|floatformat:2 }}%</td>
