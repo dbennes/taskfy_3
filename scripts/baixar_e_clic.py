@@ -5,7 +5,7 @@ from datetime import datetime
 
 async def main():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)  # Use headless=True para rodar sem janela
+        browser = await p.chromium.launch(headless=True)  # Use headless=True para rodar sem janela
         context = await browser.new_context(accept_downloads=True)
         page = await context.new_page()
         await page.goto("https://westpaq.e-clic.net/")
