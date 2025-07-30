@@ -245,6 +245,27 @@ def dashboard(request):
             'percent_checked': percent
         })
 
+    # WORKPACK
+    workpack_total_jobcard = sum(w['total_jobcard'] for w in workpack_summary)
+    workpack_total_checked = sum(w['total_checked'] for w in workpack_summary)
+    workpack_percent_checked = (
+        (workpack_total_checked / workpack_total_jobcard * 100)
+        if workpack_total_jobcard else 0
+    )
+    
+    # Discipline
+    discipline_total_jobcard = sum(d['total_jobcard'] for d in discipline_summary)
+    discipline_total_checked = sum(d['total_checked'] for d in discipline_summary)
+    discipline_percent_checked = (
+        (discipline_total_checked / discipline_total_jobcard * 100) if discipline_total_jobcard else 0
+    )
+
+    # Area
+    area_total_jobcard = sum(a['total_jobcard'] for a in area_summary)
+    area_total_checked = sum(a['total_checked'] for a in area_summary)
+    area_percent_checked = (
+        (area_total_checked / area_total_jobcard * 100) if area_total_jobcard else 0
+    )
 
     context = {
         'total_jobcards': total_jobcards,
@@ -282,6 +303,16 @@ def dashboard(request):
         'discipline_summary': discipline_summary,
         'area_summary': area_summary,
         'workpack_summary': workpack_summary,   
+        'workpack_summary': workpack_summary,
+        'workpack_total_jobcard': workpack_total_jobcard,
+        'workpack_total_checked': workpack_total_checked,
+        'workpack_percent_checked': workpack_percent_checked,
+        'discipline_total_jobcard': discipline_total_jobcard,
+        'discipline_total_checked': discipline_total_checked,
+        'discipline_percent_checked': discipline_percent_checked,
+        'area_total_jobcard': area_total_jobcard,
+        'area_total_checked': area_total_checked,
+        'area_percent_checked': area_percent_checked,
     }
     return render(request, 'sistema/dashboard.html', context)
 
