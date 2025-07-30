@@ -1,25 +1,21 @@
 import os
 import pandas as pd
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 from jobcards.models import DocumentoControle, DocumentoRevisaoAlterada, EngineeringBase
 
-EXCEL_PATH = '00 - Documents E-CLIC/EARLY_ENGINEERING.xlsx'  # Caminho relativo ou absoluto conforme seu projeto
+EXCEL_PATH = '00 - Documents E-CLIC/EARLY_ENGINEERING.xlsx'
 
 class Command(BaseCommand):
-    help = 'Importa documentos do Excel EARLY_ENGINEERING.xlsx e detecta alterações de revisão'
+    help = 'Importa documentos do Excel EARLY_ENGINEERING.xlsx, detecta alterações de revisão e mantém EngineeringBase sincronizada'
 
     def handle(self, *args, **kwargs):
-        # 1. Checa se o arquivo existe
         if not os.path.exists(EXCEL_PATH):
             self.stdout.write(self.style.ERROR(f'Arquivo não encontrado: {EXCEL_PATH}'))
             return
 
-        # 2. Lê o Excel e normaliza os nomes das colunas
         df = pd.read_excel(EXCEL_PATH)
         df.rename(
-            columns=lambda x: x.strip()
-                              .lower()
+            columns=lambda x: x.strip().lower()
                               .replace(" ", "_")
                               .replace("ç", "c")
                               .replace("ã", "a")
@@ -35,43 +31,60 @@ class Command(BaseCommand):
         )
 
         alteracoes = []
+        codigos_validos = set(c.strip().upper() for c in EngineeringBase.objects.values_list('document', flat=True))
 
-        # 3. Colete todos os documentos válidos na EngineeringBase (códigos secundários)
-        codigos_validos = set(
-            EngineeringBase.objects.values_list('document', flat=True)
-        )
-
-        # 4. Itera sobre as linhas do DataFrame
         for _, row in df.iterrows():
-            codigo_secundario = row.get('codigo_secundario', '')
+            codigo_secundario = (row.get('codigo', '') or row.get('codigo_secundario', '')).strip().upper()
             nome_projeto = row.get('nome_do_projeto', '')
-            revisao = row.get('revisao', '')
+            revisao_excel = str(row.get('revisao', '')).strip()
 
             if not codigo_secundario or codigo_secundario not in codigos_validos:
                 continue
 
             filtro = {'codigo': codigo_secundario, 'nome_projeto': nome_projeto}
             obj, created = DocumentoControle.objects.get_or_create(**filtro)
-            revisao_anterior = obj.revisao
+            revisao_banco = (obj.revisao or '').strip()
 
-            # NOVO: Só registra alteração se NÃO for a primeira vez (created == False)
-            if not created and obj.revisao != revisao:
+            if created:
                 DocumentoRevisaoAlterada.objects.create(
                     codigo=codigo_secundario,
                     nome_projeto=nome_projeto,
-                    revisao_anterior=revisao_anterior,
-                    revisao_nova=revisao,
+                    revisao_anterior=None,
+                    revisao_nova=revisao_excel,
+                )
+            elif revisao_banco != revisao_excel:
+                DocumentoRevisaoAlterada.objects.create(
+                    codigo=codigo_secundario,
+                    nome_projeto=nome_projeto,
+                    revisao_anterior=revisao_banco,
+                    revisao_nova=revisao_excel,
                 )
                 alteracoes.append({
                     'codigo': codigo_secundario,
                     'nome_projeto': nome_projeto,
-                    'revisao_anterior': revisao_anterior,
-                    'revisao_nova': revisao,
+                    'revisao_anterior': revisao_banco,
+                    'revisao_nova': revisao_excel,
                 })
 
-            obj.revisao = revisao
-            obj.save()  
+            obj.revisao = revisao_excel
+            obj.save()
 
+            # --- Sincronizar a revisao na EngineeringBase ---
+            engineering_qs = EngineeringBase.objects.filter(document__iexact=codigo_secundario)
+            for eng in engineering_qs:
+                rev_antiga = (eng.rev or '').strip()
+                if rev_antiga != revisao_excel:
+                    # Salva histórico ANTES de atualizar a revisão no banco!
+                    DocumentoRevisaoAlterada.objects.create(
+                        codigo=codigo_secundario,
+                        nome_projeto=nome_projeto,
+                        revisao_anterior=rev_antiga,
+                        revisao_nova=revisao_excel,
+                    )
+                    eng.rev = revisao_excel
+                    eng.save()
+                    print(f'[ENGBASE ALTERADO] {eng.document}: {rev_antiga} → {revisao_excel}')
 
-        # 6. Mensagem final no terminal
-        self.stdout.write(self.style.SUCCESS(f"Importação finalizada. Alterações de revisão: {len(alteracoes)}"))
+        self.stdout.write(self.style.SUCCESS(
+            f"Importação finalizada. Alterações de revisão: {len(alteracoes)}. EngBase sincronizada!"
+        ))

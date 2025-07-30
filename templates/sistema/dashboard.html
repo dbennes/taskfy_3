@@ -583,74 +583,110 @@ body, .container-fluid {
     </div>
 
   <!-- Coluna 2: Recent Document Revisions -->
-  <div class="col-md-4 d-flex flex-column">
-    <div class="card flex-fill mb-0" style="min-height:180px;">
-      <div class="card-header py-2 px-3" style="font-size:1.08em; background:#f7f8fa; border-bottom:1px solid #ededed;">
-        <i class="fas fa-table me-1"></i> Recent Document Revisions
-      </div>
-      <div class="card-body p-0" style="overflow:auto;">
-        <div class="table-scroll-wrapper" style="height: 170px;">
-          <table id="datatablesRevisoes" class="table table-sm table-hover modern-table" style="width:100%; margin-bottom:0;">
-            <thead style="font-size:8px;">
-              <tr>
-                <th style="width:4%;">#</th>
-                <th style="width:32%;" class="d-none d-md-table-cell">Documents</th>
-                <th style="width:25%;" class="d-none d-md-table-cell">Project</th>
-                <th style="width:12%;">Old</th>
-                <th style="width:12%;">New</th>
-                <th style="width:18%;">Date</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-revisoes" style="font-size:07px;">
-              <tr>
-                <td colspan="6" class="text-center text-muted">Loading...</td>
-              </tr>
-            </tbody>
-          </table>
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <!-- HEADER MINIMALISTA COM 'BOLINHAS' APPLE STYLE -->
+      <div class="d-flex align-items-center justify-content-between" style="background: #f7f8fa; min-height: 46px; padding: 10px 18px 7px 16px;">
+        <div style="font-size: 13px; font-weight: 600; color: #272626ff; letter-spacing: .01em; margin-bottom:0;">
+          Recent Document Revisions
         </div>
+        <div class="d-flex align-items-center gap-1">
+          <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
+          <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
+          <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
+        </div>
+      </div>
+      <div class="card-body p-2" style="overflow:auto; min-height:170px;">
+        <table class="table table-sm table-bordered align-middle text-center" style="margin-bottom:0;">
+          <thead>
+            <tr class="text-danger" style="font-size:08px;">
+              <th style="width:4%;">#</th>
+              <th style="width:32%;" class="d-none d-md-table-cell">Documents</th>
+              <th style="width:25%;" class="d-none d-md-table-cell">Project</th>
+              <th style="width:12%;">Old</th>
+              <th style="width:12%;">New</th>
+              <th style="width:18%;">Date</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-revisoes" style="font-size:08px;">
+            <tr>
+              <td colspan="6" class="text-center text-muted">Loading...</td>
+            </tr>
+            {# Aqui seu loop de dados dinâmico via Django/JS #}
+            
+            {% for r in revisions %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td class="d-none d-md-table-cell">{{ r.document }}</td>
+              <td class="d-none d-md-table-cell">{{ r.project }}</td>
+              <td>{{ r.old_revision }}</td>
+              <td>{{ r.new_revision }}</td>
+              <td>{{ r.date }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6">No data.</td></tr>
+            {% endfor %}
+            
+          </tbody>
+         
+        </table>
       </div>
     </div>
   </div>
 
-  <!-- Coluna 3: Engineering Base -->
-  <div class="col-md-4 d-flex flex-column">
-    <div class="card flex-fill mb-0" style="min-height:180px;">
-      <div class="card-header py-2 px-3" style="font-size:1.08em; background:#e8f3f7; border-bottom:1px solid #ededed;">
+<div class="col-md-4">
+  <div class="card shadow-sm">
+    <!-- HEADER -->
+    <div class="d-flex align-items-center justify-content-between" style="background: #f7f8fa; min-height: 46px; padding: 10px 18px 7px 16px;">
+      <div style="font-size: 13px; font-weight: 600; color: #272626ff; letter-spacing: .01em; margin-bottom:0;">
         <i class="fas fa-drafting-compass me-1"></i> Engineering Base - Documents Synced
       </div>
-      <div class="card-body p-0" style="overflow:auto;">
-        <div class="table-scroll-wrapper" style="height: 170px;">
-          <table class="table table-sm table-hover modern-table" style="width:100%; margin-bottom:0;">
-            <thead style="font-size:7px;">
-              <tr>
-                <th style="width:5%;">#</th>
-                <th style="width:40%;">Document</th>
-                <th style="width:30%;">Discipline</th>
-                <th style="width:25%;">Revision</th>
-              </tr>
-            </thead>
-            <tbody style="font-size:7px;">
-              {% if engineering_synced_docs %}
-                {% for doc in engineering_synced_docs %}
-                  <tr>
-                    <td style="width:5%;">{{ forloop.counter }}</td>
-                    <td style="width:40%;">{{ doc.document }}</td>
-                    <td style="width:30%;">{{ doc.discipline }}</td>
-                    <td style="width:25%;">{{ doc.rev }}</td>
-                  </tr>
-                {% endfor %}
-              {% else %}
+      <div class="d-flex align-items-center gap-1">
+        <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
+        <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
+        <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
+      </div>
+    </div>
+    <div class="card-body p-2">
+      <div style="max-height: 160px; overflow-y: auto;">
+        <table class="table table-sm table-bordered align-middle text-center" style="margin-bottom:0;">
+          <thead>
+            <tr class="text-danger" style="font-size:08px;">
+              <th style="width:5%;">#</th>
+              <th style="width:40%;">Document</th>
+              <th style="width:30%;">Discipline</th>
+              <th style="width:25%;">Revision</th>
+            </tr>
+          </thead>
+          <tbody style="font-size:08px;">
+            {% if engineering_synced_docs %}
+              {% for doc in engineering_synced_docs %}
                 <tr>
-                  <td colspan="4" class="text-center text-muted">No synced documents found.</td>
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ doc.document }}</td>
+                  <td>{{ doc.discipline }}</td>
+                  <td>{{ doc.rev }}</td>
                 </tr>
-              {% endif %}
-            </tbody>
-          </table>
-        </div>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="4" class="text-center text-muted">No synced documents found.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+          <tfoot>
+            <tr style="font-weight: bold; background: #e9ecef; font-size:10px;">
+              <td colspan="2" class="text-end">Total</td>
+              <td colspan="2">{{ engineering_synced_docs|length }}</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   </div>
 </div>
+
+
 
 
 </div>
