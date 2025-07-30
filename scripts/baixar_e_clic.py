@@ -5,7 +5,7 @@ from datetime import datetime
 
 async def main():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)  # Use headless=True para rodar sem janela
+        browser = await p.chromium.launch(headless=False)  # Use headless=True para rodar sem janela
         context = await browser.new_context(accept_downloads=True)
         page = await context.new_page()
         await page.goto("https://westpaq.e-clic.net/")
@@ -26,12 +26,12 @@ async def main():
         await page.wait_for_selector('#combo_projetos + .chzn-container .chzn-single')
         await page.click('#combo_projetos + .chzn-container .chzn-single')
         await asyncio.sleep(1)
-        await page.click('.chzn-container .chzn-results li:has-text("EARLY_ENGINEERING")')
+        await page.click('.chzn-container .chzn-results li:has-text("BNO - BONGA NORTH")')
 
         # Seleciona pasta
-        await page.wait_for_selector('span.tree-title:has-text("01-EE")')
+        await page.wait_for_selector('span.tree-title:has-text("02-DED")')
         await asyncio.sleep(1)
-        await page.click('span.tree-title:has-text("01-EE")')
+        await page.click('span.tree-title:has-text("02-DED")')
 
         # Espera grid carregar (só para garantir)
         await asyncio.sleep(2)
