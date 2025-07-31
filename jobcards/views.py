@@ -60,9 +60,14 @@ from collections import defaultdict
 import re
 from .models import JobCard, TaskBase, ManpowerBase, AllocatedManpower, AllocatedTask, MaterialBase, AllocatedMaterial, ToolsBase, AllocatedTool, EngineeringBase, AllocatedEngineering
 import json
+from django.contrib.auth.decorators import permission_required
+from django.contrib.auth.decorators import user_passes_test
 
-
-
+# - PERMISSIONAMENTO POR GRUPO
+def group_required(group_name):
+    def in_group(u):
+        return u.is_authenticated and u.groups.filter(name=group_name).exists()
+    return user_passes_test(in_group, login_url='login', redirect_field_name=None)
 
 # Caminho absoluto do executável dentro do projeto
 path_wkhtmltopdf = os.path.join(settings.BASE_DIR, 'wkhtmltopdf', 'bin', 'wkhtmltopdf.exe')
@@ -371,13 +376,16 @@ def jobcards_list(request):
     }
     return render(request, 'sistema/jobcards.html', context)
 
+
 # - PARTE DO DASHBOARD
 @login_required(login_url='login') # EXIGE O USUARIO A ESTAR LOGADO
+@permission_required('jobcards.add_jobcard', raise_exception=True)
 def create_jobcard(request, jobcard_id=None):
     return render(request, 'sistema/create_jobcard.html')
 
 
 @login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def edit_jobcard(request, jobcard_id=None):
     from collections import defaultdict
     import re
@@ -678,7 +686,8 @@ def edit_jobcard(request, jobcard_id=None):
     print('POST DATA:', request.POST)
     return render(request, 'sistema/create_jobcard.html', context)
 
-
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def allocate_resources(request, jobcard_id):
     job = get_object_or_404(JobCard, job_card_number=jobcard_id)
 
@@ -723,6 +732,7 @@ def allocate_resources(request, jobcard_id):
     return redirect('generate_pdf', jobcard_id=job.job_card_number)
 
 @login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def generate_pdf(request, jobcard_id):
     job = get_object_or_404(JobCard, job_card_number=jobcard_id)
     
@@ -894,6 +904,7 @@ def task_list(request):
 # --------- DATABASE ALOCAÇÕES --------------- #
 
 @login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def allocated_manpower_list(request):
     allocated_manpower = AllocatedManpower.objects.all()
     context = {
@@ -902,6 +913,7 @@ def allocated_manpower_list(request):
     return render(request, 'sistema/allocated/allocated_manpower_list.html', context)
 
 @login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def allocated_material_list(request):
     allocated_materials = AllocatedMaterial.objects.all()
     context = {
@@ -910,6 +922,7 @@ def allocated_material_list(request):
     return render(request, 'sistema/allocated/allocated_material_list.html', context)
 
 @login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def allocated_tool_list(request):
     allocated_tools = AllocatedTool.objects.all()
     context = {
@@ -918,6 +931,7 @@ def allocated_tool_list(request):
     return render(request, 'sistema/allocated/allocated_tool_list.html', context)
 
 @login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def allocated_engineering_list(request):
     allocated_engineering = AllocatedEngineering.objects.all()
     context = {
@@ -926,6 +940,7 @@ def allocated_engineering_list(request):
     return render(request, 'sistema/allocated/allocated_engineering_list.html', context)
 
 @login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def allocated_task_list(request):
     allocated_tasks = AllocatedTask.objects.all()
     context = {
@@ -936,6 +951,7 @@ def allocated_task_list(request):
 # --------- IMPORTAÇÕES BANCOS --------------- #
 
 @csrf_exempt
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def import_materials(request):
     if request.method == "POST":
         overwrite = request.POST.get('overwrite') == '1'
@@ -1034,6 +1050,7 @@ def import_materials(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
 @login_required
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def import_jobcard(request):
     if request.method == "POST":
         overwrite = request.POST.get('overwrite') == '1'
@@ -1157,6 +1174,7 @@ def import_jobcard(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
 @login_required
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def import_manpower(request):
     if request.method == "POST":
         file = request.FILES.get('file')
@@ -1240,6 +1258,7 @@ def import_manpower(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
 @login_required
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def import_toolsbase(request):
     if request.method == "POST":
         file = request.FILES.get('file')
@@ -1327,6 +1346,7 @@ def import_toolsbase(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
 @login_required
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def import_engineering(request):
     if request.method == "POST":
         overwrite = request.POST.get("overwrite") == "1"
@@ -1378,6 +1398,7 @@ def import_engineering(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
 
 @login_required
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def import_taskbase(request):
     if request.method == "POST":
         file = request.FILES.get('file')
@@ -1442,7 +1463,6 @@ def import_taskbase(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
 #REFERENCES FUNÇÕES 
-
 class DisciplineListView(ListView):
     model = Discipline
     template_name = 'sistema/references/discipline_list.html'
@@ -1508,27 +1528,40 @@ class SystemListView(ListView):
         return redirect('systems_list')
     
     # Discipline Delete
-    
+  
+  
+# --------- DELETAR DADOS -------------- #
+
+
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def delete_discipline(request, pk):
     discipline = get_object_or_404(Discipline, pk=pk)
     discipline.delete()
     return redirect('disciplines_list')  # Nome da URL que lista Disciplines
 
-# --------- DELETAR DADOS -------------- #
-
 # System Delete
+
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def delete_system(request, pk):
     system = get_object_or_404(System, pk=pk)
     system.delete()
     return redirect('systems_list')  # Nome da URL que lista Systems
 
 # Working Code Delete
+
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def delete_working_code(request, pk):
     working_code = get_object_or_404(WorkingCode, pk=pk)
     working_code.delete()
     return redirect('workingcodes_list')  # Nome da URL que lista Working Codes
 
 # Area Delete
+
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def delete_area(request, pk):
     area = get_object_or_404(Area, pk=pk)
     area.delete()
@@ -1537,7 +1570,7 @@ def delete_area(request, pk):
 
 # --------- BAIXAR EXPORTAÇÕES --------- #
 
-@login_required
+@login_required(login_url='login')
 def export_materials_excel(request):
     # CAPTURA OS FILTROS ENVIADOS PELO FRONT
     material = request.GET.get('material', '')
@@ -1612,7 +1645,7 @@ def export_materials_excel(request):
     df.to_excel(response, index=False)
     return response
 
-@login_required
+@login_required(login_url='login')
 def export_manpower_excel (request):
     discipline = request.GET.get('discipline', '')
     working_code = request.GET.get('working_code', '')
@@ -1655,7 +1688,7 @@ def export_manpower_excel (request):
     df.to_excel(response, index=False)
     return response
 
-@login_required
+@login_required(login_url='login')
 def export_toolsbase_excel(request):
     discipline = request.GET.get('discipline', '')
     working_code = request.GET.get('working_code', '')
@@ -1702,7 +1735,7 @@ def export_toolsbase_excel(request):
 
 # --------- AREA REPORTS --------------- #
 
-@login_required(login_url='jobcards')
+@login_required(login_url='login')
 def jobcards_tam(request):
     qs = JobCard.objects.filter(comments__icontains='TAM')
 
@@ -1758,10 +1791,14 @@ def jobcards_tam(request):
 
 # --------- AVANÇAR JOBCARDS --------------- #
 
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def jobcard_progress(request):
     return render(request, 'sistema/avancar/jobcard_progress.html')
 
+@login_required(login_url='login')
 @require_GET
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def api_jobcard_detail(request, jobcard_number):
     try:
         job = JobCard.objects.get(job_card_number=jobcard_number)
@@ -1782,7 +1819,9 @@ def api_jobcard_detail(request, jobcard_number):
     }
     return JsonResponse(data)
 
+@login_required(login_url='login')
 @require_POST
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def api_jobcard_advance(request, jobcard_number):
     try:
         job = JobCard.objects.get(job_card_number=jobcard_number)
@@ -1795,7 +1834,8 @@ def api_jobcard_advance(request, jobcard_number):
 
 # --------- AREA DE IMPEDIMENTOS --------------- #
 
-@login_required
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def create_impediment(request):
     error = None
     jobcard = None
@@ -1823,6 +1863,7 @@ def create_impediment(request):
     })
         
 @login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def impediments_list(request):
     search = request.GET.get('search', '')
     items_per_page = int(request.GET.get('items_per_page', 10))
@@ -1853,6 +1894,7 @@ def impediments_list(request):
 
 @csrf_exempt
 @login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def impediment_update(request):
     if request.method == 'POST':
         id = request.POST.get('id')
@@ -1879,6 +1921,7 @@ def impediment_update(request):
 
 @csrf_exempt
 @login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def impediment_delete(request):
     if request.method == 'POST':
         id = request.POST.get('id')
@@ -1892,10 +1935,12 @@ def impediment_delete(request):
 
 # --------- AREA DE PMTO --------------- #
 
+@login_required(login_url='login')
 def pmto_list(request):
     pmto_items = PMTOBase.objects.all()
     return render(request, 'sistema/pmto/pmto_list.html', {'pmto_items': pmto_items})
 
+@login_required(login_url='login')
 @csrf_exempt
 def import_pmto(request):
     if request.method == 'POST' and request.FILES.get('file'):
@@ -1950,7 +1995,7 @@ def import_pmto(request):
             return JsonResponse({'status': 'error', 'message': str(e)})
     return JsonResponse({'status': 'invalid', 'message': 'No file uploaded'})
 
-@login_required
+@login_required(login_url='login')
 def export_pmto_excel(request):
     # CAPTURA OS FILTROS ENVIADOS PELO FRONT
     pmto_code = request.GET.get('pmto_code', '')
@@ -2003,10 +2048,12 @@ def export_pmto_excel(request):
 
 # --------- AREA DE MATERIAL REQUISITION --------------- #
 
+@login_required(login_url='login')
 def mr_list(request):
     mr_items = MRBase.objects.all()
     return render(request, 'sistema/materialRequest/mr_list.html', {'mr_items': mr_items})
 
+@login_required(login_url='login')
 @csrf_exempt
 def import_mr(request):
     if request.method == 'POST' and request.FILES.get('file'):
@@ -2059,7 +2106,7 @@ def import_mr(request):
             return JsonResponse({'status': 'error', 'message': str(e)})
     return JsonResponse({'status': 'invalid', 'message': 'No file uploaded'})
 
-@login_required
+@login_required(login_url='login')
 def export_mr_excel(request):
     mr_number = request.GET.get('mr_number', '')
     pmto_code = request.GET.get('pmto_code', '')
@@ -2102,10 +2149,12 @@ def export_mr_excel(request):
 
 # --------- AREA DE PROCUREMENT BASE --------------- #
 
+@login_required(login_url='login')
 def procurement_list(request):
     procurement_items = ProcurementBase.objects.all()
     return render(request, 'sistema/ProcurementBase/procurement_list.html', {'procurement_items': procurement_items})
 
+@login_required(login_url='login')
 @csrf_exempt
 def import_procurement(request):
     if request.method == 'POST' and request.FILES.get('file'):
@@ -2142,6 +2191,7 @@ def import_procurement(request):
             return JsonResponse({'status': 'error', 'message': str(e)})
     return JsonResponse({'status': 'invalid', 'message': 'No file uploaded'})
 
+@login_required(login_url='login')
 @login_required
 def export_procurement_excel(request):
     mr_number = request.GET.get('mr_number', '')
@@ -2210,6 +2260,7 @@ def export_procurement_excel(request):
 
 from jobcards.models import EngineeringBase, DocumentoRevisaoAlterada
 
+@login_required(login_url='login')
 def api_revisoes_ultimas(request):
     # Filtra apenas revisões cujo código existe na EngineeringBase.document
     codigos_validos = EngineeringBase.objects.values_list('document', flat=True)
@@ -2228,7 +2279,9 @@ def api_revisoes_ultimas(request):
     ]
     return JsonResponse({"revisoes": data})
 
+@login_required(login_url='login')
 @csrf_exempt
+@permission_required('jobcards.change_jobcard', raise_exception=True)
 def save_allocation(request, jobcard_id, task_order):
     if request.method == 'POST':
         data = json.loads(request.body)
