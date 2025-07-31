@@ -220,23 +220,24 @@ def dashboard(request):
 
     area_summary = []
     for area_code, areas in area_groups.items():
-        # Soma todos os JobCards que possuem location em QUALQUER código dessa área
-        area_codes = [a.area_code for a in areas]  # todos os codes do grupo (A01.MD, A01.UD, etc)
+        area_codes = [a.area_code for a in areas]
+
         total = JobCard.objects.filter(location__in=area_codes).count()
         checked = JobCard.objects.filter(location__in=area_codes, jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
         percent = (checked / total * 100) if total else 0
-        # Se quiser mostrar todas descrições juntas, pode juntar assim:
-        area_descriptions = ', '.join(sorted(set(a.location for a in areas)))
-        # Ou pega a primeira como “representante”
-        area_description = areas[0].location
+
+        # Buscar a descrição da área no banco Area
+        area_obj = Area.objects.filter(area_code=area_code).order_by('pk').first()
+        area_description = area_obj.location if area_obj else ""
 
         area_summary.append({
             'area_code': area_code,
-            'area_description': area_description,   # ou area_descriptions
+            'area_description': area_description,  # Aqui vem o "WATERFLOOD MAIN DECK"
             'total_jobcard': total,
             'total_checked': checked,
             'percent_checked': percent
         })
+
 
     workpack_summary = []
     for w in JobCard.objects.values('workpack_number').distinct():
