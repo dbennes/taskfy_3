@@ -36,11 +36,9 @@ class JobCard(models.Model):
     comments = models.TextField(blank=True, null=True,)
     last_modified_by = models.CharField(max_length=150, blank=True, null=True)
     last_modified_at = models.DateTimeField(auto_now=True)
-    offshore_field_check = models.CharField(
-        max_length=3,
-        choices=[('NO', 'No'), ('YES', 'Yes')],
-        default='NO'
-    )
+    offshore_field_check = models.CharField(max_length=3, choices=[('NO', 'No'), ('YES', 'Yes')],default='NO')
+    checked_preliminary_by = models.CharField(max_length=100, blank=True, null=True, verbose_name="Checked Preliminary By")
+    checked_preliminary_at = models.DateTimeField(blank=True, null=True, verbose_name="Checked Preliminary At")
 
     def __str__(self):
         return f"{self.job_card_number} - {self.activity_id}"
@@ -88,8 +86,6 @@ class TaskBase(models.Model):
 
     def __str__(self):
         return f"{self.working_code} - {self.typical_task[:30]}..."
-
-# models.py
 
 class MaterialBase(models.Model):
     item                     = models.PositiveIntegerField(null=True, blank=True)

@@ -754,7 +754,9 @@ def generate_pdf(request, jobcard_id):
 
     if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
         job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
-        job.save(update_fields=['jobcard_status'])
+        job.checked_preliminary_by = request.user.username  # sempre grava o usuário da sessão
+        job.checked_preliminary_at = timezone.now()
+        job.save(update_fields=['jobcard_status', 'checked_preliminary_by', 'checked_preliminary_at'])
 
     allocated_manpowers = AllocatedManpower.objects.filter(jobcard_number=jobcard_id).order_by('task_order')
     allocated_materials = AllocatedMaterial.objects.filter(jobcard_number=job.job_card_number)
@@ -1806,6 +1808,101 @@ def export_toolsbase_excel(request):
     df.to_excel(response, index=False)
     return response
 
+@login_required(login_url='login')
+def export_jobcard_excel(request):
+    search_number = request.GET.get('search_number', '').strip()
+    search_discipline = request.GET.get('search_discipline', '').strip()
+    search_prepared_by = request.GET.get('search_prepared_by', '').strip()
+    search_location = request.GET.get('search_location', '').strip()
+    search_status = request.GET.get('search_status', '').strip()
+    global_search = request.GET.get('global_search', '').strip()
+
+    qs = JobCard.objects.all()
+
+    if search_number:
+        qs = qs.filter(job_card_number__icontains=search_number)
+    if search_discipline:
+        qs = qs.filter(discipline__icontains=search_discipline)
+    if search_prepared_by:
+        qs = qs.filter(prepared_by__icontains=search_prepared_by)
+    if search_location:
+        qs = qs.filter(location__icontains=search_location)
+    if search_status:
+        qs = qs.filter(jobcard_status__icontains=search_status)
+    if global_search:
+        qs = qs.filter(
+            Q(job_card_number__icontains=global_search) |
+            Q(discipline__icontains=global_search) |
+            Q(prepared_by__icontains=global_search) |
+            Q(location__icontains=global_search) |
+            Q(jobcard_status__icontains=global_search)
+        )
+
+    # Campos do seu model, exatamente como estão
+    data = qs.values(
+        'item',
+        'seq_number',
+        'discipline',
+        'discipline_code',
+        'location',
+        'level',
+        'activity_id',
+        'start',
+        'finish',
+        'system',
+        'subsystem',
+        'workpack_number',
+        'working_code',
+        'tag',
+        'working_code_description',
+        'job_card_number',
+        'rev',
+        'jobcard_status',
+        'job_card_description',
+        'completed',
+        'total_weight',
+        'unit',
+        'total_duration_hs',
+        'indice_kpi',
+        'total_man_hours',
+        'prepared_by',
+        'date_prepared',
+        'approved_br',
+        'date_approved',
+        'hot_work_required',
+        'status',
+        'comments',
+        'last_modified_by',
+        'last_modified_at',
+        'offshore_field_check',
+        'checked_preliminary_by',
+        'checked_preliminary_at'
+    )
+
+    df = pd.DataFrame(list(data))
+
+    # Função para checar se é float, mas exporta como está se não for
+    def format_float(val):
+        try:
+            return '{:.2f}'.format(float(val))
+        except (TypeError, ValueError):
+            return val  # retorna o valor original sem mexer
+
+    # Formata datas (deixa em branco se nulo)
+    for col in ['start', 'finish', 'date_prepared', 'date_approved', 'checked_preliminary_at', 'last_modified_at']:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S').replace('NaT', '')
+
+    # Só tenta formatar como número se realmente for possível, senão mantém string original
+    for col in ['total_weight', 'total_duration_hs', 'indice_kpi', 'total_man_hours']:
+        if col in df.columns:
+            df[col] = df[col].apply(format_float)
+
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename=jobcards_export.xlsx'
+    df.to_excel(response, index=False)
+    return response
+
 # --------- AREA REPORTS --------------- #
 
 @login_required(login_url='login')
@@ -1863,90 +1960,6 @@ def jobcards_tam(request):
     return render(request, 'sistema/jobcards.html', context)
 
 
-@login_required(login_url='login')
-def export_jobcard_excel(request):
-    # Captura os filtros enviados via GET (ajuste os nomes se necessário)
-    search_number = request.GET.get('search_number', '').strip()
-    search_discipline = request.GET.get('search_discipline', '').strip()
-    search_prepared_by = request.GET.get('search_prepared_by', '').strip()
-    search_location = request.GET.get('search_location', '').strip()
-    search_status = request.GET.get('search_status', '').strip()
-    global_search = request.GET.get('global_search', '').strip()
-
-    qs = JobCard.objects.all()
-
-    if search_number:
-        qs = qs.filter(job_card_number__icontains=search_number)
-    if search_discipline:
-        qs = qs.filter(discipline__icontains=search_discipline)
-    if search_prepared_by:
-        qs = qs.filter(prepared_by__icontains=search_prepared_by)
-    if search_location:
-        qs = qs.filter(location__icontains=search_location)
-    if search_status:
-        qs = qs.filter(jobcard_status__icontains=search_status)
-    if global_search:
-        qs = qs.filter(
-            Q(job_card_number__icontains=global_search) |
-            Q(discipline__icontains=global_search) |
-            Q(prepared_by__icontains=global_search) |
-            Q(location__icontains=global_search) |
-            Q(jobcard_status__icontains=global_search)
-        )
-
-    # Selecione os campos que deseja exportar
-    data = qs.values(
-        'item',
-        'seq_number',
-        'discipline',
-        'discipline_code',
-        'location',
-        'level',
-        'activity_id',
-        'start',
-        'finish',
-        'system',
-        'subsystem',
-        'workpack_number',
-        'working_code',
-        'tag',
-        'working_code_description',
-        'job_card_number',
-        'rev',
-        'jobcard_status',
-        'job_card_description',
-        'completed',
-        'total_weight',
-        'unit',
-        'total_duration_hs',
-        'indice_kpi',
-        'total_man_hours',
-        'prepared_by',
-        'date_prepared',
-        'approved_br',
-        'date_approved',
-        'hot_work_required',
-        'status',
-        'comments',
-        'last_modified_by',
-        'last_modified_at'
-    )
-
-    df = pd.DataFrame(list(data))
-
-    # Formatação de datas e campos numéricos (ajuste conforme desejar)
-    for col in ['start', 'finish', 'date_prepared', 'date_approved', 'last_modified_at']:
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col]).dt.strftime('%Y-%m-%d').fillna('')
-
-    for col in ['total_weight', 'total_duration_hs', 'indice_kpi', 'total_man_hours']:
-        if col in df.columns:
-            df[col] = df[col].apply(lambda x: '{:.2f}'.format(float(x)) if pd.notnull(x) and x not in ['', None] else '')
-
-    response = HttpResponse(content_type='application/vnd.ms-excel')
-    response['Content-Disposition'] = 'attachment; filename=jobcards_export.xlsx'
-    df.to_excel(response, index=False)
-    return response
 
 # --------- AVANÇAR JOBCARDS --------------- #
 
