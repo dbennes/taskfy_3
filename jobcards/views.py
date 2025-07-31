@@ -220,23 +220,23 @@ def dashboard(request):
 
     area_summary = []
     for area_code, areas in area_groups.items():
-        # Soma todos os JobCards que possuem location em QUALQUER código dessa área
-        area_codes = [a.area_code for a in areas]  # todos os codes do grupo (A01.MD, A01.UD, etc)
+        area_codes = [a.area_code for a in areas]
         total = JobCard.objects.filter(location__in=area_codes).count()
         checked = JobCard.objects.filter(location__in=area_codes, jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
         percent = (checked / total * 100) if total else 0
-        # Se quiser mostrar todas descrições juntas, pode juntar assim:
-        area_descriptions = ', '.join(sorted(set(a.location for a in areas)))
-        # Ou pega a primeira como “representante”
-        area_description = areas[0].location
+
+        # Pegue a primeira JobCard do banco para esse grupo de área
+        first_jobcard = JobCard.objects.filter(location__in=area_codes).order_by('pk').first()
+        area_description = first_jobcard.location if first_jobcard else ""
 
         area_summary.append({
             'area_code': area_code,
-            'area_description': area_description,   # ou area_descriptions
+            'area_description': area_description,
             'total_jobcard': total,
             'total_checked': checked,
             'percent_checked': percent
         })
+
 
     workpack_summary = []
     for w in JobCard.objects.values('workpack_number').distinct():
@@ -321,7 +321,6 @@ def dashboard(request):
     }
     return render(request, 'sistema/dashboard.html', context)
 
-
 @login_required(login_url='login')
 def jobcards_list(request):  
     qs = JobCard.objects.all()
@@ -382,7 +381,6 @@ def jobcards_list(request):
 @permission_required('jobcards.add_jobcard', raise_exception=True)
 def create_jobcard(request, jobcard_id=None):
     return render(request, 'sistema/create_jobcard.html')
-
 
 @login_required(login_url='login')
 @permission_required('jobcards.change_jobcard', raise_exception=True)
