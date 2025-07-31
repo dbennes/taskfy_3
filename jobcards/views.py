@@ -227,7 +227,7 @@ def dashboard(request):
 
         # Pegue a primeira JobCard do banco para esse grupo de área
         first_jobcard = JobCard.objects.filter(location__in=area_codes).order_by('pk').first()
-        area_description = first_jobcard.location if first_jobcard else ""
+        area_description = first_jobcard.area_description if first_jobcard else ""
 
         area_summary.append({
             'area_code': area_code,
