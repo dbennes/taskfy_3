@@ -1,0 +1,72 @@
+<table class="table table-hover table-sm w-100 compact-table table-bordered-custom">
+    <thead class="table-light text-center table-header">
+        <tr>
+            {% for col, label in jobcard_columns %}
+                <th>
+                    <a href="#" class="sortable-header{% if order_by_list and col in order_by_list %} active{% endif %}" data-col="{{ col }}">
+                        {{ label }}
+                        {% if order_by_list and col in order_by_list %}
+                            <span class="sort-arrow">
+                                {% for i in order_by_list %}
+                                    {% if i == col %}
+                                        {% with dir=order_dir_list|slice:forloop.counter0|first %}
+                                            {% if dir == 'desc' %}
+                                                ▼
+                                            {% else %}
+                                                ▲
+                                            {% endif %}
+                                            <sup class="sort-order">{{ forloop.counter }}</sup>
+                                        {% endwith %}
+                                    {% endif %}
+                                {% endfor %}
+                            </span>
+                        {% endif %}
+                    </a>
+                </th>
+            {% endfor %}
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for job in jobcards %}
+        <tr>
+            <td>{{ job.item }}</td>
+            <td>{{ job.seq_number }}</td>
+            <td>{{ job.discipline }}</td>
+            <td>{{ job.discipline_code }}</td>
+            <td>{{ job.location }}</td>
+            <td>{{ job.level }}</td>
+            <td>{{ job.activity_id }}</td>
+            <td>{{ job.start|date:"Y/m/d" }}</td>
+            <td>{{ job.finish|date:"Y/m/d" }}</td>
+            <td>{{ job.system }}</td>
+            <td>{{ job.subsystem }}</td>
+            <td>{{ job.workpack_number }}</td>
+            <td>{{ job.working_code }}</td>
+            <td>{{ job.tag }}</td>
+            <td>{{ job.working_code_description }}</td>
+            <td>{{ job.job_card_number }}</td>
+            <td>{{ job.rev }}</td>
+            <td>{{ job.jobcard_status }}</td>
+            <td>{{ job.job_card_description }}</td>
+            <td>{{ job.completed }}</td>
+            <td>{{ job.total_weight }}</td>
+            <td>{{ job.unit }}</td>
+            <td>{{ job.total_duration_hs }}</td>
+            <td>{{ job.indice_kpi }}</td>
+            <td>{{ job.total_man_hours }}</td>
+            <td>{{ job.prepared_by }}</td>
+            <td>{{ job.date_prepared|date:"Y/m/d" }}</td>
+            <td>{{ job.approved_br }}</td>
+            <td>{{ job.date_approved|date:"Y/m/d" }}</td>
+            <td>{{ job.hot_work_required }}</td>
+            <td>{{ job.status }}</td>
+            <td>{{ job.comments }}</td>
+            <td>{{ job.last_modified_by }}</td>
+            <td>{{ job.last_modified_at|date:"Y/m/d" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="33" class="text-center">No records found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>

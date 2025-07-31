@@ -53,23 +53,46 @@
     <script src="{% static 'assets/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
 
     <script>
-        function atualizarContadorRevisoes() {
-            fetch('/api/revisoes_ultimas/?count=1')  // Ajuste a URL da sua API se necessário!
-            .then(resp => resp.json())
-            .then(data => {
-                let qtd = data.revisoes ? data.revisoes.length : 0;
-                let badge = document.getElementById('contador-revisoes');
-                if (qtd > 0) {
-                    badge.innerText = qtd;
-                    badge.style.display = 'inline-block';
-                } else {
-                    badge.style.display = 'none';
-                }
-            });
-        }
-        setInterval(atualizarContadorRevisoes, 5000); // Atualiza a cada 60s
-        window.onload = atualizarContadorRevisoes;
-    </script>
+    function atualizarContadorRevisoes() {
+        fetch('/api/revisoes_ultimas/?count=1')
+        .then(resp => resp.json())
+        .then(data => {
+            let qtd = data.revisoes ? data.revisoes.length : 0;
+            let badge = document.getElementById('contador-revisoes');
+            if (qtd > 0) {
+                badge.innerText = qtd;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        });
+    }
+    setInterval(atualizarContadorRevisoes, 5000);
+    window.onload = atualizarContadorRevisoes;
+
+    function marcarNotificacoesComoLidas() {
+    // 1. Marca como lidas no backend (usando a data mais recente das notificações exibidas)
+    if (window.revisoesData && window.revisoesData.length > 0) {
+        const ultimaData = window.revisoesData[0].data_mudanca_db;
+        fetch('/api_notificacoes_lidas/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ultima_data: ultimaData }),
+        });
+    }
+
+    // 2. Some o contador do sininho imediatamente (efeito visual)
+    const badge = document.getElementById('contador-revisoes');
+    if (badge) {
+        badge.innerText = '0';
+        badge.style.display = 'none';
+    }
+}
+</script>
+
 
     
 

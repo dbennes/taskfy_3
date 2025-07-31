@@ -1,6 +1,47 @@
 {% extends 'sistema/base.html' %}
 
 {% block content %}
+<style>
+    .sortable-header {
+        color: inherit;
+        text-decoration: none !important;
+        cursor: pointer;
+        font-weight: 600;
+        border-bottom: none;
+        padding: 0 4px;
+    }
+    .sortable-header.active {
+        color: #1784e6 !important;
+        background: #f0f5fd;
+        border-radius: 3px;
+    }
+    .sort-arrow {
+        font-size: 11px;
+        margin-left: 2px;
+    }
+    .sort-order {
+        font-size: 9px;
+        color: #6e6e6e;
+        margin-left: 1px;
+    }
+
+    .compact-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+}
+
+.compact-table th, .compact-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    /* Ajuste os valores abaixo para seu caso real! */
+    min-width: 80px;
+    max-width: 160px;
+}
+</style>
+
+
+
 <div class="container-fluid mt-2">
     <!-- Faixa Azul -->
     <div class="d-flex align-items-center justify-content-between p-2 mb-3" style="background-color: #313131; border-radius: 8px;">
@@ -16,134 +57,58 @@
             <button type="button" class="btn btn-outline-light btn-sm" onclick="baixarModeloJobcard()">
                 <i class="fa fa-download me-1"></i> Template
             </button>
+            <button type="button" class="btn btn-outline-light btn-sm" onclick="exportJobcardsExcel()">
+                <i class="fa fa-file-excel me-1"></i> Export Excel
+            </button>
             <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importJobcardModal">
                 <i class="fa fa-upload me-1"></i> Import
             </button>
         </div>
+
     </div>
 
-    <div class="d-flex flex-wrap align-items-center gap-1">
+    <div class="col-12 d-flex flex-wrap align-items-center gap-1">
 
-    <!-- Quantidade -->
-    <div class="d-flex align-items-center gap-1  p-2 border rounded " style="font-size: 9px;">
-        <label class="mb-0 small">Show</label>
-        <select id="rowsPerPage" class="form-select form-select-sm" style="width: 70px; font-size: 10px;">
-            <option value="10">10</option>
-            <option value="18" selected >18</option>
-            <option value="25" >25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-        </select>
-        <label class="mb-0 small"> entries</label>
+
+        <!-- Filtros -->
+        <form style="width: 100%;" id="filterForm" class="d-flex align-items-center gap-1 mb-2" onsubmit="return false;">
+
+            <select name="per_page" class="form-select form-select-sm" style="width: 70px; font-size:10px;">
+                <option value="10" {% if filters.per_page == 10 %}selected{% endif %}>10</option>
+                <option value="18" {% if filters.per_page == 18 %}selected{% endif %}>18</option>
+                <option value="25" {% if filters.per_page == 25 %}selected{% endif %}>25</option>
+                <option value="50" {% if filters.per_page == 50 %}selected{% endif %}>50</option>
+                <option value="100" {% if filters.per_page == 100 %}selected{% endif %}>100</option>
+            </select>
+
+            <!-- seus inputs de filtro -->
+            <input type="text" name="search_number" value="{{ filters.search_number }}" class="form-control form-control-sm" placeholder="Job Card #" style="width: 15%; font-size:10px;">
+            <input type="text" name="search_discipline" value="{{ filters.search_discipline }}" class="form-control form-control-sm" placeholder="Discipline" style="width: 15%; font-size:10px;">
+            <input type="text" name="search_prepared_by" value="{{ filters.search_prepared_by }}" class="form-control form-control-sm" placeholder="Prepared By" style="width: 15%; font-size:10px;">
+            <input type="text" name="search_location" value="{{ filters.search_location }}" class="form-control form-control-sm" placeholder="Location" style="width: 15%; font-size:10px;">
+            <input type="text" name="search_status" value="{{ filters.search_status }}" class="form-control form-control-sm" placeholder="Status" style="width: 15%; font-size:10px;">
+            <input type="text" name="global_search" value="{{ filters.global_search }}" class="form-control form-control-sm" placeholder="Search all..." style="width: 15%; font-size:10px;">
+            
+            <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+        </form> 
+
     </div>
-
-    <!-- Filtros -->
-    <form id="filterForm" class="d-flex flex-wrap align-items-center  gap-1  p-2 border rounded ">
-        <input type="text" id="filterJobNumber" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Job Card #">
-        <input type="text" id="filterDiscipline" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Discipline">
-        <input type="text" id="filterPreparedBy" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Prepared By">
-        <input type="text" id="filterLocation" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Location">
-        <input type="text" id="filterStatus" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Status">
-        <button style="font-size: 9px" type="button" id="applyFilters" class="btn btn-apply btn-sm">Apply</button>
-    </form>
-
-    
-
-    <!-- Pesquisa -->
-    <div class="d-flex align-items-center gap-1  p-2 border rounded ">
-        <input type="text" id="globalSearch" class="form-control form-control-sm" style="width: 120px; font-size: 10px;" placeholder="Search...">
-    </div>
-
-    <!-- Botões alinhados à direita -->
-    <div class="ms-auto d-flex align-items-center gap-1  p-2 border rounded " id="customButtons"></div>
-
-</div>
 
 
 
     <!-- Tabela -->
     <div class="table-responsive mt-2">
-        <table id="jobcardsTable" class="table table-hover table-sm w-100 compact-table table-bordered-custom">
-            <thead class="table-light text-center table-header">
-                <tr>
-                    <th>Item</th>
-                    <th>Seq Number</th>
-                    <th>Discipline</th>
-                    <th>Discipline Code</th>
-                    <th>Location</th>
-                    <th>Level</th>
-                    <th>Activity ID</th>
-                    <th>Start</th>
-                    <th>Finish</th>
-                    <th>System</th>
-                    <th>Subsystem</th>
-                    <th>Workpack Number</th>
-                    <th>Working Code</th>
-                    <th>Tag</th>
-                    <th>Working Code Description</th>
-                    <th>Job Card Number</th>
-                    <th>Rev</th>
-                    <th>Status</th>
-                    <th>Job Card Description</th>
-                    <th>Completed</th>
-                    <th>Total Weight</th>
-                    <th>Unit</th>
-                    <th>Total Duration Hs</th>
-                    <th>Indice KPI</th>
-                    <th>Total Man Hours</th>
-                    <th>Prepared By</th>
-                    <th>Date Prepared</th>
-                    <th>Approved By</th>
-                    <th>Date Approved</th>
-                    <th>Hot Work Required</th>
-                    <th>Status (Optional)</th>
-                    <th>Comments</th>
-                    <th>Last Modified By</th>
-                    <th>Last Modified At</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for job in jobcards %}
-                <tr>
-                    <td>{{ job.item }}</td>
-                    <td>{{ job.seq_number }}</td>
-                    <td>{{ job.discipline }}</td>
-                    <td>{{ job.discipline_code }}</td>
-                    <td>{{ job.location }}</td>
-                    <td>{{ job.level }}</td>
-                    <td>{{ job.activity_id }}</td>
-                    <td>{{ job.start|date:"Y/m/d" }}</td>
-                    <td>{{ job.finish|date:"Y/m/d" }}</td>
-                    <td>{{ job.system }}</td>
-                    <td>{{ job.subsystem }}</td>
-                    <td>{{ job.workpack_number }}</td>
-                    <td>{{ job.working_code }}</td>
-                    <td>{{ job.tag }}</td>
-                    <td>{{ job.working_code_description }}</td>
-                    <td>{{ job.job_card_number }}</td>
-                    <td>{{ job.rev }}</td>
-                    <td>{{ job.jobcard_status }}</td>
-                    <td>{{ job.job_card_description }}</td>
-                    <td>{{ job.completed }}</td>
-                    <td>{{ job.total_weight }}</td>
-                    <td>{{ job.unit }}</td>
-                    <td>{{ job.total_duration_hs }}</td>
-                    <td>{{ job.indice_kpi }}</td>
-                    <td>{{ job.total_man_hours }}</td>
-                    <td>{{ job.prepared_by }}</td>
-                    <td>{{ job.date_prepared|date:"Y/m/d" }}</td>
-                    <td>{{ job.approved_br }}</td>
-                    <td>{{ job.date_approved|date:"Y/m/d" }}</td>
-                    <td>{{ job.hot_work_required }}</td>
-                    <td>{{ job.status }}</td>
-                    <td>{{ job.comments }}</td>
-                    <td>{{ job.last_modified_by }}</td>
-                    <td>{{ job.last_modified_at|date:"Y/m/d" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    
+        <div id="jobcards-table-wrapper">
+            {% include 'sistema/databases/jobcards_table.html' %}
+        </div>
+        <div id="jobcards-pagination-wrapper">
+            {% include 'sistema/databases/jobcards_pagination.html' %}
+        </div>
+        
     </div>
+
+
 </div>
 
 <!-- Import Modal -->
@@ -458,30 +423,25 @@ function baixarModeloJobcard() {
 
 
 
-
-<!-- JavaScript AJAX (AJAX + Modais)  -->
-
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     let formDataCache = null;
 
+    // --- IMPORTAÇÃO DE ARQUIVO ---
     const form = document.getElementById('importJobcardForm');
-    if (!form) { 
-        alert("Formulário de importação não encontrado!"); 
-        return; 
+    if (!form) {
+        alert("Formulário de importação não encontrado!");
+        return;
     }
 
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', function (e) {
         e.preventDefault();
-        console.log("Interceptando submit!");
-
         const fileInput = document.getElementById('importJobcardFile');
         const file = fileInput.files[0];
         if (!file) {
             showJobcardError("Please select a file.");
             return;
         }
-
         const formData = new FormData();
         formData.append('file', file);
         formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
@@ -490,21 +450,12 @@ document.addEventListener('DOMContentLoaded', function () {
             method: "POST",
             body: formData
         })
-        .then(response => {
-            // Para debug:
-            console.log("Resposta do backend:", response);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            // Para debug:
-            console.log("Dados recebidos:", data);
-
             if (data.status === 'duplicate') {
                 formDataCache = formData;
                 $('#importJobcardModal').modal('hide');
-                setTimeout(function() {
-                    $('#confirmReplaceJobcardModal').modal('show');
-                }, 400);
+                setTimeout(() => $('#confirmReplaceJobcardModal').modal('show'), 400);
             } else if (data.status === 'ok') {
                 $('#importJobcardModal').modal('hide');
                 showJobcardSuccess("Import successful!", true);
@@ -512,14 +463,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 showJobcardError(data.message || "An error occurred!");
             }
         })
-        .catch(err => {
-            console.log("Erro no AJAX:", err);
-            showJobcardError("Error uploading file.");
-        });
+        .catch(() => showJobcardError("Error uploading file."));
     });
 
-    // Overwrite...
-    document.getElementById('confirmOverwriteJobcardBtn').onclick = function() {
+    document.getElementById('confirmOverwriteJobcardBtn').onclick = function () {
         if (!formDataCache) return;
         formDataCache.append('overwrite', '1');
         fetch("{% url 'import_jobcard' %}", {
@@ -535,10 +482,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 showJobcardError(data.message || "Error on update.");
             }
         })
-        .catch(() => {
-            showJobcardError("Error overwriting data.");
-        });
-    }
+        .catch(() => showJobcardError("Error overwriting data."));
+    };
 
     function showJobcardError(message) {
         document.getElementById('errorJobcardModalBody').innerText = message;
@@ -548,27 +493,123 @@ document.addEventListener('DOMContentLoaded', function () {
     function showJobcardSuccess(message, reload) {
         document.getElementById('errorJobcardModalLabel').innerText = "Success";
         document.getElementById('errorJobcardModalBody').innerText = message;
-        let header = document.querySelector('#errorJobcardModal .modal-header');
-        if(header){
+        const header = document.querySelector('#errorJobcardModal .modal-header');
+        if (header) {
             header.classList.remove('bg-danger');
             header.classList.add('bg-success');
         }
         $('#errorJobcardModal').modal('show');
         if (reload) {
-            setTimeout(function(){
-                window.location.reload();
-            }, 1800);
+            setTimeout(() => window.location.reload(), 1800);
         }
         $('#errorJobcardModal').on('hidden.bs.modal', function () {
             document.getElementById('errorJobcardModalLabel').innerText = "Import Error";
-            if(header){
+            if (header) {
                 header.classList.remove('bg-success');
                 header.classList.add('bg-danger');
             }
             $(this).off('hidden.bs.modal');
         });
     }
+
+    // --- TABELA + FILTROS + MULTIORDENAÇÃO ---
+    window.orderByList = [];
+    window.orderDirList = [];
+
+    function getFilters() {
+        const data = $('#filterForm').serializeArray();
+        let params = {};
+        data.forEach(field => {
+            params[field.name] = field.value;
+        });
+        params['order_by'] = window.orderByList.join(',');
+        params['order_dir'] = window.orderDirList.join(',');
+        return params;
+    }
+
+    function loadTable(params) {
+        $.ajax({
+            url: window.location.pathname,
+            data: params,
+            dataType: 'json',
+            success: function (resp) {
+                $('#jobcards-table-wrapper').html(resp.table_html);
+                $('#jobcards-pagination-wrapper').html(resp.pagination_html);
+
+                // 🔄 Atualiza ícones de ordenação após re-render
+                updateSortIcons();
+            }
+        });
+    }
+
+    function updateSortIcons() {
+        // Limpa todos os ícones existentes
+        $('a.sortable-header').removeClass('active').find('.sort-arrow').remove();
+
+        // Adiciona ícone e número nas colunas ordenadas
+        window.orderByList.forEach((col, i) => {
+            const dir = window.orderDirList[i];
+            const arrow = dir === 'desc' ? '▼' : '▲';
+            const $th = $('a.sortable-header[data-col="' + col + '"]');
+            $th.addClass('active');
+
+            const iconHTML = `<span class="sort-arrow">${arrow}<sup class="sort-order">${i + 1}</sup></span>`;
+            $th.append(iconHTML);
+        });
+    }
+
+    $('#filterForm').on('submit', function (e) {
+        e.preventDefault();
+        const params = getFilters();
+        loadTable(params);
+    });
+
+    $(document).on('click', '.pagination a.page-link', function (e) {
+        e.preventDefault();
+        const page = $(this).data('page');
+        if (!page) return;
+        const params = getFilters();
+        params['page'] = page;
+        loadTable(params);
+    });
+
+    // 🧠 ORDENAR por múltiplas colunas acumulando (com ícone dinâmico)
+    $(document).on('click', 'a.sortable-header', function (e) {
+        e.preventDefault();
+        const col = $(this).data('col');
+        if (!col) return;
+
+        const idx = window.orderByList.indexOf(col);
+        if (idx > -1) {
+            // Já existe → alternar entre asc e desc
+            window.orderDirList[idx] = window.orderDirList[idx] === 'desc' ? 'asc' : 'desc';
+        } else {
+            // Novo campo → adiciona ao fim como desc
+            window.orderByList.push(col);
+            window.orderDirList.push('desc');
+        }
+
+        updateSortIcons(); // ✅ Atualiza visual imediatamente
+        const params = getFilters();
+        loadTable(params);
+    });
 });
+</script>
+
+<script>
+function exportJobcardsExcel() {
+    // Monta os filtros (ajuste os ids dos inputs conforme o seu form!)
+    const params = [];
+    params.push('search_number=' + encodeURIComponent($('input[name="search_number"]').val() || ''));
+    params.push('search_discipline=' + encodeURIComponent($('input[name="search_discipline"]').val() || ''));
+    params.push('search_prepared_by=' + encodeURIComponent($('input[name="search_prepared_by"]').val() || ''));
+    params.push('search_location=' + encodeURIComponent($('input[name="search_location"]').val() || ''));
+    params.push('search_status=' + encodeURIComponent($('input[name="search_status"]').val() || ''));
+    params.push('global_search=' + encodeURIComponent($('input[name="global_search"]').val() || ''));
+
+    const url = '{% url "export_jobcard_excel" %}?' + params.join('&');
+    window.open(url, '_blank'); // Abre em uma nova aba (evita travar o submit do form)
+}
 </script>
 
 

@@ -10,6 +10,7 @@ from .views import (
     SystemListView, 
     jobcard_progress, 
     create_impediment,
+    export_jobcard_excel
     
 
 )
@@ -68,6 +69,7 @@ urlpatterns = [
     path('export_materials_excel/', views.export_materials_excel, name='export_materials_excel'),
     path('manpower/export/', views.export_manpower_excel, name='export_manpower_excel'),
     path('toolsbase/export/', views.export_toolsbase_excel, name='export_toolsbase_excel'),
+    path('jobcards-export-excel/', export_jobcard_excel, name='export_jobcard_excel'),
 
     #REPORTS
     path('jobcards/tam/', views.jobcards_tam, name='jobcards_tam'),

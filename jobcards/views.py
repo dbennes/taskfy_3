@@ -834,26 +834,100 @@ def generate_pdf(request, jobcard_id):
 
 @login_required(login_url='login')
 def jobcards_overview(request):
-    jobcards = JobCard.objects.all().order_by('-date_prepared')
-
-    # Filtros simples (opcional)
-    search_number = request.GET.get('search_number', '')
-    search_discipline = request.GET.get('search_discipline', '')
-    search_prepared_by = request.GET.get('search_prepared_by', '')
+    # Filtros e busca
+    jobcards = JobCard.objects.all()
+    search_number = request.GET.get('search_number', '').strip()
+    search_discipline = request.GET.get('search_discipline', '').strip()
+    search_prepared_by = request.GET.get('search_prepared_by', '').strip()
+    search_location = request.GET.get('search_location', '').strip()
+    search_status = request.GET.get('search_status', '').strip()
+    global_search = request.GET.get('global_search', '').strip()
 
     if search_number:
         jobcards = jobcards.filter(job_card_number__icontains=search_number)
-
     if search_discipline:
         jobcards = jobcards.filter(discipline__icontains=search_discipline)
-
     if search_prepared_by:
         jobcards = jobcards.filter(prepared_by__icontains=search_prepared_by)
+    if search_location:
+        jobcards = jobcards.filter(location__icontains=search_location)
+    if search_status:
+        jobcards = jobcards.filter(jobcard_status__icontains=search_status)
+    if global_search:
+        jobcards = jobcards.filter(
+            Q(job_card_number__icontains=global_search) |
+            Q(discipline__icontains=global_search) |
+            Q(prepared_by__icontains=global_search) |
+            Q(location__icontains=global_search) |
+            Q(jobcard_status__icontains=global_search)
+        )
+
+   # MULTIORDENAÇÃO AQUI (depois dos filtros, antes da paginação)
+    order_by = request.GET.get('order_by', '')
+    order_dir = request.GET.get('order_dir', '')
+    order_by_list = order_by.split(',') if order_by else []
+    order_dir_list = order_dir.split(',') if order_dir else []
+
+    ordering = []
+    for i, field in enumerate(order_by_list):
+        dir = order_dir_list[i] if i < len(order_dir_list) else 'desc'
+        ordering.append('-'+field if dir == 'desc' else field)
+
+    if ordering:
+        jobcards = jobcards.order_by(*ordering)
+    else:
+        jobcards = jobcards.order_by('-date_prepared')
+
+    # Agora pagina
+    page = request.GET.get('page', 1)
+    per_page = int(request.GET.get('per_page', 18))
+    paginator = Paginator(jobcards, per_page)
+    jobcards_page = paginator.get_page(page)
+
+    filters = {
+        'search_number': search_number,
+        'search_discipline': search_discipline,
+        'search_prepared_by': search_prepared_by,
+        'search_location': search_location,
+        'search_status': search_status,
+        'global_search': global_search,
+        'per_page': per_page,
+    }
+    
+    jobcard_columns = [
+        ('item','Item'), ('seq_number','Seq Number'), ('discipline','Discipline'), ('discipline_code','Discipline Code'),
+        ('location','Location'), ('level','Level'), ('activity_id','Activity ID'), ('start','Start'), ('finish','Finish'),
+        ('system','System'), ('subsystem','Subsystem'), ('workpack_number','Workpack Number'), ('working_code','Working Code'),
+        ('tag','Tag'), ('working_code_description','Working Code Description'), ('job_card_number','Job Card Number'),
+        ('rev','Rev'), ('jobcard_status','Status'), ('job_card_description','Job Card Description'), ('completed','Completed'),
+        ('total_weight','Total Weight'), ('unit','Unit'), ('total_duration_hs','Total Duration Hs'), ('indice_kpi','Indice KPI'),
+        ('total_man_hours','Total Man Hours'), ('prepared_by','Prepared By'), ('date_prepared','Date Prepared'), ('approved_br','Approved By'),
+        ('date_approved','Date Approved'), ('hot_work_required','Hot Work Required'), ('status','Status (Optional)'),
+        ('comments','Comments'), ('last_modified_by','Last Modified By'), ('last_modified_at','Last Modified At')
+    ]
+    
 
     context = {
-        'jobcards': jobcards,
+        'jobcards': jobcards_page,
+        'filters': filters,
+        'paginator': paginator,
+        'order_by': order_by,
+        'order_dir': order_dir,
+        'order_by_list': order_by_list,
+        'order_dir_list': order_dir_list,
+        'jobcard_columns': jobcard_columns,
+        
     }
+
+    # AJAX: retorna só a tabela
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        table_html = render_to_string('sistema/databases/jobcards_table.html', context, request)
+        pagination_html = render_to_string('sistema/databases/jobcards_pagination.html', context, request)
+        return JsonResponse({'table_html': table_html, 'pagination_html': pagination_html})
+
+    # Requisição normal: página completa
     return render(request, 'sistema/databases/jobcards_overview.html', context)
+
 
 @login_required(login_url='login')
 def materials_list(request):
@@ -1788,6 +1862,92 @@ def jobcards_tam(request):
     }
     return render(request, 'sistema/jobcards.html', context)
 
+
+@login_required(login_url='login')
+def export_jobcard_excel(request):
+    # Captura os filtros enviados via GET (ajuste os nomes se necessário)
+    search_number = request.GET.get('search_number', '').strip()
+    search_discipline = request.GET.get('search_discipline', '').strip()
+    search_prepared_by = request.GET.get('search_prepared_by', '').strip()
+    search_location = request.GET.get('search_location', '').strip()
+    search_status = request.GET.get('search_status', '').strip()
+    global_search = request.GET.get('global_search', '').strip()
+
+    qs = JobCard.objects.all()
+
+    if search_number:
+        qs = qs.filter(job_card_number__icontains=search_number)
+    if search_discipline:
+        qs = qs.filter(discipline__icontains=search_discipline)
+    if search_prepared_by:
+        qs = qs.filter(prepared_by__icontains=search_prepared_by)
+    if search_location:
+        qs = qs.filter(location__icontains=search_location)
+    if search_status:
+        qs = qs.filter(jobcard_status__icontains=search_status)
+    if global_search:
+        qs = qs.filter(
+            Q(job_card_number__icontains=global_search) |
+            Q(discipline__icontains=global_search) |
+            Q(prepared_by__icontains=global_search) |
+            Q(location__icontains=global_search) |
+            Q(jobcard_status__icontains=global_search)
+        )
+
+    # Selecione os campos que deseja exportar
+    data = qs.values(
+        'item',
+        'seq_number',
+        'discipline',
+        'discipline_code',
+        'location',
+        'level',
+        'activity_id',
+        'start',
+        'finish',
+        'system',
+        'subsystem',
+        'workpack_number',
+        'working_code',
+        'tag',
+        'working_code_description',
+        'job_card_number',
+        'rev',
+        'jobcard_status',
+        'job_card_description',
+        'completed',
+        'total_weight',
+        'unit',
+        'total_duration_hs',
+        'indice_kpi',
+        'total_man_hours',
+        'prepared_by',
+        'date_prepared',
+        'approved_br',
+        'date_approved',
+        'hot_work_required',
+        'status',
+        'comments',
+        'last_modified_by',
+        'last_modified_at'
+    )
+
+    df = pd.DataFrame(list(data))
+
+    # Formatação de datas e campos numéricos (ajuste conforme desejar)
+    for col in ['start', 'finish', 'date_prepared', 'date_approved', 'last_modified_at']:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col]).dt.strftime('%Y-%m-%d').fillna('')
+
+    for col in ['total_weight', 'total_duration_hs', 'indice_kpi', 'total_man_hours']:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: '{:.2f}'.format(float(x)) if pd.notnull(x) and x not in ['', None] else '')
+
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename=jobcards_export.xlsx'
+    df.to_excel(response, index=False)
+    return response
+
 # --------- AVANÇAR JOBCARDS --------------- #
 
 @login_required(login_url='login')
@@ -2261,11 +2421,18 @@ from jobcards.models import EngineeringBase, DocumentoRevisaoAlterada
 
 @login_required(login_url='login')
 def api_revisoes_ultimas(request):
-    # Filtra apenas revisões cujo código existe na EngineeringBase.document
+    limit = int(request.GET.get('limit', 30))
     codigos_validos = EngineeringBase.objects.values_list('document', flat=True)
-    revisoes = DocumentoRevisaoAlterada.objects.filter(
+    qs = DocumentoRevisaoAlterada.objects.filter(
         codigo__in=codigos_validos
-    ).order_by('-data_mudanca')[:7]
+    ).order_by('-data_mudanca')
+
+    notificacoes_lidas_data = request.session.get('notificacoes_lidas_data')
+    if notificacoes_lidas_data:
+        # Mostra só as posteriores (novas)
+        qs = qs.filter(data_mudanca__gt=notificacoes_lidas_data)
+
+    revisoes = qs[:limit] if limit > 0 else qs
     data = [
         {
             "codigo": rev.codigo,
@@ -2273,10 +2440,24 @@ def api_revisoes_ultimas(request):
             "revisao_anterior": rev.revisao_anterior,
             "revisao_nova": rev.revisao_nova,
             "data_mudanca": rev.data_mudanca.strftime("%d/%m/%Y %H:%M"),
+            "data_mudanca_db": rev.data_mudanca.strftime("%Y-%m-%d %H:%M:%S"),
         }
         for rev in revisoes
     ]
     return JsonResponse({"revisoes": data})
+
+@csrf_exempt
+@login_required
+@require_POST
+def api_notificacoes_lidas(request):
+    import json
+    data = json.loads(request.body)
+    ultima_data = data.get('ultima_data')
+    if ultima_data:
+        request.session['notificacoes_lidas_data'] = ultima_data
+        return JsonResponse({'ok': True})
+    return JsonResponse({'ok': False}, status=400)
+
 
 @login_required(login_url='login')
 @csrf_exempt

@@ -202,7 +202,7 @@
                     <ul class="navbar-nav flex-nowrap ms-auto">
                         <!-- Sininho de notificações de revisões -->
                         <li class="nav-item mx-2" id="li-revisao-alerta">
-                            <a class="nav-link position-relative" href="{% url 'dashboard' %}#recent-revisions" title="Recent Document Revisions">
+                            <a onclick="marcarNotificacoesComoLidas()" class="nav-link position-relative" href="{% url 'dashboard' %}#recent-revisions" title="Recent Document Revisions">
                                 <i class="fas fa-bell" style="font-size: 20px; color:#4953a7;"></i>
                                 <span id="contador-revisoes" class="position-absolute  translate-middle badge rounded-pill bg-danger" style="font-size:10px; display:none;">
                                     0
