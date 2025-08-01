@@ -387,6 +387,112 @@ body, .container-fluid {
     </div>
   </div>
 
+  <div class="row g-3 align-items-stretch" style="min-height: 350px;">
+    
+    <!-- Gráfico -->
+    <div class="col-7 h-100">
+        <div class="card shadow mb-3 h-100" style="border-radius: 18px;">
+            <div class="d-flex align-items-center justify-content-between"
+                style="background: #f7f8fa; min-height: 44px; padding: 10px 18px 7px 16px; border-top-left-radius: 18px; border-top-right-radius: 18px;">
+                <div style="font-size: 13px; font-weight: 600; color: #272626ff; letter-spacing: .01em; margin-bottom:0;">
+                    Preliminary Jobcard Checked per Day
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
+                    <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
+                    <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
+                </div>
+            </div>
+            <div class="card-body h-100 d-flex flex-column justify-content-center">
+                <canvas id="jobcardCheckedLine" style="width:100%; min-height:292px;"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- Tabela -->
+    <div class="col-5 h-100">
+        <div class="card shadow mb-3 h-100" style="border-radius: 18px;">
+            <div class="d-flex align-items-center justify-content-between"
+                style="background: #f7f8fa; min-height: 44px; padding: 10px 18px 7px 16px; border-top-left-radius: 18px; border-top-right-radius: 18px; border-bottom:1px solid #f2f3f7;">
+                <div>
+                    <span style="font-weight:600;font-size:13px; color: #272626ff;">
+                        Recently Checked JobCards
+                    </span>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
+                    <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
+                    <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
+                </div>
+            </div>
+            <div class="card-body p-0 h-100 d-flex flex-column justify-content-center">
+                <div class="table-responsive" style="border-radius: 14px; overflow:hidden; border: 1px solid #eef0f7; background:#fff; margin:12px;">
+                    <table class="table mb-0 table-hover align-middle" style="background: #fff;">
+                        <thead style="background:#f7f8fa;">
+                            <tr>
+                                <th style="font-size:10px;">#</th>
+                                <th style="font-size:10px;">JobCard</th>
+                                <th style="font-size:10px;">Checked By</th>
+                                <th style="font-size:10px;">Checked At</th>
+                                <th style="font-size:10px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for jc in recent_checked_jobcards %}
+                            <tr>
+                                <td style="font-size:15px;">
+                                    <span class="rounded-circle d-inline-block" style="width:34px;height:34px;background: #4b4b4b54;overflow:hidden;vertical-align:middle;text-align:center;line-height:34px;">
+                                        <i class="fa fa-user" style="color: #ffffffff;font-size:16px;"></i>
+                                    </span>
+                                </td>
+                                <td style="font-size:9px;">
+                                    <span style="font-weight:500;">{{ jc.job_card_number }}</span><br>
+                                    <span style="font-size:12px;color: #737c95;">{{ jc.job_card_description|truncatechars:32 }}</span>
+                                </td>
+                                <td style="font-size:9px;">
+                                    <span style="font-weight:500;">{{ jc.checked_preliminary_by }}</span>
+                                </td>
+                                <td style="font-size:9px;">
+                                    <span style="color:#4953a7;font-weight:500;">
+                                        {{ jc.checked_preliminary_at|date:"M d, H:i" }}
+                                    </span>
+                                </td>
+                               <td>
+                                  {% with 'JobCard_'|add:jc.job_card_number|add:'_Rev_'|add:jc.rev|add:'.pdf' as pdf_filename %}
+                                      {% if pdf_filename in available_pdfs %}
+                                          <a href="/jobcard_backups/{{ pdf_filename }}" target="_blank"
+                                            class="btn btn-sm rounded-circle d-flex align-items-center justify-content-center"
+                                            style="background: rgba(167, 167, 167, 0.08); color: #d66f6b; width:36px;height:36px;"
+                                            title="Visualizar PDF">
+                                              <i class="fa fa-file-pdf" style="font-size:16px;"></i>
+                                          </a>
+                                      {% else %}
+                                          <span class="btn btn-sm rounded-circle d-flex align-items-center justify-content-center"
+                                                style="background: #e2e3e5; color:#bababa;width:36px;height:36px; cursor: not-allowed;"
+                                                title="PDF não disponível">
+                                              <i class="fa fa-file-pdf" style="font-size:16px;"></i>
+                                          </span>
+                                      {% endif %}
+                                  {% endwith %}
+                              </td>
+
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4" style="color:#b2b5bc;">No JobCards checked yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
   <!-- TERCEIRA LINHA: TABELAS DE DISCIPLINA E ÁREA -->
   <div class="row g-3">
     <div class="col-md-6">
@@ -864,7 +970,80 @@ new Chart(document.getElementById('totalBar'), {
     });
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 
+<div class="card-body" style="width:100%;">
+  <canvas id="jobcardCheckedLine" style="width:100%; height:240px;"></canvas>
+</div>
+
+<style>
+#jobcardCheckedLine {
+    width: 100% !important;
+    height: 240px !important;
+    display: block;
+}
+</style>
+
+<script>
+const checkedDays = {{ checked_days|safe }};
+const checkedCounts = {{ checked_counts|safe }};
+
+Chart.register(ChartDataLabels);
+
+const ctx = document.getElementById('jobcardCheckedLine').getContext('2d');
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: checkedDays,
+        datasets: [{
+            label: 'Checked Preliminary',
+            data: checkedCounts,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 6,
+            pointHoverRadius: 9,
+            borderWidth: 2,
+            borderColor: '#8799ffdc',
+            backgroundColor: '#8799ff56',
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: {
+            padding: {
+                top: 30   // <-- ESSA LINHA GARANTE ESPAÇO NO TOPO PARA LABEL GRANDE
+            }
+        },
+        plugins: {
+            legend: { display: false },
+            datalabels: {
+                anchor: 'end',
+                align: 'top',
+                offset: 4, // pode aumentar se quiser mais espaço
+                font: {
+                    weight: 'bold',
+                    size: 10
+                },
+                color: '#222',
+                formatter: function(value, context) {
+                    return value;
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Checked Count' }
+            },
+            x: {
+                title: { display: true, text: 'Day' }
+            }
+        }
+    }
+});
+</script>
 
 
 {% endblock %}

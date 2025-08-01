@@ -62,6 +62,7 @@ from .models import JobCard, TaskBase, ManpowerBase, AllocatedManpower, Allocate
 import json
 from django.contrib.auth.decorators import permission_required
 from django.contrib.auth.decorators import user_passes_test
+from django.db.models.functions import TruncDate
 
 # - PERMISSIONAMENTO POR GRUPO
 def group_required(group_name):
@@ -272,7 +273,32 @@ def dashboard(request):
     area_percent_checked = (
         (area_total_checked / area_total_jobcard * 100) if area_total_jobcard else 0
     )
+    
+    # Gráfico: Quantidade de JobCards PRELIMINARY CHECKED por dia (últimos 30 dias)
+    checked_daily = (
+        JobCard.objects
+        .filter(jobcard_status='PRELIMINARY JOBCARD CHECKED')
+        .annotate(day=TruncDate('checked_preliminary_at'))  # use o campo correto de data
+        .values('day')
+        .annotate(count=Count('id'))
+        .order_by('day')
+    )
 
+    # Monta listas para o Chart.js
+    checked_days = [d['day'].strftime('%d/%m') for d in checked_daily if d['day']]
+    checked_counts = [d['count'] for d in checked_daily if d['day']]
+
+    recent_checked_jobcards = (
+        JobCard.objects
+        .filter(jobcard_status='PRELIMINARY JOBCARD CHECKED')
+        .order_by('-checked_preliminary_at')[:5]  # últimos 5, por exemplo
+    )
+
+    jobcards = JobCard.objects.all()[:20]  # Mostra só os 20 primeiros, ou ajuste como quiser
+
+    backups_dir = os.path.join(settings.BASE_DIR, 'jobcard_backups')
+    available_pdfs = {f for f in os.listdir(backups_dir) if f.endswith('.pdf')}
+    
     context = {
         'total_jobcards': total_jobcards,
         'not_checked_count': not_checked_count,
@@ -319,6 +345,11 @@ def dashboard(request):
         'area_total_jobcard': area_total_jobcard,
         'area_total_checked': area_total_checked,
         'area_percent_checked': area_percent_checked,
+        'checked_days': checked_days,
+        'checked_counts': checked_counts,
+        'recent_checked_jobcards': recent_checked_jobcards,
+        'available_pdfs': available_pdfs,
+        'jobcards': jobcards,
     }
     return render(request, 'sistema/dashboard.html', context)
 
