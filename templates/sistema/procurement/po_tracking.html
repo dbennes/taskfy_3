@@ -1,0 +1,170 @@
+{% extends 'sistema/base.html' %}
+{% load static %}
+{% load dict_extras %}
+{% block content %}
+
+<style>
+.kanban-board { display: flex; gap: 18px; overflow-x: auto; min-height: 75vh; }
+.kanban-column {
+    background: #f5f5f5;
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    min-width: 320px;
+    max-width: 340px;
+    flex: 1;
+    padding: 12px 10px 18px 10px;
+    display: flex;
+    flex-direction: column;
+    height: 65vh;
+}
+.kanban-col-title {
+    
+    font-size: 9px;
+    margin-bottom: 9px;
+    color: #818181ff;
+    letter-spacing: .01em;
+    
+}
+.kanban-cards { flex: 1; min-height: 20px; }
+.kanban-card {
+    background: #ffffffff ;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    padding: 14px 13px 10px 13px;
+    box-shadow: 0 2px 6px rgba(40,60,90,0.07);
+    cursor: grab;
+    transition: box-shadow .18s, transform .15s;
+    border-left: 4px solid #4953a7;
+}
+.kanban-card.dragging { opacity: 0.5; }
+.kanban-card:hover { box-shadow: 0 4px 18px rgba(80,90,120,0.16); }
+.kanban-card-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: #232323;
+    margin-bottom: 2px;
+    letter-spacing: .01em;
+}
+.kanban-card-meta { font-size: 10px; color: #6a6b72; }
+</style>
+
+<div class="d-flex align-items-center justify-content-between p-2 mb-3" style="background-color: #313131; border-radius: 8px; ">
+    <div class="d-flex align-items-center me-3">
+        <span style="width: 10px; height: 10px; background-color: #ff5f57; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
+        <span style="width: 10px; height: 10px; background-color: #febc2e; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
+        <span style="width: 10px; height: 10px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+        <h6 class="mb-0 ms-3 text-white" style="font-size:15px"> PO Tracking</h6>
+    </div>
+</div>
+
+<div class="kanban-board" id="kanban-board">
+    {% for status in statuses %}
+    <div class="kanban-column" data-status="{{ status }}">
+        <div class="kanban-col-title" >
+            <!-- Minimalist Header with 3 Dots (Apple Style) -->
+            <div class="card-header py-3" style="background:#f5f5f7; border-bottom: 1px solid #d0d0d0; border-top-left-radius: 8px; border-top-right-radius: 8px; padding: 10px;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="m-0 fw-bold  text-left w-100" style="margin-left: -60px; font-size: 12px ">{{ status }}</span>
+                    <div class="d-flex align-items-center gap-1">
+                        <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="kanban-cards" data-status="{{ status }}">
+            {% for po in kanban|get_item:status %}
+                <div class="kanban-card" 
+                    draggable="true"
+                    data-po-id="{{ po.id }}"
+                    onclick="openPoModal({{ po.id|safe }})">
+                    <div class="kanban-card-title">{{ po.po_number }}</div>
+                    <div class="kanban-card-meta">
+                        {{ po.vendor|default:"—"|truncatechars:20 }}<br>
+                        {{ po.detailed_description|default:"—"|truncatechars:30 }}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+    </div>
+    {% endfor %}
+</div>
+
+<!-- MODAL para detalhes do PO -->
+<div class="modal fade" id="poModal" tabindex="-1" aria-labelledby="poModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#21262b;">
+        <h5 class="modal-title text-white" id="poModalLabel">PO Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="poModalBody">
+        <!-- Detalhes aqui via AJAX -->
+        <div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// DRAG & DROP
+let dragged = null;
+
+document.querySelectorAll('.kanban-card').forEach(card => {
+    card.addEventListener('dragstart', function (e) {
+        dragged = this;
+        this.classList.add('dragging');
+    });
+    card.addEventListener('dragend', function (e) {
+        this.classList.remove('dragging');
+        dragged = null;
+    });
+});
+
+document.querySelectorAll('.kanban-cards').forEach(col => {
+    col.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        this.style.background = "#e8eaff";
+    });
+    col.addEventListener('dragleave', function (e) {
+        this.style.background = "";
+    });
+    col.addEventListener('drop', function (e) {
+        e.preventDefault();
+        this.style.background = "";
+        if (dragged) {
+            this.appendChild(dragged);
+
+            // Atualiza status no backend via AJAX
+            let po_id = dragged.getAttribute('data-po-id');
+            let new_status = this.getAttribute('data-status');
+            fetch(`/procurement/po-tracking/update-status/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({id: po_id, status: new_status})
+            }).then(res => res.json()).then(data => {
+                // show success or error, opcional
+            });
+        }
+    });
+});
+
+// Modal - detalhes do PO
+function openPoModal(poId) {
+    fetch(`/procurement/po-tracking/detail/${poId}/`)
+        .then(res => res.text())
+        .then(html => {
+            document.getElementById('poModalBody').innerHTML = html;
+            let modal = new bootstrap.Modal(document.getElementById('poModal'));
+            modal.show();
+        });
+}
+</script>
+
+{% endblock %}

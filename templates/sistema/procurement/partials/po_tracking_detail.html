@@ -1,0 +1,88 @@
+<div class="container-fluid px-2 py-2" style="font-size: 12px;">
+    <div class="row">
+        <div class="col-12">
+            <h4 class="mb-3" style="font-size: 1.13em; color: #4953a7;">
+                PO <strong>{{ po.po_number }}</strong>
+                <small class="ms-2 badge bg-secondary">{{ po.po_status }}</small>
+            </h4>
+            <form autocomplete="off">
+                <!-- DADOS GERAIS DA PO -->
+                <div class="row mb-2">
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">PO Number</label>
+                        <input type="text" class="form-control" value="{{ po.po_number }}" readonly style="font-size:12px;">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">PO Status</label>
+                        <input type="text" class="form-control" value="{{ po.po_status }}" readonly style="font-size:12px;">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">Vendor</label>
+                        <input type="text" class="form-control" value="{{ po.vendor }}" readonly style="font-size:12px;">
+                    </div>
+                </div>
+                <!-- ITENS/MATERIAIS -->
+                <div class="row mb-2">
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">MR Number</label>
+                        <input type="text" class="form-control" value="{{ po.mr_number }}" readonly style="font-size:12px;">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">MR Rev</label>
+                        <input type="text" class="form-control" value="{{ po.mr_rev }}" readonly style="font-size:12px;">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">Item Type</label>
+                        <input type="text" class="form-control" value="{{ po.item_type }}" readonly style="font-size:12px;">
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">Discipline</label>
+                        <input type="text" class="form-control" value="{{ po.discipline }}" readonly style="font-size:12px;">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">TAM 2026</label>
+                        <input type="text" class="form-control" value="{{ po.tam_2026 }}" readonly style="font-size:12px;">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">PMTO CODE</label>
+                        <input type="text" class="form-control" value="{{ po.pmto_code }}" readonly style="font-size:12px;">
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">TAG</label>
+                        <input type="text" class="form-control" value="{{ po.tag }}" readonly style="font-size:12px;">
+                    </div>
+                    <div class="col-md-8 mb-2">
+                        <label class="form-label fw-bold mb-0">Detailed Description</label>
+                        <input type="text" class="form-control" value="{{ po.detailed_description }}" readonly style="font-size:12px;">
+                    </div>
+                </div>
+                <!-- QUANTIDADES -->
+                <div class="row mb-2">
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">Qty MR</label>
+                        <input type="text" class="form-control" value="{{ po.qty_mr }} {{ po.qty_mr_unit }}" readonly style="font-size:12px;">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">Qty Purchased</label>
+                        <input type="text" class="form-control" value="{{ po.qty_purchased }} {{ po.qty_purchased_unit }}" readonly style="font-size:12px;">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">Expected Delivery Date</label>
+                        <input type="text" class="form-control" value="{{ po.expected_delivery_date|date:'d/m/Y' }}" readonly style="font-size:12px;">
+                    </div>
+                </div>
+                <!-- DATAS -->
+                <div class="row mb-2">
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold mb-0">PO Date</label>
+                        <input type="text" class="form-control" value="{{ po.po_date|date:'d/m/Y' }}" readonly style="font-size:12px;">
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -99,9 +99,13 @@ urlpatterns = [
     path('procurement/', views.procurement_list, name='procurement_list'),
     path('procurement/import/', views.import_procurement, name='import_procurement'),
     path('procurement/export/', views.export_procurement_excel, name='export_procurement_excel'),
+    path('procurement/po-tracking/', views.po_tracking, name='po_tracking'),
+    path('procurement/po-tracking/update-status/', views.po_tracking_update_status, name='po_tracking_update_status'),  # AJAX para atualizar status
+    path('procurement/po-tracking/detail/<int:po_id>/', views.po_tracking_detail, name='po_tracking_detail'), # Detalhe modal
    
    # NOTIFICAÇÕES
     path('api/revisoes_ultimas/', api_revisoes_ultimas, name='api_revisoes_ultimas'),
     path('jobcard/<str:jobcard_id>/allocation/<int:task_order>/', views.save_allocation, name='save_allocation'),
 
+    
 ]

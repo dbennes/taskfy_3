@@ -2374,28 +2374,25 @@ def import_procurement(request):
             df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
             for _, row in df.iterrows():
                 ProcurementBase.objects.update_or_create(
-                    po_number=row['PO NUMBER'],
-                    po_issue_date=row['PO ISSUE DATE'],
-                    mr_number=row['MR NUMBER'],
-                    latest_rev=row['LATEST REV.'],
-                    mto_item_no=row['MTO ITEM NO'],
-                    pmto_code=row['PMTOCODE'],
-                    type_items=row['TYPE ITEMS'],
-                    basic_material=row['BASIC MATERIAL'],
-                    description=row['DESCRIPTION'],
-                    nps1=row.get('NPS 1', ''),
-                    nps2=row.get('NPS 2', ''),
-                    sch1=row.get('SCH 1', ''),
-                    sch2=row.get('SCH 2', ''),
-                    unit=row['UNIT'],
-                    qty_mr=row['QTY_MR'],
-                    qty_mr_unit=row['QTY_MR Unit'],
-                    qty_purchased=row['QTY PURCHASED'],
-                    qty_purchased_unit=row['QTY PURCHASED Unit'],
-                    delivery_term=row['DELIVERY TERM'],
-                    delivery_time=row['DELIVERY TIME'],
-                    supplier_vendor=row['SUPPLIER/VENDOR'],
-                    status_remarks=row.get('STATUS / REMARKS', ''),
+                    po_number=row['PO Number'],
+                    defaults={
+                        'po_status': row.get('Status', ''),
+                        'po_date': row.get('PO Date', None),
+                        'vendor': row.get('Vendor', ''),
+                        'expected_delivery_date': row.get('Expected Delivery Date', None),
+                        'mr_number': row.get('MR Number', ''),
+                        'mr_rev': row.get('MR Rev', ''),
+                        'qty_mr': row.get('Qty MR', 0),
+                        'qty_mr_unit': row.get('Qty MR [UNIT]', ''),
+                        'item_type': row.get('Item Type', ''),
+                        'discipline': row.get('Discipline', ''),
+                        'tam_2026': row.get('TAM 2026', ''),
+                        'pmto_code': row.get('PMTO CODE', ''),
+                        'tag': row.get('TAG', ''),
+                        'detailed_description': row.get('Detailed Description', ''),
+                        'qty_purchased': row.get('Qty Purchased', 0),
+                        'qty_purchased_unit': row.get('Qty Purchased [UNIT]', ''),
+                    }
                 )
             return JsonResponse({'status': 'ok'})
         except Exception as e:
@@ -2403,51 +2400,37 @@ def import_procurement(request):
     return JsonResponse({'status': 'invalid', 'message': 'No file uploaded'})
 
 @login_required(login_url='login')
-@login_required
 def export_procurement_excel(request):
-    mr_number = request.GET.get('mr_number', '')
+    po_number = request.GET.get('po_number', '')
     pmto_code = request.GET.get('pmto_code', '')
-    basic_material = request.GET.get('basic_material', '')
-    global_search = request.GET.get('search', '')
+    mr_number = request.GET.get('mr_number', '')
 
     qs = ProcurementBase.objects.all()
-    if mr_number:
-        qs = qs.filter(mr_number__icontains=mr_number)
+    if po_number:
+        qs = qs.filter(po_number__icontains=po_number)
     if pmto_code:
         qs = qs.filter(pmto_code__icontains=pmto_code)
-    if basic_material:
-        qs = qs.filter(basic_material__icontains=basic_material)
-    if global_search:
-        qs = qs.filter(
-            Q(mr_number__icontains=global_search) |
-            Q(pmto_code__icontains=global_search) |
-            Q(basic_material__icontains=global_search) |
-            Q(description__icontains=global_search)
-        )
+    if mr_number:
+        qs = qs.filter(mr_number__icontains=mr_number)
 
     data = qs.values(
+        'po_number',
+        'po_status',
+        'po_date',
+        'vendor',
+        'expected_delivery_date',
         'mr_number',
-        'latest_rev',
-        'mto_item_no',
-        'pmto_code',
-        'type_items',
-        'basic_material',
-        'description',
-        'nps1',
-        'nps2',
-        'sch1',
-        'sch2',
-        'unit',
+        'mr_rev',
         'qty_mr',
         'qty_mr_unit',
+        'item_type',
+        'discipline',
+        'tam_2026',
+        'pmto_code',
+        'tag',
+        'detailed_description',
         'qty_purchased',
-        'qty_purchased_unit',
-        'delivery_term',
-        'delivery_time',
-        'po_issue_date',
-        'po_number',
-        'supplier_vendor',
-        'status_remarks'
+        'qty_purchased_unit'
     )
 
     df = pd.DataFrame(list(data))
@@ -2458,8 +2441,9 @@ def export_procurement_excel(request):
             df[col] = df[col].apply(lambda x: '{:.2f}'.format(x).replace('.', ',') if pd.notnull(x) else '')
 
     # Formatação de data para exportação
-    if 'po_issue_date' in df.columns:
-        df['po_issue_date'] = pd.to_datetime(df['po_issue_date']).dt.strftime('%Y-%m-%d')
+    for col in ['po_date', 'expected_delivery_date']:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col]).dt.strftime('%Y-%m-%d')
 
     response = HttpResponse(content_type='application/vnd.ms-excel')
     response['Content-Disposition'] = 'attachment; filename=procurement_base_export.xlsx'
@@ -2574,3 +2558,37 @@ def save_allocation(request, jobcard_id, task_order):
         return JsonResponse({'success': True})
     return JsonResponse({'error': 'Invalid method'}, status=400)
 
+# AREA PARA PROCURAMENTO KANBAN
+
+def po_tracking(request):
+    statuses = [
+        "Pending MR",
+        "Ordered",
+        "In Production",
+        "Delivered",
+        "Ready for Inspection",
+        "Ready for Receipt at Warehouse",
+        "In Transit",
+        "On Hold",
+        "Cancelled",
+    ]
+
+
+    # Um dict status -> lista de POs
+    kanban = {status: ProcurementBase.objects.filter(po_status=status) for status in statuses}
+    return render(request, 'sistema/procurement/po_tracking.html', {"kanban": kanban, "statuses": statuses})
+
+@csrf_exempt
+def po_tracking_update_status(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        po = ProcurementBase.objects.get(id=data['id'])
+        po.po_status = data['status']
+        po.save()
+        return JsonResponse({"success": True})
+    return JsonResponse({"success": False}, status=400)
+
+def po_tracking_detail(request, po_id):
+    po = ProcurementBase.objects.get(id=po_id)
+    # Renderize um pedaço de HTML com detalhes do PO (pode usar um template parcial)
+    return render(request, "sistema/procurement/partials/po_tracking_detail.html", {"po": po})

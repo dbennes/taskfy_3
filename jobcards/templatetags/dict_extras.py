@@ -24,3 +24,7 @@ def get_mp_by_labor(manpower_list, direct_labor):
         if str(mp.direct_labor).strip().lower() == str(direct_labor).strip().lower():
             return mp
     return None
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key)

@@ -274,40 +274,27 @@ class MRBase(models.Model):
         return f"{self.mr_number} - {self.pmto_code}"
 
 class ProcurementBase(models.Model):
-    mr_number = models.CharField("MR NUMBER", max_length=100)
-    latest_rev = models.CharField("LATEST REV.", max_length=20)
-    mto_item_no = models.CharField("MTO ITEM NO", max_length=50)
-    pmto_code = models.CharField("PMTOCODE", max_length=100)
-    type_items = models.CharField("TYPE ITEMS", max_length=100)
-    basic_material = models.CharField("BASIC MATERIAL", max_length=200)
-    description = models.TextField("DESCRIPTION")
-
-    nps1 = models.CharField("NPS 1", max_length=50, blank=True)
-    nps2 = models.CharField("NPS 2", max_length=50, blank=True)
-    sch1 = models.CharField("SCH 1", max_length=100, blank=True)
-    sch2 = models.CharField("SCH 2", max_length=100, blank=True)
-
-    unit = models.CharField("UNIT", max_length=20)
-
-    qty_mr = models.DecimalField("QTY_MR", max_digits=10, decimal_places=2)
-    qty_mr_unit = models.CharField("QTY_MR Unit", max_length=20, default="PCS")
-
-    qty_purchased = models.DecimalField("QTY PURCHASED", max_digits=10, decimal_places=2)
-    qty_purchased_unit = models.CharField("QTY PURCHASED Unit", max_length=20, default="PCS")
-
-    delivery_term = models.CharField("DELIVERY TERM", max_length=100)
-    delivery_time = models.CharField("DELIVERY TIME", max_length=100)
-
-    po_issue_date = models.DateField("PO ISSUE DATE")
-    po_number = models.CharField("PO NUMBER", max_length=100)
-
-    supplier_vendor = models.CharField("SUPPLIER/VENDOR", max_length=150)
-    status_remarks = models.TextField("STATUS / REMARKS", blank=True)
+    po_number = models.CharField("PO Number", max_length=100)
+    po_status = models.CharField("Status", max_length=40)
+    po_date = models.DateField("PO Date", blank=True, null=True)
+    vendor = models.CharField("Vendor", max_length=100, blank=True, null=True)
+    expected_delivery_date = models.DateField("Expected Delivery Date", blank=True, null=True)
+    mr_number = models.CharField("MR Number", max_length=100, blank=True, null=True)
+    mr_rev = models.CharField("MR Rev", max_length=20, blank=True, null=True)
+    qty_mr = models.DecimalField("Qty MR", max_digits=10, decimal_places=2, blank=True, null=True)
+    qty_mr_unit = models.CharField("Qty MR [UNIT]", max_length=10, blank=True, null=True)
+    item_type = models.CharField("Item Type", max_length=100, blank=True, null=True)
+    discipline = models.CharField("Discipline", max_length=100, blank=True, null=True)
+    tam_2026 = models.CharField("TAM 2026", max_length=40, blank=True, null=True)
+    pmto_code = models.CharField("PMTO CODE", max_length=100, blank=True, null=True)
+    tag = models.CharField("TAG", max_length=50, blank=True, null=True)
+    detailed_description = models.TextField("Detailed Description", blank=True, null=True)
+    qty_purchased = models.DecimalField("Qty Purchased", max_digits=10, decimal_places=2, blank=True, null=True)
+    qty_purchased_unit = models.CharField("Qty Purchased [UNIT]", max_length=10, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.po_number} – {self.pmto_code}"
+        return f"{self.po_number} ({self.po_status})"
     
-        
 # E-CLIC
 
 

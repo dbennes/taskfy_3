@@ -8,16 +8,16 @@
             <span style="width: 10px; height: 10px; background-color: #ff5f57; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
             <span style="width: 10px; height: 10px; background-color: #febc2e; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
             <span style="width: 10px; height: 10px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
-            <h6 class="mb-0 ms-3 text-white">Procurement Base - Complete Database View</h6>
+            <h6 class="mb-0 ms-3 text-white">ProcurementBase - Complete Database View</h6>
         </div>
         <div class="d-flex gap-2 mb-2">
             <button type="button" class="btn btn-outline-light btn-sm" onclick="baixarModeloProcurement()">
                 <i class="fa fa-download me-1"></i> Template
             </button>
             <form id="exportForm" method="get" action="{% url 'export_procurement_excel' %}">
-                <input type="hidden" name="mr_number" id="export_mr_number">
+                <input type="hidden" name="po_number" id="export_po_number">
                 <input type="hidden" name="pmto_code" id="export_pmto_code">
-                <input type="hidden" name="basic_material" id="export_basic_material">
+                <input type="hidden" name="mr_number" id="export_mr_number">
                 <button type="submit" class="btn btn-outline-light btn-sm">
                     <i class="fa fa-file-excel me-1"></i> Export Excel
                 </button>
@@ -32,23 +32,17 @@
         <b>How the Import Works:</b>
         <ul class="mb-1 mt-1">
             <li>
-                <b>No Duplicates:</b> When you import a file, the system checks if there is already a row with the exact combination of <b>PO NUMBER</b>, <b>PMTO CODE</b>, <b>MR NUMBER</b>, <b>LATEST REV.</b>, and <b>MTO ITEM NO</b>. If this combination already exists, <b>all other fields in that row will be updated</b> automatically.
+                <b>No Duplicates:</b> The system checks for exact combination of <b>PO Number</b>, <b>MR Number</b>, <b>MR Rev</b>, <b>PMTO CODE</b> and <b>Tag</b>. If this combination exists, all other fields in that row will be updated.
             </li>
             <li>
-                <b>New Materials or Orders:</b> If any of these key fields (PO NUMBER, PMTO CODE, MR NUMBER, LATEST REV., or MTO ITEM NO) is different from the existing data, a <b>new row will be added</b> for the new material, revision, or order.
+                <b>One Material per Row:</b> Each material (PMTO CODE) in a PO is a separate row.
             </li>
             <li>
-                <b>One Material per Row:</b> Each material (PMTO CODE) in a PO appears as a separate row. If your PO contains multiple materials, the system will create (or update) one row for each material.
-            </li>
-            <li>
-                <b>Easy Data Maintenance:</b> This structure allows you to quickly update information (such as status, quantity, supplier, or delivery date) by simply re-importing your updated Excel file. Only the changed fields will be updated—no risk of unwanted duplicates.
+                <b>Easy Data Maintenance:</b> Only changed fields will be updated on import — no unwanted duplicates.
             </li>
         </ul>
-        <span style="font-size:12px;"><b>Tip:</b> Make sure your Excel columns are filled correctly and avoid blank key fields to ensure a smooth import!</span>
+        <span style="font-size:12px;"><b>Tip:</b> Your Excel columns must match the table columns below exactly.</span>
     </div>
-
-
-    
 
     <div class="d-flex flex-wrap align-items-center gap-1">
         <div class="d-flex align-items-center gap-1 p-2 border rounded" style="font-size: 9px;">
@@ -62,14 +56,12 @@
             </select>
             <label class="mb-0 small"> entries</label>
         </div>
-
         <form id="filterForm" class="d-flex flex-wrap align-items-center gap-1 p-2 border rounded">
-            <input type="text" id="filterMRNumber" class="form-control form-control-sm" style="font-size:10px; width: 120px;" placeholder="MR NUMBER">
+            <input type="text" id="filterPONumber" class="form-control form-control-sm" style="font-size:10px; width: 120px;" placeholder="PO Number">
             <input type="text" id="filterPMTOCode" class="form-control form-control-sm" style="font-size:10px; width: 120px;" placeholder="PMTO CODE">
-            <input type="text" id="filterBasicMaterial" class="form-control form-control-sm" style="font-size:10px; width: 120px;" placeholder="Basic Material">
+            <input type="text" id="filterMRNumber" class="form-control form-control-sm" style="font-size:10px; width: 120px;" placeholder="MR Number">
             <button style="font-size: 9px" type="button" id="applyFilters" class="btn btn-apply btn-sm">Apply</button>
         </form>
-
         <div class="ms-auto d-flex align-items-center gap-1 p-2 border rounded" id="customButtons"></div>
     </div>
 
@@ -77,61 +69,52 @@
         <table id="procurementTable" class="table table-hover table-sm w-100 compact-table table-bordered-custom">
             <thead>
                 <tr>
-                    <th>PO NUMBER</th>
-                    <th>PO ISSUE DATE</th>
-                    <th>MR NUMBER</th>
-                    <th>LATEST REV.</th>
-                    <th>MTO ITEM NO</th>
-                    <th>PMTOCODE</th>
-                    <th>TYPE ITEMS</th>
-                    <th>BASIC MATERIAL</th>
-                    <th>DESCRIPTION</th>
-                    <th>NPS 1</th>
-                    <th>NPS 2</th>
-                    <th>SCH 1</th>
-                    <th>SCH 2</th>
-                    <th>UNIT</th>
-                    <th>QTY_MR</th>
-                    <th>QTY_MR Unit</th>
-                    <th>QTY PURCHASED</th>
-                    <th>QTY PURCHASED Unit</th>
-                    <th>DELIVERY TERM</th>
-                    <th>DELIVERY TIME</th>
-                    <th>SUPPLIER/VENDOR</th>
-                    <th>STATUS / REMARKS</th>
+                    <th>PO Number</th>
+                    <th>Status</th>
+                    <th>PO Date</th>
+                    <th>Vendor</th>
+                    <th>Expected Delivery Date</th>
+                    <th>MR Number</th>
+                    <th>MR Rev</th>
+                    <th>Qty MR</th>
+                    <th>Qty MR [UNIT]</th>
+                    <th>Item Type</th>
+                    <th>Discipline</th>
+                    <th>TAM 2026</th>
+                    <th>PMTO CODE</th>
+                    <th>TAG</th>
+                    <th>Detailed Description</th>
+                    <th>Qty Purchased</th>
+                    <th>Qty Purchased [UNIT]</th>
                 </tr>
             </thead>
             <tbody>
             {% for p in procurement_items %}
                 <tr>
                     <td>{{ p.po_number }}</td>
-                    <td>{{ p.po_issue_date|date:"Y-m-d" }}</td>
+                    <td>{{ p.po_status }}</td>
+                    <td>{{ p.po_date|date:"Y-m-d" }}</td>
+                    <td>{{ p.vendor }}</td>
+                    <td>{{ p.expected_delivery_date|date:"Y-m-d" }}</td>
                     <td>{{ p.mr_number }}</td>
-                    <td>{{ p.latest_rev }}</td>
-                    <td>{{ p.mto_item_no }}</td>
-                    <td>{{ p.pmto_code }}</td>
-                    <td>{{ p.type_items }}</td>
-                    <td>{{ p.basic_material }}</td>
-                    <td>{{ p.description }}</td>
-                    <td>{{ p.nps1 }}</td>
-                    <td>{{ p.nps2 }}</td>
-                    <td>{{ p.sch1 }}</td>
-                    <td>{{ p.sch2 }}</td>
-                    <td>{{ p.unit }}</td>
+                    <td>{{ p.mr_rev }}</td>
                     <td>{{ p.qty_mr }}</td>
                     <td>{{ p.qty_mr_unit }}</td>
+                    <td>{{ p.item_type }}</td>
+                    <td>{{ p.discipline }}</td>
+                    <td>{{ p.tam_2026 }}</td>
+                    <td>{{ p.pmto_code }}</td>
+                    <td>{{ p.tag }}</td>
+                    <td>{{ p.detailed_description }}</td>
                     <td>{{ p.qty_purchased }}</td>
                     <td>{{ p.qty_purchased_unit }}</td>
-                    <td>{{ p.delivery_term }}</td>
-                    <td>{{ p.delivery_time }}</td>
-                    <td>{{ p.supplier_vendor }}</td>
-                    <td>{{ p.status_remarks }}</td>
                 </tr>
             {% endfor %}
             </tbody>
         </table>
     </div>
 
+    <!-- Modal Importação -->
     <div class="modal fade" id="importProcurementModal" tabindex="-1" aria-labelledby="importProcurementModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <form id="importProcurementForm" enctype="multipart/form-data">
@@ -155,7 +138,7 @@
     </div>
 </div>
 
-
+<!-- DataTables & Export -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -196,22 +179,84 @@
         table.buttons().container().appendTo('#customButtons');
 
         $('#applyFilters').click(function () {
-            table.column(0).search($('#filterMRNumber').val());
-            table.column(3).search($('#filterPMTOCode').val());
-            table.column(5).search($('#filterBasicMaterial').val());
+            table.column(0).search($('#filterPONumber').val());
+            table.column(12).search($('#filterPMTOCode').val());
+            table.column(5).search($('#filterMRNumber').val());
             table.draw();
         });
 
         $('#exportForm').on('submit', function () {
-            $('#export_mr_number').val($('#filterMRNumber').val());
+            $('#export_po_number').val($('#filterPONumber').val());
             $('#export_pmto_code').val($('#filterPMTOCode').val());
-            $('#export_basic_material').val($('#filterBasicMaterial').val());
+            $('#export_mr_number').val($('#filterMRNumber').val());
         });
 
         $('#rowsPerPage').change(function () {
             table.page.len($(this).val()).draw();
         });
     });
+</script>
+
+<!-- Excel Template Download -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script>
+function baixarModeloProcurement() {
+    const cabecalho = [
+        "PO Number","Status","PO Date","Vendor","Expected Delivery Date",
+        "MR Number","MR Rev","Qty MR","Qty MR [UNIT]",
+        "Item Type","Discipline","TAM 2026","PMTO CODE","TAG","Detailed Description",
+        "Qty Purchased","Qty Purchased [UNIT]"
+    ];
+    const exemplo = [
+        "PO1234","Ordered","2025-07-01","VALLOUREC","2025-08-01",
+        "MR001","01",10,"PCS",
+        "PIPE","INSTRUMENTATION","NO","PMT001","TAG123","Painel de Válvulas",
+        8,"PCS"
+    ];
+    const ws_data = [cabecalho, exemplo];
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Procurement_Template");
+    XLSX.writeFile(wb, "procurement_template.xlsx");
+}
+</script>
+
+<!-- Importação AJAX -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('importProcurementForm');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById('importProcurementFile');
+        const file = fileInput.files[0];
+        if (!file) {
+            alert("Please select a file.");
+            return;
+        }
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        fetch("{% url 'import_procurement' %}", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                $('#importProcurementModal').modal('hide');
+                alert("Import successful!");
+                window.location.reload();
+            } else if (data.status === 'duplicate') {
+                alert("Este item já existe!");
+            } else {
+                alert(data.message || "Erro durante o upload.");
+            }
+        })
+        .catch(() => {
+            alert("Erro ao enviar o arquivo.");
+        });
+    });
+});
 </script>
 
 <style>
@@ -225,11 +270,11 @@
         padding: 2px 4px !important;
         line-height: 15px !important;
         vertical-align: middle;
-        font-size: 8px;
+        font-size: 10px;
         border: 0.5px solid #ddd !important;
     }
     .table-header th {
-        font-size: 9px !important;
+        font-size: 11px !important;
         padding: 6px 4px !important;
         background-color: #f0f0f0 !important;
     }
@@ -297,68 +342,4 @@
         background-color: #a5a5a5 !important;
     }
 </style>
-
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<script>
-function baixarModeloProcurement() {
-    const cabecalho = [
-        "MR NUMBER", "LATEST REV.", "MTO ITEM NO", "PMTOCODE", "TYPE ITEMS", "BASIC MATERIAL", "DESCRIPTION",
-        "NPS 1", "NPS 2", "SCH 1", "SCH 2", "UNIT", "QTY_MR", "QTY_MR Unit",
-        "QTY PURCHASED", "QTY PURCHASED Unit", "DELIVERY TERM", "DELIVERY TIME", "PO ISSUE DATE",
-        "PO NUMBER", "SUPPLIER/VENDOR", "STATUS / REMARKS"
-    ];
-    const exemplo = [
-        "MR001", "01", "ITM001", "PEACB.020.00002", "PIPE", "ASTM A106", "CARBON STEEL PIPE",
-        "2''", "3''", "SCH40", "SCH80", "PCS", 10.00, "PCS",
-        8.00, "PCS", "CIF", "30 days", "2025-07-01",
-        "PO1234", "VALLOUREC", "Partial"
-    ];
-
-    const ws_data = [cabecalho, exemplo];
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Procurement_Template");
-    XLSX.writeFile(wb, "procurement_template.xlsx");
-}
-</script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('importProcurementForm');
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const fileInput = document.getElementById('importProcurementFile');
-        const file = fileInput.files[0];
-        if (!file) {
-            alert("Please select a file.");
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-
-        fetch("{% url 'import_procurement' %}", {
-            method: "POST",
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'ok') {
-                $('#importProcurementModal').modal('hide');
-                alert("Import successful!");
-                window.location.reload();
-            } else if (data.status === 'duplicate') {
-                alert("Este item já existe!");
-            } else {
-                alert(data.message || "Erro durante o upload.");
-            }
-        })
-        .catch(() => {
-            alert("Erro ao enviar o arquivo.");
-        });
-    });
-});
-</script>
 {% endblock %}
