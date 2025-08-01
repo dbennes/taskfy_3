@@ -458,6 +458,12 @@ def edit_jobcard(request, jobcard_id=None):
         job.total_man_hours = f"{float(request.POST.get('total_man_hours', 0) or 0):.2f}"
 
         job.save()
+        
+         # Atualiza checked_preliminary_by e at se for o status correto
+        if job.jobcard_status == 'PRELIMINARY JOBCARD CHECKED':
+            job.checked_preliminary_by = request.user.username
+            job.checked_preliminary_at = timezone.now()
+            job.save(update_fields=['checked_preliminary_by', 'checked_preliminary_at'])
 
             # … depois de salvar os campos do job e do safe_float …
 
@@ -690,6 +696,8 @@ def edit_jobcard(request, jobcard_id=None):
     def manpower_list_for_task(task):
         # Se houver allocated, mostra allocated, senão mostra base
         return allocated_manpowers_dict.get(task.order) or manpowers_dict.get(task.working_code, [])
+    
+    
 
     context = {
         'job': job,
