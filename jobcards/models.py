@@ -275,7 +275,7 @@ class MRBase(models.Model):
 
 class ProcurementBase(models.Model):
     po_number = models.CharField("PO Number", max_length=100)
-    po_status = models.CharField("Status", max_length=40)
+    po_status = models.CharField("Status", max_length=40, default="Ordered")
     po_date = models.DateField("PO Date", blank=True, null=True)
     vendor = models.CharField("Vendor", max_length=100, blank=True, null=True)
     expected_delivery_date = models.DateField("Expected Delivery Date", blank=True, null=True)
