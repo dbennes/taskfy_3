@@ -103,9 +103,20 @@ urlpatterns = [
     path('procurement/po-tracking/update-status/', views.po_tracking_update_status, name='po_tracking_update_status'),  # AJAX para atualizar status
     path('procurement/po-tracking/detail/<int:po_id>/', views.po_tracking_detail, name='po_tracking_detail'), # Detalhe modal
    
-   # NOTIFICAÇÕES
+    # NOTIFICAÇÕES
     path('api/revisoes_ultimas/', api_revisoes_ultimas, name='api_revisoes_ultimas'),
     path('jobcard/<str:jobcard_id>/allocation/<int:task_order>/', views.save_allocation, name='save_allocation'),
-
+    
+    # CONTROLE DE ESTOQUE
+    path('kanban/', views.warehouse_kanban, name='warehouse_kanban'),
+    path('kanban/update-status/', views.update_warehouse_status, name='update_warehouse_status'),
+    path('kanban/detail/<int:pk>/', views.warehouse_detail, name='warehouse_detail'),
+    path('kanban/receive/<int:pk>/', views.warehouse_receive, name='warehouse_receive'),
+    # Nova rota para renderizar o formulário no modal
+    path('warehouse/receive-form/<int:pk>/', views.warehouse_receive_form, name='warehouse_receive_form'),
+    
+    path('warehouse/warehouse_rfid/', views.warehouse_rfid, name='warehouse_rfid'),
+    path('rfid/modal/<int:stock_id>/', views.rfid_modal, name='rfid_modal'),
+    path('rfid/add/<int:stock_id>/', views.rfid_add, name='rfid_add'),
     
 ]

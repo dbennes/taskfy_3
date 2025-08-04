@@ -35,6 +35,7 @@
     cursor: grab;
     transition: box-shadow .18s, transform .15s;
     border-left: 4px solid #4953a7;
+    overflow-y: auto;
 }
 .kanban-card.dragging { opacity: 0.5; }
 .kanban-card:hover { box-shadow: 0 4px 18px rgba(80,90,120,0.16); }
@@ -66,9 +67,9 @@
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="m-0 fw-bold  text-left w-100" style="margin-left: -60px; font-size: 12px ">{{ status }}</span>
                     <div class="d-flex align-items-center gap-1">
-                        <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
-                        <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
-                        <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 8px; height: 8px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 8px; height: 8px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+                        <span style="width: 8px; height: 8px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
                     </div>
                 </div>
             </div>
@@ -97,8 +98,8 @@
 <div class="modal fade" id="poModal" tabindex="-1" aria-labelledby="poModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
-      <div class="modal-header" style="background:#21262b;">
-        <h5 class="modal-title text-white" id="poModalLabel">PO Details</h5>
+      <div class="modal-header" style="background: #9bb3cb;">
+        <h5 class="modal-title text-white" id="poModalLabel">Purchase  Order</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="poModalBody">

@@ -1,0 +1,23 @@
+<div id="rfid-success-msg" class="alert alert-success" style="display:none;">
+  RFID registrado com sucesso!
+</div>
+<div id="rfid-error-msg" class="alert alert-danger" style="display:none;"></div>
+
+<form id="rfidAddForm" autocomplete="off" data-stock-id="{{ stock.id }}">
+  {% csrf_token %}
+  <div class="mb-2">
+    <label>RFID code</label>
+    <input type="text" name="rfid_tag" class="form-control" required>
+  </div>
+  {% if stock.registration_type == "lot" %}
+  <div class="mb-2">
+    <label>Quantity for this batch</label>
+    <input type="number" name="lot_qty" class="form-control" min="1" max="{{ stock.qty_received|add:'-stock.pieces.count' }}" value="1" required>
+  </div>
+  {% endif %}
+  <div class="mb-2">
+    <label>Location</label>
+    <input type="text" name="location" class="form-control" value="Warehouse at Aveon Yard" readonly>
+  </div>
+  <button class="btn btn-primary w-100" type="submit">Register RFID</button>
+</form>

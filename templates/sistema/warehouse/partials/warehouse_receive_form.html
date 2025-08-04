@@ -1,0 +1,138 @@
+<!-- warehouse_detail_and_receive_form.html -->
+<div class="container-fluid px-2 py-1" style="font-size:12px;">
+  <!-- PURCHASE ORDER DETAILS -->
+  <div class="mb-3 pb-2" style="border-bottom:2px solid #d4d7e5;">
+    <span class="fw-bold" style="font-size:16px; color:#445ec6; letter-spacing:0.02em;">
+      Purchase Order Details
+    </span>
+    <div class="row g-2 mt-2">
+      <div class="col-6 col-md-4">
+        <div class="text-muted mb-1 fw-semibold">PO Number</div>
+        <div class="fw-bold border rounded px-2 py-1" style="background:#f8f9fb;">{{ po.po_number }}</div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="text-muted mb-1 fw-semibold">Status</div>
+        <div class="border rounded px-2 py-1">{{ po.po_status }}</div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="text-muted mb-1 fw-semibold">Vendor</div>
+        <div class="border rounded px-2 py-1">{{ po.vendor|default:"—" }}</div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="text-muted mb-1 fw-semibold">Discipline</div>
+        <div class="border rounded px-2 py-1">{{ po.discipline|default:"—" }}</div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="text-muted mb-1 fw-semibold">PMTO Code</div>
+        <div class="border rounded px-2 py-1">{{ po.pmto_code|default:"—" }}</div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="text-muted mb-1 fw-semibold">Tag</div>
+        <div class="border rounded px-2 py-1">{{ po.tag|default:"—" }}</div>
+      </div>
+      <div class="col-12">
+        <div class="text-muted mb-1 fw-semibold">Description</div>
+        <div class="border rounded px-2 py-1">{{ po.detailed_description|default:"—" }}</div>
+      </div>
+      <div class="col-4">
+        <div class="text-muted mb-1 fw-semibold">Qty Purchased</div>
+        <div class="border rounded px-2 py-1">
+          <i class="fas fa-cart-shopping me-1" style="color:#8689e7"></i>
+          {{ po.qty_purchased }} {{ po.qty_purchased_unit|default:"" }}
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="text-muted mb-1 fw-semibold">Qty Received</div>
+        <div class="border rounded px-2 py-1">
+          <i class="fas fa-inbox-in me-1" style="color:#4ccd6a"></i>
+          {{ po.qty_received|default:"0" }} {{ po.qty_purchased_unit|default:"" }}
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="text-muted mb-1 fw-semibold">Qty To Receive</div>
+        <div class="border rounded px-2 py-1">
+          <i class="fas fa-arrow-down-short-wide me-1" style="color:#ff9a24"></i>
+          {% with saldo=po.qty_purchased|floatformat:2|add:"-po.qty_received"|floatformat:2 %}
+            {{ saldo }} {{ po.qty_purchased_unit|default:"" }}
+          {% endwith %}
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="text-muted mb-1 fw-semibold">Expected Delivery</div>
+        <div class="border rounded px-2 py-1">
+          <i class="fas fa-calendar-day me-1" style="color:#488dc2"></i>
+          {{ po.expected_delivery_date|date:"Y-m-d" }}
+        </div>
+      </div>
+      <div class="col-3">
+        <div class="text-muted mb-1 fw-semibold">MR Number</div>
+        <div class="border rounded px-2 py-1">{{ po.mr_number|default:"—" }}</div>
+      </div>
+      <div class="col-3">
+        <div class="text-muted mb-1 fw-semibold">MR Rev</div>
+        <div class="border rounded px-2 py-1">{{ po.mr_rev|default:"—" }}</div>
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- RECEIVING FORM -->
+  <div class="pt-1 mt-0">
+      <span class="fw-bold" style="font-size:15px; color:#44bd32; letter-spacing:0.02em;">
+        Warehouse Receiving
+      </span>
+      <form id="receiveForm" action="{% url 'warehouse_receive' pk=po.id %}" method="post" autocomplete="off" class="mt-3">
+        {% csrf_token %}
+        <div class="row g-2">
+          <div class="col-md-4">
+            <label class="form-label mb-1 fw-semibold">Qty to Receive</label>
+            <input type="number" min="0" max="{{ saldo }}" step="any" name="qty_received" class="form-control form-control-sm border-primary" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label mb-1 fw-semibold">Notes</label>
+            <input type="text" name="notes" class="form-control form-control-sm border-info">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label mb-1 fw-semibold">Registration Type</label>
+            <select name="registration_type" class="form-select form-select-sm border-success" required>
+              <option value="">Select...</option>
+              <option value="unit">Unitary (one by one, ex: valves)</option>
+              <option value="lot">Lot (grouped, ex: bolts)</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary w-100 mt-3 fw-bold py-2" style="font-size:13px;letter-spacing:.04em;">
+          <i class="fas fa-circle-check me-2" style="font-size:15px;"></i>
+          Confirm Receiving
+        </button>
+      </form>
+  </div>  
+
+
+
+</div>
+
+<script>
+document.getElementById('receiveForm').onsubmit = function(e) {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(this).entries());
+  fetch(this.action, {
+    method: 'POST',
+    headers: {
+      'Content-Type':'application/json',
+      'X-CSRFToken': data['csrfmiddlewaretoken']
+    },
+    body: JSON.stringify(data)
+  })
+  .then(res => res.json())
+  .then(json => {
+    if (json.result === "ok") {
+      const modal = bootstrap.Modal.getInstance(document.getElementById('warehouseModal'));
+      if (modal) modal.hide();
+      location.reload();
+    } else {
+      alert("Receiving error.");
+    }
+  });
+};
+</script>

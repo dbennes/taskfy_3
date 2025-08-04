@@ -1,0 +1,208 @@
+{% extends 'sistema/base.html' %}
+{% load static %}
+{% block content %}
+
+<style>
+.kanban-board { display: flex; flex-wrap: wrap; gap: 16px; min-height: 68vh; }
+.kanban-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(40,60,90,0.07);
+    border-left: 5px solid #44bd32;
+    min-width: 310px;
+    max-width: 340px;
+    flex: 1 0 320px;
+    padding: 14px 13px 13px 13px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    position: relative;
+}
+.kanban-card-title { font-weight: 600; font-size: 14px; color: #232323; }
+.kanban-card-meta { font-size: 11px; color: #6a6b72; margin-bottom: 6px; }
+.kanban-card .btn { font-size: 12px; }
+.kanban-card .badge { font-size: 11px; }
+.pagination { margin-top: 24px; }
+</style>
+
+<div class="container-fluid">
+  <!-- FILTRO BACKEND -->
+  <form class="row align-items-end mb-3" method="get">
+    <div class="col-md-3 mb-2">
+      <input class="form-control" name="po" value="{{ po }}" placeholder="Search PO Number...">
+    </div>
+    <div class="col-md-3 mb-2">
+      <input class="form-control" name="pmto" value="{{ pmto }}" placeholder="Search PMTO Code...">
+    </div>
+    <div class="col-md-3 mb-2">
+      <input class="form-control" name="tag" value="{{ tag }}" placeholder="Search Tag...">
+    </div>
+    <div class="col-md-3 mb-2">
+      <button class="btn btn-primary w-100" type="submit">Filter</button>
+    </div>
+  </form>
+
+  <!-- CARDS -->
+  <div class="kanban-board" id="kanbanBoard">
+    {% for stock in page_obj %}
+      <div class="kanban-card"
+        data-po="{{ stock.po_number|lower }}"
+        data-pmto="{{ stock.pmto_code|default:''|lower }}"
+        data-tag="{{ stock.tag|default:''|lower }}">
+        <div class="kanban-card-title">
+          {{ stock.po_number }} — {{ stock.pmto_code|default:stock.tag|default:"—" }}
+          <span class="badge bg-secondary float-end">Received: {{ stock.qty_received }}</span>
+        </div>
+        <div class="kanban-card-meta mb-1">
+          <b>Tag:</b> {{ stock.tag|default:"—" }}<br>
+          <b>Description:</b> {{ stock.detailed_description|truncatechars:45|default:"—" }}
+        </div>
+        <div>
+          <b>RFIDs Registered:</b>
+          <span class="badge bg-success">{{ stock.pieces.count }}</span>
+          <b class="ms-3">To Register:</b>
+          <span class="badge bg-warning text-dark">{{ stock.qty_received|add:"-stock.pieces.count" }}</span>
+        </div>
+        <button class="btn btn-outline-success w-100 mt-2"
+          onclick="openRfidModal({{ stock.id }}, '{{ stock.po_number }}', '{{ stock.pmto_code }}')">
+          Add/View RFID
+        </button>
+        {% if stock.pieces.all %}
+          <div class="mt-2">
+            <b>RFIDs:</b>
+            <ul class="mb-0 ps-3 small" style="max-height: 100%; overflow-y: auto;">
+              {% for piece in stock.pieces.all %}
+                <li class="text-success">{{ piece.rfid_tag }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+
+      </div>
+    {% empty %}
+      <div class="text-center text-muted w-100" style="font-size:14px;">No items found.</div>
+    {% endfor %}
+  </div>
+
+  <!-- Paginação -->
+  {% if page_obj.has_other_pages %}
+    <div class="d-flex justify-content-center">
+      <nav>
+        <ul class="pagination">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?po={{ po }}&pmto={{ pmto }}&tag={{ tag }}&page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+          {% endif %}
+          <li class="page-item disabled">
+            <span class="page-link">
+              Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+          </li>
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?po={{ po }}&pmto={{ pmto }}&tag={{ tag }}&page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Modal para cadastrar/visualizar RFIDs -->
+<div class="modal fade" id="rfidModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#e4f5e9;">
+        <h5 class="modal-title text-success">
+          RFID Register <span id="rfidModalTitle" class="ms-2"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="rfidModalBody">
+        <div class="text-center py-3">
+          <i class="fas fa-spinner fa-spin"></i> Loading...
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// Função para abrir o modal e carregar o HTML via AJAX
+function openRfidModal(stockId, po, pmto) {
+  document.getElementById('rfidModalTitle').textContent = `${po} / ${pmto}`;
+  fetch(`/rfid/modal/${stockId}/`)
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById('rfidModalBody').innerHTML = html;
+      new bootstrap.Modal(document.getElementById('rfidModal')).show();
+      activateRfidFormHandler(); // <-- sempre ativa o handler após carregar o HTML
+    });
+}
+
+// Função que ativa o submit AJAX do form do modal
+function activateRfidFormHandler() {
+  const form = document.getElementById('rfidAddForm');
+  if (!form) {
+    console.warn('Form não encontrado!');
+    return;
+  }
+  form.onsubmit = function(e) {
+    e.preventDefault();
+    console.log('Interceptou submit!');
+    const data = Object.fromEntries(new FormData(this).entries());
+    const successMsg = document.getElementById('rfid-success-msg');
+    const errorMsg = document.getElementById('rfid-error-msg');
+    if(successMsg) successMsg.style.display = 'none';
+    if(errorMsg) errorMsg.style.display = 'none';
+
+    fetch('/rfid/add/' + form.dataset.stockId + '/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(json => {
+      if (json.result === "ok") {
+        if(successMsg) successMsg.style.display = 'block';
+        form.reset();
+        // Fecha o modal após 0.5s
+        setTimeout(() => {
+          const modal = bootstrap.Modal.getInstance(document.getElementById('rfidModal'));
+          if(modal) modal.hide();
+          // Adicione o reload AQUI!
+          setTimeout(() => { location.reload(); }, 300); // Reload após fechar o modal
+        }, 500);
+      } else {
+        if(errorMsg) {
+          errorMsg.innerText = json.msg || "Error registering RFID!";
+          errorMsg.style.display = 'block';
+        }
+      }
+    });
+  };
+}
+
+// Função para pegar o CSRF do cookie
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+</script>
+{% endblock %}

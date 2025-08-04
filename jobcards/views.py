@@ -25,7 +25,7 @@ from django.conf import settings
 from .models import (
     JobCard, TaskBase, ManpowerBase, MaterialBase, ToolsBase, EngineeringBase,
     AllocatedEngineering, AllocatedManpower, AllocatedMaterial, AllocatedTool, AllocatedTask,
-    Discipline, Area, WorkingCode, System, Impediments, PMTOBase, MRBase, ProcurementBase
+    Discipline, Area, WorkingCode, System, Impediments, PMTOBase, MRBase, ProcurementBase, WarehouseStock
 )
 import tempfile
 from django.db.models import Sum
@@ -63,6 +63,14 @@ import json
 from django.contrib.auth.decorators import permission_required
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models.functions import TruncDate
+from django.db.models import F
+from .models import WarehouseStock
+
+import json
+
+from .models import ProcurementBase, WarehouseStock, WarehousePiece
+from django.db import models
+
 
 # - PERMISSIONAMENTO POR GRUPO
 def group_required(group_name):
@@ -2375,20 +2383,20 @@ def import_procurement(request):
             for _, row in df.iterrows():
                 ProcurementBase.objects.update_or_create(
                     po_number=row['PO Number'],
+                    mr_number=row['MR Number'],
+                    mr_rev=row['MR Rev'],
+                    pmto_code=row['PMTO CODE'],
+                    tag=row['TAG'],
                     defaults={
                         'po_status': row.get('Status', ''),
                         'po_date': row.get('PO Date', None),
                         'vendor': row.get('Vendor', ''),
                         'expected_delivery_date': row.get('Expected Delivery Date', None),
-                        'mr_number': row.get('MR Number', ''),
-                        'mr_rev': row.get('MR Rev', ''),
                         'qty_mr': row.get('Qty MR', 0),
                         'qty_mr_unit': row.get('Qty MR [UNIT]', ''),
                         'item_type': row.get('Item Type', ''),
                         'discipline': row.get('Discipline', ''),
                         'tam_2026': row.get('TAM 2026', ''),
-                        'pmto_code': row.get('PMTO CODE', ''),
-                        'tag': row.get('TAG', ''),
                         'detailed_description': row.get('Detailed Description', ''),
                         'qty_purchased': row.get('Qty Purchased', 0),
                         'qty_purchased_unit': row.get('Qty Purchased [UNIT]', ''),
@@ -2565,10 +2573,10 @@ def po_tracking(request):
         "Pending MR",
         "Ordered",
         "In Production",
+        "In Transit",
         "Delivered",
         "Ready for Inspection",
         "Ready for Receipt at Warehouse",
-        "In Transit",
         "On Hold",
         "Cancelled",
     ]
@@ -2592,3 +2600,179 @@ def po_tracking_detail(request, po_id):
     po = ProcurementBase.objects.get(id=po_id)
     # Renderize um pedaço de HTML com detalhes do PO (pode usar um template parcial)
     return render(request, "sistema/procurement/partials/po_tracking_detail.html", {"po": po})
+
+# CONTROLE DE ESTOQUE
+
+def warehouse_kanban(request):
+    # Mostra cada item de ProcurementBase como um card
+    ready_qs = ProcurementBase.objects.filter(po_status="Ready for Receipt at Warehouse", qty_purchased__gt=F('qty_received'))
+
+    received_qs = ProcurementBase.objects.filter(qty_received__gte=F('qty_purchased'))
+
+    kanban = {
+        "Ready for Receipt at Warehouse": ready_qs,
+        "Received at Warehouse": received_qs,
+    }
+
+    # Stocks para detalhamento (WarehouseStock)
+    stocks = WarehouseStock.objects.all()
+
+    return render(request, 'sistema/warehouse/warehouse_kanban.html', {
+        'statuses': ["Ready for Receipt at Warehouse", "Received at Warehouse"],
+        'kanban': kanban,
+        'stocks': stocks,
+    })
+    
+@csrf_exempt
+def update_warehouse_status(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        po = get_object_or_404(ProcurementBase, id=data['id'])
+        po.po_status = data['status']
+        po.save()
+        return JsonResponse({'result': 'ok'})
+    return JsonResponse({'result': 'error'}, status=400)
+
+def warehouse_detail(request, pk):
+    po = get_object_or_404(ProcurementBase, id=pk)
+    return render(request, 'sistema/warehouse/partials/warehouse_detail.html', {
+        'po': po
+    })
+    
+
+@csrf_exempt
+def warehouse_receive(request, pk):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        po = get_object_or_404(ProcurementBase, id=pk)
+        qty_to_add = Decimal(str(data.get('qty_received', 0)).replace(',', '.'))
+
+        if po.qty_received is None:
+            po.qty_received = Decimal('0.0')
+
+        new_qty = po.qty_received + qty_to_add
+        if po.qty_purchased is not None and new_qty > po.qty_purchased:
+            qty_to_add = po.qty_purchased - po.qty_received
+
+        po.qty_received += qty_to_add
+
+        if po.qty_purchased and po.qty_received >= po.qty_purchased:
+            po.po_status = "Received at Warehouse"
+        po.save()
+
+        # Atualiza ou cria WarehouseStock
+        ws, created = WarehouseStock.objects.get_or_create(
+            po_number=po.po_number,
+            pmto_code=po.pmto_code,
+            defaults={ ... }
+        )
+        registration_type = data.get('registration_type')  # <- PEGA DO FORM
+        if not created:
+            ws.qty_received = po.qty_received
+            ws.balance_to_receive = (po.qty_purchased - po.qty_received) if po.qty_purchased else 0
+            ws.last_received_at = timezone.now()
+            ws.received_by = request.user.get_username() if request.user.is_authenticated else ''
+            ws.notes = data.get('notes', '')
+        ws.registration_type = registration_type  # <- SALVA AQUI!
+        ws.save()
+
+        return JsonResponse({
+            'result': 'ok',
+            'new_status': po.po_status,
+            'qty_received': str(po.qty_received)
+        })
+    return JsonResponse({'result': 'error'}, status=400)
+
+def warehouse_receive_form(request, pk):
+    
+    """
+    Renderiza o formulário de recebimento (partial) para ser carregado no modal.
+    """
+    po = get_object_or_404(ProcurementBase, id=pk)
+    ws, created = WarehouseStock.objects.get_or_create(
+        po_number=po.po_number,
+        defaults={
+            'item_type':          po.item_type,
+            'vendor':             po.vendor,
+            'discipline':         po.discipline,
+            'tag':                po.tag,
+            'pmto_code':          po.pmto_code,
+            'detailed_description': po.detailed_description,
+            'qty_purchased':      po.qty_purchased,
+            'qty_purchased_unit': po.qty_purchased_unit,
+        }
+    )
+    # Passamos tanto o PO quanto o registro em estoque
+    return render(request, 'sistema/warehouse/partials/warehouse_receive_form.html', {
+        'po': po,
+        'ws': ws,
+    })
+    
+    
+    
+def warehouse_rfid(request):
+    qs = WarehouseStock.objects.all().prefetch_related('pieces')
+    po = request.GET.get('po')
+    pmto = request.GET.get('pmto')
+    tag = request.GET.get('tag')
+    if po:
+        qs = qs.filter(po_number__icontains=po)
+    if pmto:
+        qs = qs.filter(pmto_code__icontains=pmto)
+    if tag:
+        qs = qs.filter(tag__icontains=tag)
+    # Paginação
+    from django.core.paginator import Paginator
+    paginator = Paginator(qs, 50)  # 50 cards por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'sistema/warehouse/warehouse_rfid.html', {
+        'warehouse_stocks': page_obj,  # agora itere sobre page_obj
+        'page_obj': page_obj,
+        'po': po or '',
+        'pmto': pmto or '',
+        'tag': tag or '',
+    })
+    
+def rfid_modal(request, stock_id):
+    stock = get_object_or_404(WarehouseStock, pk=stock_id)
+    # Traga os pieces relacionados, se necessário
+    pieces = stock.pieces.all()  # Se tiver related_name='pieces'
+    return render(request, 'sistema/warehouse/partials/rfid_modal.html', {
+        'stock': stock,
+        'pieces': pieces,
+    })
+    
+@csrf_exempt
+def rfid_add(request, stock_id):
+    if request.method == "POST":
+        stock = get_object_or_404(WarehouseStock, pk=stock_id)
+        data = json.loads(request.body)
+        rfid_tag = data.get("rfid_tag")
+        location = data.get("location") or "Warehouse at Aveon Yard"
+        lot_qty = int(data.get("lot_qty", 1))
+        received_by = request.user.get_username() if request.user.is_authenticated else ""
+
+        # Do not allow registration if limit has been reached
+        registered = stock.pieces.count()
+        if registered >= stock.qty_received:
+            return JsonResponse({'result': 'error', 'msg': 'RFID registration limit for this item has been reached!'})
+
+        # Prevent duplicate RFID
+        if WarehousePiece.objects.filter(rfid_tag=rfid_tag).exists():
+            return JsonResponse({'result': 'error', 'msg': 'RFID already exists.'})
+
+        # Optional: If using lot_qty > 1, ensure total does not exceed qty_received
+        total_qty = stock.pieces.aggregate(total=models.Sum('lot_qty'))['total'] or 0
+        if (total_qty + lot_qty) > stock.qty_received:
+            return JsonResponse({'result': 'error', 'msg': 'The sum of the batches exceeds the received quantity!'})
+
+        WarehousePiece.objects.create(
+            stock=stock,
+            rfid_tag=rfid_tag,
+            lot_qty=lot_qty,
+            location=location,
+            received_by=received_by,
+        )
+        return JsonResponse({'result': 'ok'})
+    return JsonResponse({'result': 'error', 'msg': 'Invalid request'}, status=400)

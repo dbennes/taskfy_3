@@ -291,7 +291,8 @@ class ProcurementBase(models.Model):
     detailed_description = models.TextField("Detailed Description", blank=True, null=True)
     qty_purchased = models.DecimalField("Qty Purchased", max_digits=10, decimal_places=2, blank=True, null=True)
     qty_purchased_unit = models.CharField("Qty Purchased [UNIT]", max_length=10, blank=True, null=True)
-
+    qty_received = models.DecimalField("Qty Received", max_digits=10, decimal_places=2, blank=True, null=True, default=0)  # NOVO CAMPO
+    
     def __str__(self):
         return f"{self.po_number} ({self.po_status})"
     
@@ -367,3 +368,71 @@ class DocumentoRevisaoAlterada(models.Model):
 
     def __str__(self):
         return f"{self.codigo} ({self.nome_projeto}): {self.revisao_anterior} → {self.revisao_nova}"
+
+class WarehouseStock(models.Model):
+    po_number = models.CharField("PO Number", max_length=100)
+    item_type = models.CharField("Item Type", max_length=100, blank=True, null=True)
+    vendor = models.CharField("Vendor", max_length=100, blank=True, null=True)
+    discipline = models.CharField("Discipline", max_length=100, blank=True, null=True)
+    tag = models.CharField("Tag", max_length=50, blank=True, null=True)
+    pmto_code = models.CharField("PMTO Code", max_length=100, blank=True, null=True)
+    detailed_description = models.TextField("Detailed Description", blank=True, null=True)
+    
+    # Total quantity purchased (according to PO)
+    qty_purchased = models.DecimalField("Qty Purchased", max_digits=10, decimal_places=2, blank=True, null=True)
+    qty_purchased_unit = models.CharField("Qty Purchased Unit", max_length=10, blank=True, null=True)
+    
+    # Total quantity already received
+    qty_received = models.DecimalField("Qty Received", max_digits=10, decimal_places=2, default=0)
+    
+    # Remaining balance to be received (optional, for performance)
+    balance_to_receive = models.DecimalField("Balance to Receive", max_digits=10, decimal_places=2, default=0)
+    
+    # Last receipt date
+    last_received_at = models.DateTimeField("Last Received At", blank=True, null=True)
+    # User who received (optional)
+    received_by = models.CharField("Received By", max_length=100, blank=True, null=True)
+    
+    # Notes (optional)
+    notes = models.TextField("Notes", blank=True, null=True)
+    
+    registration_type = models.CharField(max_length=10, choices=[('unit', 'Unit'), ('lot', 'Lot')], default='unit')
+    
+    def __str__(self):
+        return f"{self.po_number} - {self.tag} ({self.qty_received}/{self.qty_purchased})"
+
+
+class WarehousePiece(models.Model):
+    stock = models.ForeignKey(
+        WarehouseStock, on_delete=models.CASCADE, related_name='pieces'
+    )
+    rfid_tag = models.CharField(
+        max_length=100, unique=True,
+        verbose_name="RFID Tag"
+    )
+    lot_qty = models.PositiveIntegerField(
+        default=1, verbose_name="Quantity in Lot"
+    )  # 1 para unitário, >1 para lote
+    created_at = models.DateTimeField(auto_now_add=True)
+    received_by = models.CharField(max_length=100, blank=True, null=True)
+    
+    LOCATION_CHOICES = [
+        ('warehouse_aveon', 'Warehouse at Aveon Yard'),
+        ('dock_aveon', 'Dock at Aveon Yard'),
+        ('flotel', 'Flotel'),
+        ('laydown_area', 'Laydown Area'),
+        # ...adicione mais locais conforme a evolução do processo!
+    ]
+    location = models.CharField(
+        max_length=50,
+        choices=LOCATION_CHOICES,
+        default='warehouse_aveon'
+    )
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        verbose_name = "Warehouse Piece"
+        verbose_name_plural = "Warehouse Pieces"
+
+    def __str__(self):
+        return f"{self.rfid_tag} ({self.stock.po_number} - {self.stock.pmto_code or self.stock.tag})"

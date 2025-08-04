@@ -1,0 +1,324 @@
+{% extends 'sistema/base.html' %}
+{% load static %}
+{% load dict_extras %}
+{% block content %}
+
+<style>
+.kanban-board { display: flex; gap: 18px; overflow-x: auto; min-height: 75vh; }
+.kanban-column {
+    background: #f5f5f5;
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    min-width: 200px;
+    max-width: 280px;
+    flex: 1;
+    padding: 12px 10px 18px 10px;
+    display: flex;
+    flex-direction: column;
+    height: 65vh;
+}
+.kanban-col-title {
+    font-size: 9px;
+    margin-bottom: 9px;
+    color: #818181ff;
+    letter-spacing: .01em;
+}
+.kanban-cards { flex: 1; min-height: 20px; }
+.kanban-card {
+    background: #ffffffff;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    padding: 14px 13px 10px 13px;
+    box-shadow: 0 2px 6px rgba(40,60,90,0.07);
+    cursor: grab;
+    transition: box-shadow .18s, transform .15s;
+    border-left: 4px solid #4953a7;
+    overflow-y: auto;
+    font-size: 10px;
+}
+.kanban-card.dragging { opacity: 0.5; }
+.kanban-card:hover { box-shadow: 0 4px 18px rgba(80,90,120,0.16); }
+.kanban-card-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: #232323;
+    margin-bottom: 2px;
+    letter-spacing: .01em;
+}
+.kanban-card-meta { font-size: 10px; color: #6a6b72; }
+.table-10px, .table-10px th, .table-10px td { font-size: 10px !important; }
+</style>
+
+<div class="d-flex align-items-center justify-content-between p-2 mb-3" style="background-color: #313131; border-radius: 8px;">
+  <div class="d-flex align-items-center me-3">
+    <span style="width:10px;height:10px;background-color: #ff5f57;border-radius:50%;display:inline-block;margin-right:5px;"></span>
+    <span style="width:10px;height:10px;background-color: #febc2e;border-radius:50%;display:inline-block;margin-right:5px;"></span>
+    <span style="width:10px;height:10px;background-color: #28c840;border-radius:50%;display:inline-block;"></span>
+    <h6 class="mb-0 ms-3 text-white" style="font-size:15px">Warehouse Stock Control</h6>
+  </div>
+</div>
+
+<div class="row">
+  <!-- coluna 1: os dois kanbans (Ready e Received) -->
+  <div class="col-6">
+    <div class="kanban-board" id="kanban-board">
+      {% for status in statuses %}
+        <div class="kanban-column" data-status="{{ status }}">
+          <div class="kanban-col-title">
+            <div class="card-header py-3" style="background:#f5f5f7; border-bottom:1px solid #d0d0d0; border-top-left-radius:8px; border-top-right-radius:8px; padding:10px;">
+              <div class="d-flex align-items-center justify-content-between">
+                <span class="m-0 fw-bold text-left w-100" style="font-size:12px">{{ status }}</span>
+                <div class="d-flex align-items-center gap-1">
+                  <span style="width:8px;height:8px;background-color: #ff5f57;border-radius:50%;display:inline-block;"></span>
+                  <span style="width:8px;height:8px;background-color: #febc2e;border-radius:50%;display:inline-block;"></span>
+                  <span style="width:8px;height:8px;background-color: #28c840;border-radius:50%;display:inline-block;"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="kanban-cards" data-status="{{ status }}">
+            {% for item in kanban|get_item:status %}
+              <div class="kanban-card"
+                    draggable="true"
+                    data-id="{{ item.id }}"
+                    data-status="{{ status }}"
+                    onclick="openWarehouseModal({{ item.id }}, '{{ status }}')"
+                    style="position:relative;">
+                    
+                    {# ALERTA DE RECEBIMENTO PARCIAL, só se > 0 e < total #}
+                    {% if item.qty_received > 0 and item.qty_received < item.qty_purchased %}
+                        <span 
+                        title="Recebimento parcial"
+                        style="
+                            position: absolute;
+                            top: 7px;
+                            right: 12px;
+                            color: #ffc107;
+                            font-size: 17px;
+                            z-index: 3;
+                            ">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        </span>
+            {% endif %}
+
+                <div class="kanban-card-title">
+                    {{ item.po_number }} — {{ item.pmto_code|default:item.tag|default:"—" }}
+                </div>
+                <div class="kanban-card-meta" style="font-size: 9px;">
+                    {{ item.vendor|default:"—"|truncatechars:20 }}<br>
+                    <b>Purchased:</b> {{ item.qty_purchased }} {{ item.qty_purchased_unit|default:"" }}<br>
+                    <b>Received:</b> {{ item.qty_received|default:"0" }} {{ item.qty_purchased_unit|default:"" }}<br>
+                    <b>To receive:</b>
+                    {% with saldo=item.qty_purchased|floatformat:2|add:"-item.qty_received"|floatformat:2 %}
+                    {{ saldo }} {{ item.qty_purchased_unit|default:"" }}
+                    {% endwith %}
+                </div>
+                </div>
+
+            {% empty %}
+              <p class="text-center text-muted" style="font-size:10px;">Nenhum item em “{{ status }}”.</p>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+     <!-- coluna 2: tabela detalhada de WarehouseStock -->
+  <!-- coluna 2: tabela detalhada de WarehouseStock -->
+<div class="col-6">
+  <h6 class="mb-3" style="font-size:12px;">{{ statuses.1 }} — Detailed</h6>
+  <div class="table-responsive" style="max-height:65vh; overflow:auto;">
+    <table class="table table-sm table-hover table-10px">
+      <thead class="table-light">
+        <tr>
+          <th>PO Number</th>
+          <th>Item Type</th>
+          <th>Vendor</th>
+          <th>Discipline</th>
+          <th>Tag</th>
+          <th>PMTO Code</th>
+          <th>Qty Purchased</th>
+          <th>Qty Received</th>
+          <th>Balance</th>
+          <th>Register Type</th>
+          <th>Received By</th>
+          <th>Last Received At</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ws in stocks %}
+          <tr style="cursor:pointer;" onclick="openWarehouseModal({{ ws.id }})">
+            <td>{{ ws.po_number }}</td>
+            <td>{{ ws.item_type|default:"—" }}</td>
+            <td>{{ ws.vendor|default:"—" }}</td>
+            <td>{{ ws.discipline|default:"—" }}</td>
+            <td>{{ ws.tag|default:"—" }}</td>
+            <td>{{ ws.pmto_code|default:"—" }}</td>
+            <td>
+              {{ ws.qty_purchased }}
+              {% if ws.qty_purchased_unit %}{{ ws.qty_purchased_unit }}{% endif %}
+            </td>
+            <td>{{ ws.qty_received }}</td>
+            <td>{{ ws.balance_to_receive }}</td>
+            <td>
+              {% if ws.registration_type == "unit" %}
+                <span class="badge bg-primary">Unitary</span>
+              {% elif ws.registration_type == "lot" %}
+                <span class="badge bg-info text-dark">Lot</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>{{ ws.received_by|default:"—" }}</td>
+            <td>{{ ws.last_received_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ ws.notes|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="13" class="text-center text-muted" style="font-size:10px;">
+              No records found.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+
+</div>
+
+<!-- Modal de detalhes -->
+<div class="modal fade" id="warehouseModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#9bb3cb;">
+        <h5 class="modal-title text-white">Warehouse Stock Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="warehouseModalBody">
+        <div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const UPDATE_STATUS_URL         = "{% url 'update_warehouse_status' %}";
+const RECEIVE_FORM_URL_TEMPLATE = "{% url 'warehouse_receive_form' pk=0 %}";
+const WAREHOUSE_DETAIL_URL      = "{% url 'warehouse_detail' pk=0 %}";
+
+// Salva o nome dos status para fácil comparação
+const STATUS_READY    = "Ready for Receipt at Warehouse";
+const STATUS_RECEIVED = "Received at Warehouse";
+
+// Drag & Drop
+let dragged = null;
+document.querySelectorAll('.kanban-card').forEach(card => {
+  card.addEventListener('dragstart', () => {
+    dragged = card;
+    card.classList.add('dragging');
+  });
+  card.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+    dragged = null;
+  });
+});
+document.querySelectorAll('.kanban-cards').forEach(col => {
+  col.addEventListener('dragover', e => { 
+    e.preventDefault(); col.style.background = "#e8eaff"; 
+  });
+  col.addEventListener('dragleave', () => col.style.background = "");
+  col.addEventListener('drop', e => {
+    e.preventDefault();
+    col.style.background = "";
+    if (!dragged) return;
+    const itemId   = dragged.dataset.id;
+    const newStatus = col.dataset.status;
+    // SE for coluna Received at Warehouse → abre form de recebimento
+    if (newStatus === STATUS_RECEIVED) {
+      openWarehouseModal(itemId, STATUS_READY);  // Força abrir o form!
+    } else {
+      // Só muda status via AJAX e move o card (para outros status)
+      fetch(UPDATE_STATUS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type':'application/json',
+          'X-CSRFToken':'{{ csrf_token }}'
+        },
+        body: JSON.stringify({ id: itemId, status: newStatus })
+      })
+      .then(res => {
+        if (res.ok) col.appendChild(dragged);
+        dragged = null;
+      });
+    }
+  });
+});
+
+// Função central para abrir o modal correto (form ou detalhe)
+function openWarehouseModal(id, status=null) {
+  // Se não passar status, pega pelo DOM (útil pro clique)
+  if (!status) {
+    const card = document.querySelector('.kanban-card[data-id="' + id + '"]');
+    status = card?.dataset.status || "";
+  }
+  let url = "";
+  // Se for status "Ready for Receipt at Warehouse" abre o FORM, senão abre detalhes
+  if (status === STATUS_READY) {
+    url = RECEIVE_FORM_URL_TEMPLATE.replace('0', id);
+  } else {
+    url = WAREHOUSE_DETAIL_URL.replace('0', id);
+  }
+  fetch(url)
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById('warehouseModalBody').innerHTML = html;
+      const modal = new bootstrap.Modal(document.getElementById('warehouseModal'));
+      modal.show();
+
+      // Checa se existe um form de recebimento na partial e injeta submit AJAX
+      const receiveForm = document.getElementById('receiveForm');
+      if (receiveForm) {
+        receiveForm.onsubmit = function(e) {
+          e.preventDefault();
+          const data = Object.fromEntries(new FormData(this).entries());
+          fetch(receiveForm.action, {
+            method: 'POST',
+            headers: {
+              'Content-Type':'application/json',
+              'X-CSRFToken':'{{ csrf_token }}'
+            },
+            body: JSON.stringify(data)
+          })
+          .then(res => res.json())
+          .then(json => {
+            if (json.result === "ok") {
+              modal.hide();
+              location.reload(); // Recarrega tudo para Kanban refletir a mudança
+            } else {
+              alert("Erro ao receber.");
+            }
+          });
+        }
+      }
+    });
+}
+
+// Clique no card: usa status do próprio card (via data-status!)
+document.querySelectorAll('.kanban-card').forEach(card => {
+  card.onclick = function(e) {
+    // Evita conflito com drag
+    if (dragged) return;
+    const id = card.dataset.id;
+    const status = card.dataset.status;
+    openWarehouseModal(id, status);
+  };
+});
+</script>
+
+
+{% endblock %}

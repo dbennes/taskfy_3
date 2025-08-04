@@ -82,6 +82,21 @@
         </li>
     </ul>
 
+    <!-- Stock Control -->
+    <div class="sidebar-section mt-4">Stock Control</div>
+        <ul class="sidebar-menu">
+            <li>
+                <a class="sidebar-link" href="{% url 'warehouse_kanban' %}">
+                    <i class="fas fa-warehouse"></i> Warehouse
+                </a>
+            </li>
+            <li>
+            <a class="sidebar-link d-flex align-items-center gap-2" href="{% url 'warehouse_rfid' %}">
+                <i class="fa-solid fa-qrcode"></i> RFID Pieces Control
+            </a>
+            </li>
+        </ul>
+
     
     <!-- Sair -->
     <div class="sidebar-logout">
