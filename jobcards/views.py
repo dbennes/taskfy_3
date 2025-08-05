@@ -193,7 +193,7 @@ def dashboard(request):
         document__in=DocumentoControle.objects.values_list('codigo', flat=True)
     )
     
-    # PARA O AUTODESK Token Forge 2-legged
+    """ PARA O AUTODESK Token Forge 2-legged
     import requests
     resp = requests.post(
         "https://developer.api.autodesk.com/authentication/v2/token",
@@ -207,7 +207,7 @@ def dashboard(request):
     token = resp.json().get('access_token')
     # Substitua o URN pelo seu modelo!
     urn = 'dXJuOmFkc2sud2lwcHJvZDpmcy5maWxlOnZmLkRRelY3XzV0UmRpTDNQRjNVWFNMVmc_dmVyc2lvbj0x'
-    
+    """
     #######################
     
     discipline_summary = []
@@ -338,8 +338,8 @@ def dashboard(request):
         'planning_percent': f"{(planning_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
         'offshore_percent': f"{(offshore_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
         'approved_percent': f"{(approved_to_execute_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
-        'token': token,
-        'urn': urn, 
+        # 'token': token,
+        # 'urn': urn, 
         'discipline_summary': discipline_summary,
         'area_summary': area_summary,
         'workpack_summary': workpack_summary,   
@@ -2381,27 +2381,28 @@ def import_procurement(request):
             file = request.FILES['file']
             df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
             for _, row in df.iterrows():
-                ProcurementBase.objects.update_or_create(
-                    po_number=row['PO Number'],
-                    mr_number=row['MR Number'],
-                    mr_rev=row['MR Rev'],
-                    pmto_code=row['PMTO CODE'],
-                    tag=row['TAG'],
-                    defaults={
-                        'po_status': row.get('Status', ''),
-                        'po_date': row.get('PO Date', None),
-                        'vendor': row.get('Vendor', ''),
-                        'expected_delivery_date': row.get('Expected Delivery Date', None),
-                        'qty_mr': row.get('Qty MR', 0),
-                        'qty_mr_unit': row.get('Qty MR [UNIT]', ''),
-                        'item_type': row.get('Item Type', ''),
-                        'discipline': row.get('Discipline', ''),
-                        'tam_2026': row.get('TAM 2026', ''),
-                        'detailed_description': row.get('Detailed Description', ''),
-                        'qty_purchased': row.get('Qty Purchased', 0),
-                        'qty_purchased_unit': row.get('Qty Purchased [UNIT]', ''),
-                    }
-                )
+                obj, created = ProcurementBase.objects.update_or_create(
+                po_number=row['PO Number'],
+                pmto_code=row['PMTO CODE'],
+                tag=row['TAG'],
+                mr_number=row['MR Number'],
+                mr_rev=row['MR Rev'],
+                defaults={
+                    "po_status": row.get("Status", ""),
+                    "po_date": row.get("PO Date"),
+                    "vendor": row.get("Vendor", ""),
+                    "expected_delivery_date": row.get("Expected Delivery Date"),
+                    "qty_mr": row.get("Qty MR"),
+                    "qty_mr_unit": row.get("Qty MR [UNIT]", ""),
+                    "item_type": row.get("Item Type", ""),
+                    "discipline": row.get("Discipline", ""),
+                    "tam_2026": row.get("TAM 2026", ""),
+                    "detailed_description": row.get("Detailed Description", ""),
+                    "qty_purchased": row.get("Qty Purchased"),
+                    "qty_purchased_unit": row.get("Qty Purchased [UNIT]", ""),
+                    "qty_received": row.get("Qty Received", 0)
+                }
+            )
             return JsonResponse({'status': 'ok'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
@@ -2583,7 +2584,11 @@ def po_tracking(request):
 
 
     # Um dict status -> lista de POs
-    kanban = {status: ProcurementBase.objects.filter(po_status=status) for status in statuses}
+    KANBAN_LIMIT = 100
+    kanban = {
+        status: ProcurementBase.objects.filter(po_status=status)[:KANBAN_LIMIT]
+        for status in statuses
+    }
     return render(request, 'sistema/procurement/po_tracking.html', {"kanban": kanban, "statuses": statuses})
 
 @csrf_exempt
@@ -2600,6 +2605,29 @@ def po_tracking_detail(request, po_id):
     po = ProcurementBase.objects.get(id=po_id)
     # Renderize um pedaço de HTML com detalhes do PO (pode usar um template parcial)
     return render(request, "sistema/procurement/partials/po_tracking_detail.html", {"po": po})
+
+def po_tracking_search(request):
+    status = request.GET.get('status')
+    query = request.GET.get('q', '').strip()
+
+    qs = ProcurementBase.objects.filter(po_status=status)
+    if query:
+        qs = qs.filter(
+            Q(po_number__icontains=query) |
+            Q(pmto_code__icontains=query) |
+            Q(tag__icontains=query) |
+            Q(mr_number__icontains=query) |
+            Q(mr_rev__icontains=query) |
+            Q(vendor__icontains=query) |
+            Q(detailed_description__icontains=query)
+        )
+    # Exibe todos os resultados do filtro!
+    cards_html = render_to_string(
+        "sistema/procurement/partials/kanban_cards.html",
+        {"pos": qs}
+    )
+    return JsonResponse({'html': cards_html})
+
 
 # CONTROLE DE ESTOQUE
 
@@ -2635,11 +2663,12 @@ def update_warehouse_status(request):
 
 def warehouse_detail(request, pk):
     po = get_object_or_404(ProcurementBase, id=pk)
+    ws = WarehouseStock.objects.filter(po_number=po.po_number, pmto_code=po.pmto_code).first()
     return render(request, 'sistema/warehouse/partials/warehouse_detail.html', {
-        'po': po
+        'po': po,
+        'ws': ws,   # pode ser None
     })
     
-
 @csrf_exempt
 def warehouse_receive(request, pk):
     if request.method == 'POST':
@@ -2707,9 +2736,7 @@ def warehouse_receive_form(request, pk):
         'po': po,
         'ws': ws,
     })
-    
-    
-    
+      
 def warehouse_rfid(request):
     qs = WarehouseStock.objects.all().prefetch_related('pieces')
     po = request.GET.get('po')

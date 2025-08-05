@@ -1,0 +1,64 @@
+<form>
+  <div class="row mb-2">
+    <div class="col-md-6 mb-2">
+      <label class="form-label mb-0">PO Number</label>
+      <input type="text" class="form-control form-control-sm" value="{{ po.po_number }}" readonly>
+    </div>
+    <div class="col-md-6 mb-2">
+      <label class="form-label mb-0">Vendor</label>
+      <input type="text" class="form-control form-control-sm" value="{{ po.vendor|default:'—' }}" readonly>
+    </div>
+    <div class="col-md-6 mb-2">
+      <label class="form-label mb-0">PMTO Code</label>
+      <input type="text" class="form-control form-control-sm" value="{{ po.pmto_code|default:'—' }}" readonly>
+    </div>
+    <div class="col-md-6 mb-2">
+      <label class="form-label mb-0">Tag</label>
+      <input type="text" class="form-control form-control-sm" value="{{ po.tag|default:'—' }}" readonly>
+    </div>
+    <div class="col-md-12 mb-2">
+      <label class="form-label mb-0">Description</label>
+      <input type="text" class="form-control form-control-sm" value="{{ po.detailed_description|default:'—' }}" readonly>
+    </div>
+    <div class="col-md-6 mb-2">
+      <label class="form-label mb-0">Item Type</label>
+      <input type="text" class="form-control form-control-sm" value="{{ po.item_type|default:'—' }}" readonly>
+    </div>
+    <div class="col-md-6 mb-2">
+      <label class="form-label mb-0">Discipline</label>
+      <input type="text" class="form-control form-control-sm" value="{{ po.discipline|default:'—' }}" readonly>
+    </div>
+    <div class="col-md-6 mb-2">
+      <label class="form-label mb-0">Qty Purchased</label>
+      <input type="text" class="form-control form-control-sm" value="{{ po.qty_purchased }} {{ po.qty_purchased_unit|default:'' }}" readonly>
+    </div>
+    <div class="col-md-6 mb-2">
+      <label class="form-label mb-0">Qty Received</label>
+      <input type="text" class="form-control form-control-sm" value="{{ po.qty_received|default:'0' }} {{ po.qty_purchased_unit|default:'' }}" readonly>
+    </div>
+    {% if ws %}
+      <div class="col-md-6 mb-2">
+        <label class="form-label mb-0">Last Received At</label>
+        <input type="text" class="form-control form-control-sm" value="{{ ws.last_received_at|date:'Y-m-d H:i' }}" readonly>
+      </div>
+      <div class="col-md-6 mb-2">
+        <label class="form-label mb-0">Register Type</label>
+        <input type="text" class="form-control form-control-sm" value="{% if ws.registration_type == 'unit' %}Unitary{% elif ws.registration_type == 'lot' %}Lot{% else %}—{% endif %}" readonly>
+      </div>
+      <div class="col-md-6 mb-2">
+        <label class="form-label mb-0">Received By</label>
+        <input type="text" class="form-control form-control-sm" value="{{ ws.received_by|default:'—' }}" readonly>
+      </div>
+      <div class="col-md-6 mb-2">
+        <label class="form-label mb-0">Notes</label>
+        <input type="text" class="form-control form-control-sm" value="{{ ws.notes|default:'—' }}" readonly>
+      </div>
+    {% else %}
+      <div class="col-12 mt-2">
+        <div class="alert alert-info py-1 px-2 mb-0" style="font-size:13px;">
+          Nenhum registro de recebimento encontrado para este item.
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</form>

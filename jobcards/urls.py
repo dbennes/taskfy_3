@@ -114,6 +114,7 @@ urlpatterns = [
     path('kanban/receive/<int:pk>/', views.warehouse_receive, name='warehouse_receive'),
     # Nova rota para renderizar o formulário no modal
     path('warehouse/receive-form/<int:pk>/', views.warehouse_receive_form, name='warehouse_receive_form'),
+    path('procurement/po-tracking/search/', views.po_tracking_search, name='po_tracking_search'),
     
     path('warehouse/warehouse_rfid/', views.warehouse_rfid, name='warehouse_rfid'),
     path('rfid/modal/<int:stock_id>/', views.rfid_modal, name='rfid_modal'),

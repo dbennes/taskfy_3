@@ -18,14 +18,17 @@
     height: 65vh;
 }
 .kanban-col-title {
-    
     font-size: 9px;
     margin-bottom: 9px;
     color: #818181ff;
     letter-spacing: .01em;
-    
 }
-.kanban-cards { flex: 1; min-height: 20px; }
+.kanban-cards {
+    flex: 1;
+    min-height: 20px;
+    overflow-y: auto;
+    max-height: 66vh;
+}
 .kanban-card {
     background: #ffffffff ;
     border-radius: 10px;
@@ -36,6 +39,8 @@
     transition: box-shadow .18s, transform .15s;
     border-left: 4px solid #4953a7;
     overflow-y: auto;
+    width: 95%;
+
 }
 .kanban-card.dragging { opacity: 0.5; }
 .kanban-card:hover { box-shadow: 0 4px 18px rgba(80,90,120,0.16); }
@@ -74,13 +79,22 @@
                 </div>
             </div>
         </div>
+
+        <!-- Input de busca -->
+        <div class="mb-2">
+            <input type="text" class="form-control form-control-sm kanban-search-input"
+                placeholder="Search..." data-status="{{ status }}"
+                style="font-size:11px; border-radius: 6px; border: 1px solid #d4d7e4; margin-bottom: 2px;">
+        </div>
         
+        <!-- Cards container com scroll -->
         <div class="kanban-cards" data-status="{{ status }}">
             {% for po in kanban|get_item:status %}
-                <div class="kanban-card" 
+                <div class="kanban-card"
                     draggable="true"
                     data-po-id="{{ po.id }}"
-                    onclick="openPoModal({{ po.id|safe }})">
+                    onclick="openPoModal({{ po.id|safe }})"
+                    data-po-search="{{ po.po_number|default_if_none:'' }} {{ po.vendor|default_if_none:'' }} {{ po.detailed_description|default_if_none:'' }}">
                     <div class="kanban-card-title">{{ po.po_number }}</div>
                     <div class="kanban-card-meta">
                         {{ po.vendor|default:"—"|truncatechars:20 }}<br>
@@ -89,7 +103,6 @@
                 </div>
             {% endfor %}
         </div>
-
     </div>
     {% endfor %}
 </div>
@@ -111,8 +124,20 @@
 </div>
 
 <script>
-// DRAG & DROP
 let dragged = null;
+
+function addDragDropEvents(container) {
+    container.querySelectorAll('.kanban-card').forEach(card => {
+        card.addEventListener('dragstart', function (e) {
+            dragged = this;
+            this.classList.add('dragging');
+        });
+        card.addEventListener('dragend', function (e) {
+            this.classList.remove('dragging');
+            dragged = null;
+        });
+    });
+}
 
 document.querySelectorAll('.kanban-card').forEach(card => {
     card.addEventListener('dragstart', function (e) {
@@ -166,6 +191,22 @@ function openPoModal(poId) {
             modal.show();
         });
 }
+
+// Pesquisa Kanban AJAX
+document.querySelectorAll('.kanban-search-input').forEach(function(input) {
+    input.addEventListener('input', function() {
+        const search = this.value.trim();
+        const status = this.getAttribute('data-status');
+        const cardsContainer = document.querySelector('.kanban-cards[data-status="' + status + '"]');
+        if (!cardsContainer) return;
+        fetch(`/procurement/po-tracking/search/?status=${encodeURIComponent(status)}&q=${encodeURIComponent(search)}`)
+            .then(res => res.json())
+            .then(data => {
+                cardsContainer.innerHTML = data.html;
+                addDragDropEvents(cardsContainer); // Reaplica drag&drop nos cards inseridos via AJAX
+            });
+    });
+});
 </script>
 
 {% endblock %}
