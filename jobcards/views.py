@@ -2689,21 +2689,35 @@ def warehouse_receive(request, pk):
             po.po_status = "Received at Warehouse"
         po.save()
 
-        # Atualiza ou cria WarehouseStock
+        # Corrigido: defaults preenchido corretamente
         ws, created = WarehouseStock.objects.get_or_create(
             po_number=po.po_number,
             pmto_code=po.pmto_code,
-            defaults={ ... }
+            tag=po.tag,
+            defaults={
+                'item_type': po.item_type,
+                'vendor': po.vendor,
+                'discipline': po.discipline,
+                'detailed_description': po.detailed_description,
+                'qty_purchased': po.qty_purchased,
+                'qty_purchased_unit': po.qty_purchased_unit,
+                'qty_received': po.qty_received,
+                'balance_to_receive': (po.qty_purchased or 0) - (po.qty_received or 0),
+                'registration_type': data.get('registration_type', 'unit'),
+                'received_by': request.user.get_username() if request.user.is_authenticated else '',
+                'last_received_at': timezone.now(),
+                'notes': data.get('notes', ''),
+            }
         )
-        registration_type = data.get('registration_type')  # <- PEGA DO FORM
+
         if not created:
             ws.qty_received = po.qty_received
-            ws.balance_to_receive = (po.qty_purchased - po.qty_received) if po.qty_purchased else 0
+            ws.balance_to_receive = (po.qty_purchased or 0) - (po.qty_received or 0)
             ws.last_received_at = timezone.now()
             ws.received_by = request.user.get_username() if request.user.is_authenticated else ''
             ws.notes = data.get('notes', '')
-        ws.registration_type = registration_type  # <- SALVA AQUI!
-        ws.save()
+            ws.registration_type = data.get('registration_type', 'unit')
+            ws.save()
 
         return JsonResponse({
             'result': 'ok',
@@ -2713,25 +2727,38 @@ def warehouse_receive(request, pk):
     return JsonResponse({'result': 'error'}, status=400)
 
 def warehouse_receive_form(request, pk):
-    
     """
     Renderiza o formulário de recebimento (partial) para ser carregado no modal.
     """
     po = get_object_or_404(ProcurementBase, id=pk)
-    ws, created = WarehouseStock.objects.get_or_create(
+
+    # Corrija aqui! Busque por TODOS os campos identificadores.
+    ws = WarehouseStock.objects.filter(
         po_number=po.po_number,
-        defaults={
-            'item_type':          po.item_type,
-            'vendor':             po.vendor,
-            'discipline':         po.discipline,
-            'tag':                po.tag,
-            'pmto_code':          po.pmto_code,
-            'detailed_description': po.detailed_description,
-            'qty_purchased':      po.qty_purchased,
-            'qty_purchased_unit': po.qty_purchased_unit,
-        }
-    )
-    # Passamos tanto o PO quanto o registro em estoque
+        pmto_code=po.pmto_code,
+        tag=po.tag,
+        # Adicione os campos extras que garantem unicidade:
+        # mr_number e mr_rev (precisa existir no model WarehouseStock! Se não existir, adicione!)
+        # Exemplo:
+        # mr_number=po.mr_number,
+        # mr_rev=po.mr_rev,
+    ).order_by('-id').first()
+
+    if not ws:
+        ws = WarehouseStock.objects.create(
+            po_number=po.po_number,
+            pmto_code=po.pmto_code,
+            tag=po.tag,
+            # mr_number=po.mr_number,
+            # mr_rev=po.mr_rev,
+            item_type=po.item_type,
+            vendor=po.vendor,
+            discipline=po.discipline,
+            detailed_description=po.detailed_description,
+            qty_purchased=po.qty_purchased,
+            qty_purchased_unit=po.qty_purchased_unit,
+        )
+
     return render(request, 'sistema/warehouse/partials/warehouse_receive_form.html', {
         'po': po,
         'ws': ws,
@@ -2803,3 +2830,81 @@ def rfid_add(request, stock_id):
         )
         return JsonResponse({'result': 'ok'})
     return JsonResponse({'result': 'error', 'msg': 'Invalid request'}, status=400)
+
+
+# --------- IMPORTAÇÕES BANCOS --------------- #
+
+LOGISTIC_AREAS = [
+    'warehouse_aveon',
+    'dock_aveon',
+    'flotel',
+    'laydown_area',
+]
+
+def warehouse_logistics(request):
+    logistics = {
+        area: WarehousePiece.objects.filter(location=area)
+        for area in LOGISTIC_AREAS
+    }
+    return render(request, "sistema/warehouse/warehouse_logistics.html", {
+        "areas": LOGISTIC_AREAS,
+        "logistics": logistics,
+    })
+    
+@csrf_exempt
+def warehouse_logistics_update_area(request):
+    if request.method == "POST":
+        import json
+        data = json.loads(request.body)
+        piece = WarehousePiece.objects.get(id=data['id'])
+        piece.location = data['area']
+        piece.save()
+        return JsonResponse({'result': 'ok'})
+    return JsonResponse({'result': 'error'}, status=400)
+
+
+def warehouse_logistics_search(request):
+    area = request.GET.get('area')
+    query = request.GET.get('q', '').strip()
+    qs = WarehousePiece.objects.filter(location=area)
+    if query:
+        qs = qs.filter(
+            Q(rfid_tag__icontains=query) |
+            Q(stock__po_number__icontains=query) |
+            Q(stock__pmto_code__icontains=query) |
+            Q(stock__tag__icontains=query) |
+            Q(stock__vendor__icontains=query) |
+            Q(stock__detailed_description__icontains=query)
+        )
+    cards_html = render_to_string(
+        "sistema/warehouse/partials/warehouse_logistics_cards.html",
+        {"pieces": qs}
+    )
+    return JsonResponse({'html': cards_html})
+
+def export_warehouse_pieces_excel(request):
+    # Filtra tudo (ou adicione filtros, se quiser depois)
+    qs = WarehousePiece.objects.select_related('stock').all()
+
+    data = []
+    for piece in qs:
+        data.append({
+            "RFID Tag": piece.rfid_tag,
+            "Lot Qty": piece.lot_qty,
+            "PO Number": piece.stock.po_number,
+            "Vendor": piece.stock.vendor,
+            "PMTO Code": piece.stock.pmto_code,
+            "Tag": piece.stock.tag,
+            "Description": piece.stock.detailed_description,
+            "Qty Purchased": piece.stock.qty_purchased,
+            "Qty Received": piece.stock.qty_received,
+            "Location": dict(WarehousePiece.LOCATION_CHOICES).get(piece.location, piece.location),
+            "Created At": piece.created_at.strftime('%Y-%m-%d %H:%M'),
+            "Notes": piece.notes,
+        })
+
+    df = pd.DataFrame(data)
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=warehouse_pieces.xlsx'
+    df.to_excel(response, index=False)
+    return response

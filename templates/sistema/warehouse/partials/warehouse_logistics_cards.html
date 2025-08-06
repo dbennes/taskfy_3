@@ -1,0 +1,56 @@
+{% for piece in pieces %}
+  <div class="kanban-card"
+      draggable="true"
+      data-id="{{ piece.id }}"
+      data-area="{{ piece.location }}"
+      data-po-search="{{ piece.rfid_tag }} {{ piece.stock.po_number|default_if_none:'' }} {{ piece.stock.vendor|default_if_none:'' }} {{ piece.stock.detailed_description|default_if_none:'' }}"
+      style="font-size: 10px; line-height: 1.25;">
+      
+    <div class="d-flex flex-column gap-1">
+      <!-- Topo: RFID + PO + PMTO/Tag -->
+      <div>
+        <div class="fw-semibold" style="font-size:12px; color: rgba(15, 133, 211, 1)">
+          <i class="fa-solid fa-qrcode me-1"></i>{{ piece.rfid_tag }}
+        </div>
+        <div class="text-muted" style="font-size: 10px;">
+          <b>PO:</b> {{ piece.stock.po_number }}
+          {% if piece.stock.pmto_code or piece.stock.tag %}
+            <span class="ms-1 badge bg-secondary" style="font-size:9px;">
+              {{ piece.stock.pmto_code|default:piece.stock.tag|default:"—" }}
+            </span>
+          {% endif %}
+        </div>
+      </div>
+      <hr class="my-1" style="border-top: 1px solid #f0f0f0; margin:3px 0;">
+      
+      <!-- Linha: Vendor e Quantidade -->
+      <div class="d-flex justify-content-between">
+        <div>
+          <span class="text-muted">Vendor:</span>
+          <span>{{ piece.stock.vendor|default:"—"|truncatechars:14 }}</span>
+        </div>
+        <div>
+          <span class="text-muted">Qtd:</span>
+          <span>{{ piece.lot_qty }}</span>
+        </div>
+      </div>
+      
+      <!-- Descrição -->
+      <div>
+        <span class="text-muted">Desc.:</span>
+        <span>{{ piece.stock.detailed_description|truncatechars:28|default:"—" }}</span>
+      </div>
+      
+      <!-- Notas -->
+      {% if piece.notes %}
+      <div>
+        <span class="text-muted">Notas:</span>
+        <span>{{ piece.notes|truncatechars:25 }}</span>
+      </div>
+      {% endif %}
+    </div>
+    
+  </div>
+{% empty %}
+  <div class="text-center text-muted" style="font-size: 10px;">No pieces.</div>
+{% endfor %}

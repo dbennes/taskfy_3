@@ -120,4 +120,9 @@ urlpatterns = [
     path('rfid/modal/<int:stock_id>/', views.rfid_modal, name='rfid_modal'),
     path('rfid/add/<int:stock_id>/', views.rfid_add, name='rfid_add'),
     
+    # WAREHOUSE LOGISTIC
+    path('warehouse-logistics/', views.warehouse_logistics, name='warehouse_logistics'),
+    path('warehouse-logistics/update-area/', views.warehouse_logistics_update_area, name='warehouse_logistics_update_area'),
+    path('warehouse-logistics/search/', views.warehouse_logistics_search, name='warehouse_logistics_search'),
+    path('warehouse-logistics/export-excel/', views.export_warehouse_pieces_excel, name='export_warehouse_pieces_excel'),
 ]

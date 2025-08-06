@@ -28,3 +28,8 @@ def get_mp_by_labor(manpower_list, direct_labor):
 @register.filter
 def get_item(dictionary, key):
     return dictionary.get(key)
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key)
+

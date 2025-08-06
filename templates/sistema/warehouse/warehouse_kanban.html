@@ -4,70 +4,94 @@
 {% block content %}
 
 <style>
-.kanban-board { display: flex; gap: 18px; overflow-x: auto; min-height: 75vh; }
+.kanban-board {
+    display: flex;
+    gap: 18px;
+    overflow-x: auto;
+    min-height: 75vh;
+    width: 100%;
+}
 .kanban-column {
     background: #f5f5f5;
     border-radius: 14px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.07);
-    min-width: 200px;
-    max-width: 280px;
-    flex: 1;
+    min-width: 260px;
+    flex: 1 1 320px;
+    max-width: 420px;
     padding: 12px 10px 18px 10px;
     display: flex;
     flex-direction: column;
     height: 65vh;
 }
 .kanban-col-title {
-    font-size: 9px;
-    margin-bottom: 9px;
+    font-size: 10px;
+    margin-bottom: 8px;
     color: #818181ff;
     letter-spacing: .01em;
 }
-.kanban-cards { flex: 1; min-height: 20px; }
+.kanban-cards {
+    flex: 1;
+    min-height: 30px;
+    overflow-y: auto;
+    max-height: 60vh;
+    width: 100%;
+}
 .kanban-card {
-    background: #ffffffff;
+    background: #fff;
     border-radius: 10px;
-    margin-bottom: 8px;
-    padding: 14px 13px 10px 13px;
+    margin-bottom: 7px;
+    padding: 9px 10px 7px 11px;
     box-shadow: 0 2px 6px rgba(40,60,90,0.07);
     cursor: grab;
     transition: box-shadow .18s, transform .15s;
     border-left: 4px solid #4953a7;
-    overflow-y: auto;
     font-size: 10px;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
 }
 .kanban-card.dragging { opacity: 0.5; }
-.kanban-card:hover { box-shadow: 0 4px 18px rgba(80,90,120,0.16); }
+.kanban-card:hover { box-shadow: 0 4px 18px rgba(80,90,120,0.13); }
 .kanban-card-title {
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     color: #232323;
     margin-bottom: 2px;
     letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.kanban-card-meta { font-size: 10px; color: #6a6b72; }
-.table-10px, .table-10px th, .table-10px td { font-size: 10px !important; }
+.kanban-card-meta {
+    font-size: 9.5px;
+    color: #6a6b72;
+    line-height: 1.18;
+}
+@media (max-width: 991px) {
+    .kanban-board { flex-direction: column; gap: 8px; }
+    .kanban-column { max-width: 100%; min-width: 200px; height: auto; }
+    .kanban-cards { max-height: 40vh; }
+}
 </style>
 
 <div class="d-flex align-items-center justify-content-between p-2 mb-3" style="background-color: #313131; border-radius: 8px;">
-  <div class="d-flex align-items-center me-3">
-    <span style="width:10px;height:10px;background-color: #ff5f57;border-radius:50%;display:inline-block;margin-right:5px;"></span>
-    <span style="width:10px;height:10px;background-color: #febc2e;border-radius:50%;display:inline-block;margin-right:5px;"></span>
-    <span style="width:10px;height:10px;background-color: #28c840;border-radius:50%;display:inline-block;"></span>
-    <h6 class="mb-0 ms-3 text-white" style="font-size:15px">Warehouse Stock Control</h6>
-  </div>
+    <div class="d-flex align-items-center me-3">
+        <span style="width:10px;height:10px;background-color: #ff5f57;border-radius:50%;display:inline-block;margin-right:5px;"></span>
+        <span style="width:10px;height:10px;background-color: #febc2e;border-radius:50%;display:inline-block;margin-right:5px;"></span>
+        <span style="width:10px;height:10px;background-color: #28c840;border-radius:50%;display:inline-block;"></span>
+        <h6 class="mb-0 ms-3 text-white" style="font-size:15px">Warehouse Stock Control</h6>
+    </div>
 </div>
 
 <div class="row">
-  <!-- coluna 1: os dois kanbans (Ready e Received) -->
-  <div class="col-6">
+  <div class="col-lg-6 col-12 mb-2">
     <div class="kanban-board" id="kanban-board">
       {% for status in statuses %}
         <div class="kanban-column" data-status="{{ status }}">
           <div class="kanban-col-title">
-            <div class="card-header py-3" style="background:#f5f5f7; border-bottom:1px solid #d0d0d0; border-top-left-radius:8px; border-top-right-radius:8px; padding:10px;">
+            <div class="card-header py-2" style="background:#f5f5f7; border-bottom:1px solid #d0d0d0; border-top-left-radius:8px; border-top-right-radius:8px;">
               <div class="d-flex align-items-center justify-content-between">
-                <span class="m-0 fw-bold text-left w-100" style="font-size:12px">{{ status }}</span>
+                <span class="m-0 fw-bold text-left w-100" style="font-size:11px">{{ status }}</span>
                 <div class="d-flex align-items-center gap-1">
                   <span style="width:8px;height:8px;background-color: #ff5f57;border-radius:50%;display:inline-block;"></span>
                   <span style="width:8px;height:8px;background-color: #febc2e;border-radius:50%;display:inline-block;"></span>
@@ -75,120 +99,103 @@
                 </div>
               </div>
             </div>
+            <!-- Busca rápida local -->
+            <input type="text" class="form-control form-control-sm kanban-search-input mt-1" placeholder="Filtrar..." data-status="{{ status }}" style="font-size:10px; border-radius: 5px;">
           </div>
           <div class="kanban-cards" data-status="{{ status }}">
             {% for item in kanban|get_item:status %}
               <div class="kanban-card"
-                    draggable="true"
-                    data-id="{{ item.id }}"
-                    data-status="{{ status }}"
-                    onclick="openWarehouseModal({{ item.id }}, '{{ status }}')"
-                    style="position:relative;">
-                    
-                    {# ALERTA DE RECEBIMENTO PARCIAL, só se > 0 e < total #}
-                    {% if item.qty_received > 0 and item.qty_received < item.qty_purchased %}
-                        <span 
-                        title="Recebimento parcial"
-                        style="
-                            position: absolute;
-                            top: 7px;
-                            right: 12px;
-                            color: #ffc107;
-                            font-size: 17px;
-                            z-index: 3;
-                            ">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        </span>
-            {% endif %}
-
+                draggable="true"
+                data-id="{{ item.id }}"
+                data-status="{{ status }}"
+                onclick="openWarehouseModal({{ item.id }}, '{{ status }}')"
+                style="position:relative;">
+                {% if item.qty_received > 0 and item.qty_received < item.qty_purchased %}
+                  <span title="Recebimento parcial"
+                        style="position: absolute; top: 6px; right: 10px; color: #ffc107; font-size: 15px; z-index: 3;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                  </span>
+                {% endif %}
                 <div class="kanban-card-title">
-                    {{ item.po_number }} — {{ item.pmto_code|default:item.tag|default:"—" }}
+                  {{ item.po_number }} <span class="ms-1 badge bg-secondary" style="font-size:9px;">{{ item.pmto_code|default:item.tag|default:"—" }}</span>
                 </div>
-                <div class="kanban-card-meta" style="font-size: 9px;">
-                    {{ item.vendor|default:"—"|truncatechars:20 }}<br>
-                    <b>Purchased:</b> {{ item.qty_purchased }} {{ item.qty_purchased_unit|default:"" }}<br>
-                    <b>Received:</b> {{ item.qty_received|default:"0" }} {{ item.qty_purchased_unit|default:"" }}<br>
-                    <b>To receive:</b>
+                <div class="kanban-card-meta">
+                  <div><b>Vendor:</b> {{ item.vendor|default:"—"|truncatechars:18 }}</div>
+                  <div><b>Purchased:</b> {{ item.qty_purchased }} {{ item.qty_purchased_unit|default:"" }}</div>
+                  <div><b>Received:</b> {{ item.qty_received|default:"0" }} {{ item.qty_purchased_unit|default:"" }}</div>
+                  <div><b>To receive:</b>
                     {% with saldo=item.qty_purchased|floatformat:2|add:"-item.qty_received"|floatformat:2 %}
-                    {{ saldo }} {{ item.qty_purchased_unit|default:"" }}
+                      {{ saldo }} {{ item.qty_purchased_unit|default:"" }}
                     {% endwith %}
+                  </div>
                 </div>
-                </div>
-
+              </div>
             {% empty %}
-              <p class="text-center text-muted" style="font-size:10px;">Nenhum item em “{{ status }}”.</p>
+              <p class="text-center text-muted" style="font-size:9px;">Nenhum item em “{{ status }}”.</p>
             {% endfor %}
           </div>
         </div>
       {% endfor %}
     </div>
   </div>
-
-     <!-- coluna 2: tabela detalhada de WarehouseStock -->
-  <!-- coluna 2: tabela detalhada de WarehouseStock -->
-<div class="col-6">
-  <h6 class="mb-3" style="font-size:12px;">{{ statuses.1 }} — Detailed</h6>
-  <div class="table-responsive" style="max-height:65vh; overflow:auto;">
-    <table class="table table-sm table-hover table-10px">
-      <thead class="table-light">
-        <tr>
-          <th>PO Number</th>
-          <th>Item Type</th>
-          <th>Vendor</th>
-          <th>Discipline</th>
-          <th>Tag</th>
-          <th>PMTO Code</th>
-          <th>Qty Purchased</th>
-          <th>Qty Received</th>
-          <th>Balance</th>
-          <th>Register Type</th>
-          <th>Received By</th>
-          <th>Last Received At</th>
-          <th>Notes</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for ws in stocks %}
-          <tr style="cursor:pointer;" onclick="openWarehouseModal({{ ws.id }})">
-            <td>{{ ws.po_number }}</td>
-            <td>{{ ws.item_type|default:"—" }}</td>
-            <td>{{ ws.vendor|default:"—" }}</td>
-            <td>{{ ws.discipline|default:"—" }}</td>
-            <td>{{ ws.tag|default:"—" }}</td>
-            <td>{{ ws.pmto_code|default:"—" }}</td>
-            <td>
-              {{ ws.qty_purchased }}
-              {% if ws.qty_purchased_unit %}{{ ws.qty_purchased_unit }}{% endif %}
-            </td>
-            <td>{{ ws.qty_received }}</td>
-            <td>{{ ws.balance_to_receive }}</td>
-            <td>
-              {% if ws.registration_type == "unit" %}
-                <span class="badge bg-primary">Unitary</span>
-              {% elif ws.registration_type == "lot" %}
-                <span class="badge bg-info text-dark">Lot</span>
-              {% else %}
-                <span class="text-muted">—</span>
-              {% endif %}
-            </td>
-            <td>{{ ws.received_by|default:"—" }}</td>
-            <td>{{ ws.last_received_at|date:"Y-m-d H:i" }}</td>
-            <td>{{ ws.notes|default:"—" }}</td>
-          </tr>
-        {% empty %}
+  <!-- Coluna 2: tabela detalhada de WarehouseStock -->
+  <div class="col-lg-6 col-12 mb-2">
+    <h6 class="mb-2" style="font-size:12px;">{{ statuses.1 }} — Detailed</h6>
+    <div class="table-responsive" style="max-height:65vh; overflow:auto;">
+      <table class="table table-sm table-hover table-10px" style="font-size: 10px">
+        <thead class="table-light">
           <tr>
-            <td colspan="13" class="text-center text-muted" style="font-size:10px;">
-              No records found.
-            </td>
+            <th>PO Number</th>
+            <th>Item Type</th>
+            <th>Vendor</th>
+            <th>Discipline</th>
+            <th>Tag</th>
+            <th>PMTO Code</th>
+            <th>Qty Purchased</th>
+            <th>Qty Received</th>
+            <th>Balance</th>
+            <th>Register Type</th>
+            <th>Received By</th>
+            <th>Last Received At</th>
+            <th>Notes</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {% for ws in stocks %}
+            <tr style="cursor:pointer;" onclick="openWarehouseModal({{ ws.id }})">
+              <td>{{ ws.po_number }}</td>
+              <td>{{ ws.item_type|default:"—" }}</td>
+              <td>{{ ws.vendor|default:"—" }}</td>
+              <td>{{ ws.discipline|default:"—" }}</td>
+              <td>{{ ws.tag|default:"—" }}</td>
+              <td>{{ ws.pmto_code|default:"—" }}</td>
+              <td>{{ ws.qty_purchased }} {% if ws.qty_purchased_unit %}{{ ws.qty_purchased_unit }}{% endif %}</td>
+              <td>{{ ws.qty_received }}</td>
+              <td>{{ ws.balance_to_receive }}</td>
+              <td>
+                {% if ws.registration_type == "unit" %}
+                  <span class="badge bg-primary">Unitary</span>
+                {% elif ws.registration_type == "lot" %}
+                  <span class="badge bg-info text-dark">Lot</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>{{ ws.received_by|default:"—" }}</td>
+              <td>{{ ws.last_received_at|date:"Y-m-d H:i" }}</td>
+              <td>{{ ws.notes|default:"—" }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="13" class="text-center text-muted" style="font-size:10px;">
+                No records found.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
-</div>
-
-
-
 </div>
 
 <!-- Modal de detalhes -->
@@ -207,6 +214,21 @@
 </div>
 
 <script>
+// Busca local nos cards (por coluna)
+document.querySelectorAll('.kanban-search-input').forEach(function(input) {
+  input.addEventListener('input', function() {
+    const search = this.value.trim().toLowerCase();
+    const status = this.getAttribute('data-status');
+    const cardsContainer = document.querySelector('.kanban-cards[data-status="' + status + '"]');
+    if (!cardsContainer) return;
+    const cards = cardsContainer.querySelectorAll('.kanban-card');
+    cards.forEach(function(card) {
+      const text = (card.textContent || "").toLowerCase();
+      card.style.display = (search === '' || text.indexOf(search) !== -1) ? '' : 'none';
+    });
+  });
+});
+
 const UPDATE_STATUS_URL         = "{% url 'update_warehouse_status' %}";
 const RECEIVE_FORM_URL_TEMPLATE = "{% url 'warehouse_receive_form' pk=0 %}";
 const WAREHOUSE_DETAIL_URL      = "{% url 'warehouse_detail' pk=0 %}";
@@ -307,18 +329,6 @@ function openWarehouseModal(id, status=null) {
       }
     });
 }
-
-// Clique no card: usa status do próprio card (via data-status!)
-document.querySelectorAll('.kanban-card').forEach(card => {
-  card.onclick = function(e) {
-    // Evita conflito com drag
-    if (dragged) return;
-    const id = card.dataset.id;
-    const status = card.dataset.status;
-    openWarehouseModal(id, status);
-  };
-});
 </script>
-
 
 {% endblock %}
