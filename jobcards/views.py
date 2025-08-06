@@ -70,6 +70,7 @@ import json
 
 from .models import ProcurementBase, WarehouseStock, WarehousePiece
 from django.db import models
+from django.contrib import messages
 
 
 # - PERMISSIONAMENTO POR GRUPO
@@ -2914,3 +2915,94 @@ def export_warehouse_pieces_excel(request):
     response['Content-Disposition'] = 'attachment; filename=warehouse_pieces.xlsx'
     df.to_excel(response, index=False)
     return response
+
+
+def jobcards_planning_list(request):
+    # Busca apenas JobCards com status específico
+    jobcards = JobCard.objects.filter(jobcard_status='PRELIMINARY JOBCARD CHECKED')
+
+    # Filtro simples por GET (adapte se quiser)
+    search = request.GET.get('search', '').strip()
+    if search:
+        jobcards = jobcards.filter(
+            Q(job_card_number__icontains=search) |
+            Q(discipline__icontains=search) |
+            Q(working_code__icontains=search)
+        )
+
+    # Paginação
+    from django.core.paginator import Paginator
+    paginator = Paginator(jobcards, int(request.GET.get('items_per_page', 10)))
+    page = request.GET.get('page')
+    jobcards_page = paginator.get_page(page)
+
+    # Monta dados para cada jobcard
+    jobcards_data = []
+    for job in jobcards_page:
+        # Materiais
+        allocated_materials = AllocatedMaterial.objects.filter(jobcard_number=job.job_card_number)
+        materials_status = []
+        all_materials_available = True
+
+        for mat in allocated_materials:
+            pieces = WarehousePiece.objects.filter(stock__pmto_code=mat.pmto_code)
+            available = pieces.exists()
+            materials_status.append({
+                "description": mat.description,
+                "pmto_code": mat.pmto_code,
+                "qty": mat.qty,
+                "available": available,
+            })
+            if not available:
+                all_materials_available = False
+
+        # Documentos
+        allocated_docs = AllocatedEngineering.objects.filter(jobcard_number=job.job_card_number)
+        docs_status = []
+        all_docs_available = True
+
+        for doc in allocated_docs:
+            doc_ok = DocumentoControle.objects.filter(
+                codigo=doc.document,
+                revisao='AFC'
+            ).exists()
+            docs_status.append({
+                "document": doc.document,
+                "rev": doc.rev,
+                "available": doc_ok,
+            })
+            if not doc_ok:
+                all_docs_available = False
+
+        can_advance = all_materials_available and all_docs_available
+
+        jobcards_data.append({
+            "job": job,
+            "start": job.start,
+            "finish": job.finish,
+            "total_materials": allocated_materials.count(),
+            "materials_status": materials_status,
+            "all_materials_available": all_materials_available,
+            "total_docs": allocated_docs.count(),
+            "docs_status": docs_status,
+            "all_docs_available": all_docs_available,
+            "can_advance": can_advance,
+        })
+
+    context = {
+        "jobcards_data": jobcards_data,
+        "jobcards": jobcards_page,  # Para a paginação padrão
+        "search": search,
+        "items_per_page": request.GET.get('items_per_page', 10),
+    }
+
+    return render(request, 'sistema/jobcards_planning_list/jobcards_planning_list.html', context)
+
+def change_jobcard_status(request, jobcard_id):
+    if request.method == "POST":
+        job = get_object_or_404(JobCard, job_card_number=jobcard_id)
+        # (Você pode personalizar o novo status)
+        job.jobcard_status = "PLANNING JOBCARD CHECKED"
+        job.save()
+        messages.success(request, "Status updated!")
+    return redirect('jobcards_planning_list')

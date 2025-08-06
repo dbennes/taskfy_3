@@ -125,4 +125,8 @@ urlpatterns = [
     path('warehouse-logistics/update-area/', views.warehouse_logistics_update_area, name='warehouse_logistics_update_area'),
     path('warehouse-logistics/search/', views.warehouse_logistics_search, name='warehouse_logistics_search'),
     path('warehouse-logistics/export-excel/', views.export_warehouse_pieces_excel, name='export_warehouse_pieces_excel'),
+    
+    # JOBCARD PLANNING
+    path('jobcards/planning/', views.jobcards_planning_list, name='jobcards_planning_list'),
+    path('jobcards/<str:jobcard_id>/advance/', views.change_jobcard_status, name='change_jobcard_status'),
 ]

@@ -16,8 +16,14 @@
         </li>
         <li>
             <a class="sidebar-link" href="{% url 'jobcards_list' %}">
-                <i class="fas fa-clipboard-list"></i>
+                <i class="fas fa-columns me-2" aria-hidden="true"></i>
                 Jobcards List
+            </a>
+        </li>
+        <li>
+            <a class="sidebar-link" href="{% url 'jobcards_planning_list' %}">
+                <i class="fas fa-tasks me-2" aria-hidden="true"></i>
+                Jobcard Planning
             </a>
         </li>
         <li>
@@ -26,6 +32,7 @@
                 Report Progress
             </a>
         </li>
+        
         <li>
             <a class="sidebar-link" href="{% url 'create_impediment' %}">
                 <i class="fas fa-exclamation-triangle"></i>
