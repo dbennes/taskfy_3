@@ -467,11 +467,13 @@ def edit_jobcard(request, jobcard_id=None):
 
         job.save()
         
-         # Atualiza checked_preliminary_by e at se for o status correto
+        # Atualiza checked_preliminary_by e at se for o status correto
         if job.jobcard_status == 'PRELIMINARY JOBCARD CHECKED':
-            job.checked_preliminary_by = request.user.username
-            job.checked_preliminary_at = timezone.now()
-            job.save(update_fields=['checked_preliminary_by', 'checked_preliminary_at'])
+            # Só registra se nunca foi preenchido!
+            if not job.checked_preliminary_by and not job.checked_preliminary_at:
+                job.checked_preliminary_by = request.user.username
+                job.checked_preliminary_at = timezone.now()
+                job.save(update_fields=['checked_preliminary_by', 'checked_preliminary_at'])
 
             # … depois de salvar os campos do job e do safe_float …
 
@@ -801,9 +803,13 @@ def generate_pdf(request, jobcard_id):
 
     if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
         job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
-        job.checked_preliminary_by = request.user.username  # sempre grava o usuário da sessão
-        job.checked_preliminary_at = timezone.now()
-        job.save(update_fields=['jobcard_status', 'checked_preliminary_by', 'checked_preliminary_at'])
+        # Só seta se nunca foi preenchido
+        if not job.checked_preliminary_by and not job.checked_preliminary_at:
+            job.checked_preliminary_by = request.user.username
+            job.checked_preliminary_at = timezone.now()
+            job.save(update_fields=['jobcard_status', 'checked_preliminary_by', 'checked_preliminary_at'])
+        else:
+            job.save(update_fields=['jobcard_status'])
 
     allocated_manpowers = AllocatedManpower.objects.filter(jobcard_number=jobcard_id).order_by('task_order')
     allocated_materials = AllocatedMaterial.objects.filter(jobcard_number=job.job_card_number)
