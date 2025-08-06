@@ -125,9 +125,12 @@
 
 <script>
 let dragged = null;
+let touchCard = null;
 
+// Adiciona drag & drop mouse/touch em cards de um container
 function addDragDropEvents(container) {
     container.querySelectorAll('.kanban-card').forEach(card => {
+        // Mouse events
         card.addEventListener('dragstart', function (e) {
             dragged = this;
             this.classList.add('dragging');
@@ -136,20 +139,59 @@ function addDragDropEvents(container) {
             this.classList.remove('dragging');
             dragged = null;
         });
+
+        // Touch events para tablets/celular
+        card.addEventListener('touchstart', function (e) {
+            touchCard = card;
+            card.classList.add('dragging');
+        }, { passive: true });
+
+        card.addEventListener('touchmove', function (e) {
+            if (!touchCard) return;
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target && target.classList.contains('kanban-cards')) {
+                target.style.background = "#e8eaff";
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        card.addEventListener('touchend', function (e) {
+            if (!touchCard) return;
+            card.classList.remove('dragging');
+            const touch = e.changedTouches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target) {
+                let col = target.closest('.kanban-cards');
+                if (col) {
+                    col.appendChild(card);
+
+                    // Atualiza status no backend via AJAX
+                    let po_id = card.getAttribute('data-po-id');
+                    let new_status = col.getAttribute('data-status');
+                    fetch(`/procurement/po-tracking/update-status/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({id: po_id, status: new_status})
+                    }).then(res => res.json()).then(data => {
+                        // show success or error, opcional
+                    });
+                }
+            }
+            touchCard = null;
+        }, { passive: true });
     });
 }
 
-document.querySelectorAll('.kanban-card').forEach(card => {
-    card.addEventListener('dragstart', function (e) {
-        dragged = this;
-        this.classList.add('dragging');
-    });
-    card.addEventListener('dragend', function (e) {
-        this.classList.remove('dragging');
-        dragged = null;
-    });
+// Inicializa para todos os cards existentes ao carregar a página
+document.addEventListener('DOMContentLoaded', function () {
+    addDragDropEvents(document);
 });
 
+// Mouse Drag & Drop para as colunas
 document.querySelectorAll('.kanban-cards').forEach(col => {
     col.addEventListener('dragover', function (e) {
         e.preventDefault();
@@ -192,7 +234,7 @@ function openPoModal(poId) {
         });
 }
 
-// Pesquisa Kanban AJAX
+// Pesquisa Kanban AJAX (mantenha igual, mas reaplica os eventos!)
 document.querySelectorAll('.kanban-search-input').forEach(function(input) {
     input.addEventListener('input', function() {
         const search = this.value.trim();
@@ -203,7 +245,7 @@ document.querySelectorAll('.kanban-search-input').forEach(function(input) {
             .then(res => res.json())
             .then(data => {
                 cardsContainer.innerHTML = data.html;
-                addDragDropEvents(cardsContainer); // Reaplica drag&drop nos cards inseridos via AJAX
+                addDragDropEvents(cardsContainer); // Reaplica drag&drop + touch nos cards inseridos via AJAX
             });
     });
 });

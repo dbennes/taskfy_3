@@ -80,7 +80,7 @@
                         {% if area == "warehouse_aveon" %}Warehouse Aveon
                         {% elif area == "dock_aveon" %}Dock Aveon
                         {% elif area == "flotel" %}Flotel
-                        {% elif area == "laydown_area" %}FPSO Laydown Area
+                        {% elif area == "laydown_area" %}Laydown Area
                         {% else %}{{ area|capfirst }}
                         {% endif %}
                     </span>
@@ -110,29 +110,67 @@
 
 <script>
 let dragged = null;
+let touchCard = null;
 
+// Função para adicionar drag+touch em cada card
 function addDragDropEvents(container) {
     container.querySelectorAll('.kanban-card').forEach(card => {
-        card.addEventListener('dragstart', function (e) {
+        // Drag and drop (desktop)
+        card.addEventListener('dragstart', function () {
             dragged = this;
             this.classList.add('dragging');
         });
-        card.addEventListener('dragend', function (e) {
+        card.addEventListener('dragend', function () {
             this.classList.remove('dragging');
             dragged = null;
         });
+
+        // Touch drag and drop (mobile/tablet)
+        card.addEventListener('touchstart', function (e) {
+            touchCard = card;
+            card.classList.add('dragging');
+        }, { passive: true });
+
+        card.addEventListener('touchmove', function (e) {
+            if (!touchCard) return;
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target && target.classList.contains('kanban-cards')) {
+                target.style.background = "#e8eaff";
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        card.addEventListener('touchend', function (e) {
+            if (!touchCard) return;
+            card.classList.remove('dragging');
+            const touch = e.changedTouches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target) {
+                let col = target.closest('.kanban-cards');
+                if (col) {
+                    col.appendChild(card);
+                    // Atualiza área no backend via AJAX
+                    let piece_id = card.getAttribute('data-id');
+                    let new_area = col.getAttribute('data-area');
+                    fetch("{% url 'warehouse_logistics_update_area' %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ id: piece_id, area: new_area })
+                    }).then(res => res.json());
+                }
+            }
+            touchCard = null;
+        }, { passive: true });
     });
 }
 
+// Inicializa drag-and-drop em todos os cards ao carregar a página
 document.querySelectorAll('.kanban-card').forEach(card => {
-    card.addEventListener('dragstart', function (e) {
-        dragged = this;
-        this.classList.add('dragging');
-    });
-    card.addEventListener('dragend', function (e) {
-        this.classList.remove('dragging');
-        dragged = null;
-    });
+    addDragDropEvents({ querySelectorAll: () => [card] });
 });
 
 document.querySelectorAll('.kanban-cards').forEach(col => {
@@ -158,17 +196,15 @@ document.querySelectorAll('.kanban-cards').forEach(col => {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': '{{ csrf_token }}'
                 },
-                body: JSON.stringify({id: piece_id, area: new_area})
-            }).then(res => res.json()).then(data => {
-                // Opcional: mostrar notificação
-            });
+                body: JSON.stringify({ id: piece_id, area: new_area })
+            }).then(res => res.json());
         }
     });
 });
 
 // Pesquisa AJAX por coluna
-document.querySelectorAll('.kanban-search-input').forEach(function(input) {
-    input.addEventListener('input', function() {
+document.querySelectorAll('.kanban-search-input').forEach(function (input) {
+    input.addEventListener('input', function () {
         const search = this.value.trim();
         const area = this.getAttribute('data-area');
         const cardsContainer = document.querySelector('.kanban-cards[data-area="' + area + '"]');

@@ -237,21 +237,84 @@ const WAREHOUSE_DETAIL_URL      = "{% url 'warehouse_detail' pk=0 %}";
 const STATUS_READY    = "Ready for Receipt at Warehouse";
 const STATUS_RECEIVED = "Received at Warehouse";
 
-// Drag & Drop
+// Drag & Drop universal (mouse + touch)
 let dragged = null;
-document.querySelectorAll('.kanban-card').forEach(card => {
-  card.addEventListener('dragstart', () => {
-    dragged = card;
-    card.classList.add('dragging');
+let touchCard = null;
+
+// Função para adicionar drag & touch nos cards (usada sempre que atualizar cards via AJAX também)
+function addDragDropEvents(container) {
+  container.querySelectorAll('.kanban-card').forEach(card => {
+    // Mouse: dragstart/dragend
+    card.addEventListener('dragstart', () => {
+      dragged = card;
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      dragged = null;
+    });
+
+    // Touch: touchstart/touchmove/touchend
+    card.addEventListener('touchstart', function (e) {
+      touchCard = card;
+      card.classList.add('dragging');
+    }, { passive: true });
+
+    card.addEventListener('touchmove', function (e) {
+      if (!touchCard) return;
+      const touch = e.touches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (target && target.classList.contains('kanban-cards')) {
+        target.style.background = "#e8eaff";
+      }
+      e.preventDefault();
+    }, { passive: false });
+
+    card.addEventListener('touchend', function (e) {
+      if (!touchCard) return;
+      card.classList.remove('dragging');
+      const touch = e.changedTouches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (target) {
+        let col = target.closest('.kanban-cards');
+        if (col) {
+          col.appendChild(card);
+
+          // Atualiza status no backend via AJAX
+          let itemId = card.getAttribute('data-id');
+          let newStatus = col.getAttribute('data-status');
+          if (newStatus === STATUS_RECEIVED) {
+            openWarehouseModal(itemId, STATUS_READY);
+          } else {
+            fetch(UPDATE_STATUS_URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+              },
+              body: JSON.stringify({ id: itemId, status: newStatus })
+            }).then(res => {
+              if (res.ok) col.appendChild(card);
+              dragged = null;
+            });
+          }
+        }
+      }
+      touchCard = null;
+    }, { passive: true });
   });
-  card.addEventListener('dragend', () => {
-    card.classList.remove('dragging');
-    dragged = null;
-  });
+}
+
+// Inicializa drag & touch nos cards iniciais
+document.addEventListener('DOMContentLoaded', function () {
+  addDragDropEvents(document);
 });
+
 document.querySelectorAll('.kanban-cards').forEach(col => {
-  col.addEventListener('dragover', e => { 
-    e.preventDefault(); col.style.background = "#e8eaff"; 
+  // Mouse: dragover/drop
+  col.addEventListener('dragover', e => {
+    e.preventDefault();
+    col.style.background = "#e8eaff";
   });
   col.addEventListener('dragleave', () => col.style.background = "");
   col.addEventListener('drop', e => {
@@ -260,11 +323,9 @@ document.querySelectorAll('.kanban-cards').forEach(col => {
     if (!dragged) return;
     const itemId   = dragged.dataset.id;
     const newStatus = col.dataset.status;
-    // SE for coluna Received at Warehouse → abre form de recebimento
     if (newStatus === STATUS_RECEIVED) {
-      openWarehouseModal(itemId, STATUS_READY);  // Força abrir o form!
+      openWarehouseModal(itemId, STATUS_READY);
     } else {
-      // Só muda status via AJAX e move o card (para outros status)
       fetch(UPDATE_STATUS_URL, {
         method: 'POST',
         headers: {
@@ -283,13 +344,11 @@ document.querySelectorAll('.kanban-cards').forEach(col => {
 
 // Função central para abrir o modal correto (form ou detalhe)
 function openWarehouseModal(id, status=null) {
-  // Se não passar status, pega pelo DOM (útil pro clique)
   if (!status) {
     const card = document.querySelector('.kanban-card[data-id="' + id + '"]');
     status = card?.dataset.status || "";
   }
   let url = "";
-  // Se for status "Ready for Receipt at Warehouse" abre o FORM, senão abre detalhes
   if (status === STATUS_READY) {
     url = RECEIVE_FORM_URL_TEMPLATE.replace('0', id);
   } else {
@@ -320,7 +379,7 @@ function openWarehouseModal(id, status=null) {
           .then(json => {
             if (json.result === "ok") {
               modal.hide();
-              location.reload(); // Recarrega tudo para Kanban refletir a mudança
+              location.reload();
             } else {
               alert("Erro ao receber.");
             }
