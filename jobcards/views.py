@@ -112,6 +112,20 @@ def dashboard(request):
     total_jobcards = JobCard.objects.count()
     checked_count = JobCard.objects.exclude(jobcard_status='NO CHECKED').count()
     not_checked_count = total_jobcards - checked_count
+    
+    discipline_order = [
+        'LOGISTIC',
+        'SCAFFOLDING',
+        'STRUCTURAL',
+        'MECHANICAL',
+        'PIPING',
+        'TIE-IN',
+        'HVAC',
+        'INSTRUMENTATION & AUTOMATION',
+        'ELECTRICAL',
+        'TELECOM',
+        'PAINTING',
+    ]
 
     # JobCards with Material (jobcards únicos presentes na base de material)
     jobcards_with_material = (
@@ -194,7 +208,7 @@ def dashboard(request):
         document__in=DocumentoControle.objects.values_list('codigo', flat=True)
     )
     
-    """ PARA O AUTODESK Token Forge 2-legged
+    # PARA O AUTODESK Token Forge 2-legged
     import requests
     resp = requests.post(
         "https://developer.api.autodesk.com/authentication/v2/token",
@@ -208,7 +222,7 @@ def dashboard(request):
     token = resp.json().get('access_token')
     # Substitua o URN pelo seu modelo!
     urn = 'dXJuOmFkc2sud2lwcHJvZDpmcy5maWxlOnZmLkRRelY3XzV0UmRpTDNQRjNVWFNMVmc_dmVyc2lvbj0x'
-    """
+    
     #######################
     
     discipline_summary = []
@@ -223,26 +237,42 @@ def dashboard(request):
             'percent_checked': percent
         })
 
+    # Ordena e completa a lista
+    disc_dict = {d['discipline']: d for d in discipline_summary}
+    discipline_summary_sorted = []
+    for name in discipline_order:
+        d = disc_dict.get(name)
+        if d:
+            discipline_summary_sorted.append(d)
+        else:
+            discipline_summary_sorted.append({
+                'discipline': name,
+                'total_jobcard': 0,
+                'total_checked': 0,
+                'percent_checked': 0.0,
+            })
+
     # Agrupa todas as áreas por area_code
     area_groups = defaultdict(list)
     for a in Area.objects.all():
         area_groups[a.area_code].append(a)
 
     area_summary = []
-    for area_code, areas in area_groups.items():
+    for area_code in sorted(area_groups):  # <-- aqui garante a ordem alfabética dos códigos
+        areas = area_groups[area_code]
         area_codes = [a.area_code for a in areas]
 
         total = JobCard.objects.filter(location__in=area_codes).count()
         checked = JobCard.objects.filter(location__in=area_codes, jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
         percent = (checked / total * 100) if total else 0
 
-        # Buscar a descrição da área no banco Area
+        # Busca a descrição da área no banco Area
         area_obj = Area.objects.filter(area_code=area_code).order_by('pk').first()
         area_description = area_obj.location if area_obj else ""
 
         area_summary.append({
             'area_code': area_code,
-            'area_description': area_description,  # Aqui vem o "WATERFLOOD MAIN DECK"
+            'area_description': area_description,
             'total_jobcard': total,
             'total_checked': checked,
             'percent_checked': percent
@@ -335,13 +365,13 @@ def dashboard(request):
         'finalized_count': finalized_count,
         'discipline_legend': discipline_legend,
         'engineering_synced_docs': engineering_synced_docs,
-        'preliminary_percent': f"{(preliminary_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
+        'preliminary_percent': f"{((preliminary_checked_count + planning_checked_count) / total_jobcards * 100):.2f}" if total_jobcards else "0.00",
         'planning_percent': f"{(planning_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
         'offshore_percent': f"{(offshore_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
         'approved_percent': f"{(approved_to_execute_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
-        # 'token': token,
-        # 'urn': urn, 
-        'discipline_summary': discipline_summary,
+         'token': token,
+         'urn': urn, 
+        'discipline_summary': discipline_summary_sorted,
         'area_summary': area_summary,
         'workpack_summary': workpack_summary,   
         'workpack_summary': workpack_summary,
@@ -359,6 +389,7 @@ def dashboard(request):
         'recent_checked_jobcards': recent_checked_jobcards,
         'available_pdfs': available_pdfs,
         'jobcards': jobcards,
+        
     }
     return render(request, 'sistema/dashboard.html', context)
 
