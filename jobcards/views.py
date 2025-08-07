@@ -2605,7 +2605,7 @@ def save_allocation(request, jobcard_id, task_order):
         return JsonResponse({'success': True})
     return JsonResponse({'error': 'Invalid method'}, status=400)
 
-# AREA PARA PROCURAMENTO KANBAN
+# --------- AREA DE SUPRIMENTOS --------------- #
 
 def po_tracking(request):
     statuses = [
@@ -2667,7 +2667,7 @@ def po_tracking_search(request):
     return JsonResponse({'html': cards_html})
 
 
-# CONTROLE DE ESTOQUE
+# --------- CONTROLE DE ESTOQUE --------------- #
 
 def warehouse_kanban(request):
     # Mostra cada item de ProcurementBase como um card
@@ -2947,6 +2947,7 @@ def export_warehouse_pieces_excel(request):
     df.to_excel(response, index=False)
     return response
 
+# --------- JOBCARD PLANNING --------------- #
 
 def jobcards_planning_list(request):
     # Busca apenas JobCards com status específico
