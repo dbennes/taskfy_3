@@ -15,6 +15,11 @@ from .views import (
 
 )
 
+from rest_framework import routers
+
+
+
+
 urlpatterns = [
     path('', views.index, name='index'),
     path('login/', views.login, name='login'),
@@ -129,4 +134,5 @@ urlpatterns = [
     # JOBCARD PLANNING
     path('jobcards/planning/', views.jobcards_planning_list, name='jobcards_planning_list'),
     path('jobcards/<str:jobcard_id>/advance/', views.change_jobcard_status, name='change_jobcard_status'),
+    
 ]

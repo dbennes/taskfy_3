@@ -71,6 +71,7 @@ import json
 from .models import ProcurementBase, WarehouseStock, WarehousePiece
 from django.db import models
 from django.contrib import messages
+from .serializers import JobCardSerializer
 
 
 # - PERMISSIONAMENTO POR GRUPO
