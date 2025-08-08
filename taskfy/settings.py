@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-ek1fnjxzic4aol1_+hqh)bb2xbpduj*dhlp@%^=xcbgh#qs&$t
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -148,3 +148,9 @@ os.makedirs(JOB_BACKUP_DIR, exist_ok=True)
 APS_CLIENT_ID = 'E4dLpBFkeIJHaH6uP1qkdNYu1CypSy059KF6Y2hj2T3IzTOz'
 APS_CLIENT_SECRET = 'IRAG1Dm7MPTMW3LfB7ano7FUdlWIWT9rbpjAdyGdugxeMaGAAGzG70j4AIZIw7n7'
 APS_CALLBACK_URL = 'http://localhost:8080/api/auth/callback'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}

@@ -2,6 +2,7 @@ from django.urls import path
 from django.urls.conf import include
 from . import views
 from jobcards.views import api_revisoes_ultimas
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import (
     DisciplineListView,
@@ -134,5 +135,9 @@ urlpatterns = [
     # JOBCARD PLANNING
     path('jobcards/planning/', views.jobcards_planning_list, name='jobcards_planning_list'),
     path('jobcards/<str:jobcard_id>/advance/', views.change_jobcard_status, name='change_jobcard_status'),
+    
+    # API PARA APLICAÇÃO
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
 ]
