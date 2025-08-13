@@ -72,6 +72,15 @@ from .models import ProcurementBase, WarehouseStock, WarehousePiece
 from django.db import models
 from django.contrib import messages
 from .serializers import JobCardSerializer
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+from django.http import FileResponse, Http404
+from django.utils.encoding import smart_str
+
 
 
 # - PERMISSIONAMENTO POR GRUPO
@@ -3039,3 +3048,74 @@ def change_jobcard_status(request, jobcard_id):
         job.save()
         messages.success(request, "Status updated!")
     return redirect('jobcards_planning_list')
+
+# --------- API PARA APLICATIVO --------------- #
+
+
+@api_view(["GET"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def api_jobcard_list(request):
+    qs = JobCard.objects.all().order_by('job_card_number')  # ajuste se quiser
+    return Response(JobCardSerializer(qs, many=True).data)
+
+
+@api_view(["GET"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def api_jobcard_detail(request, jobcard_number: str):
+    """
+    Returns JobCard JSON by its number (requires JWT).
+    """
+    try:
+        jc = JobCard.objects.get(job_card_number=jobcard_number)
+    except JobCard.DoesNotExist:
+        return Response({"detail": "JobCard not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response(JobCardSerializer(jc).data, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def api_jobcard_advance(request, jobcard_number: str):
+    """
+    Advances/updates JobCard status without CSRF (JWT only).
+    Optional payload: {"status": "COMPLETED"}
+    """
+    try:
+        jc = JobCard.objects.get(job_card_number=jobcard_number)
+    except JobCard.DoesNotExist:
+        return Response({"detail": "JobCard not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    new_status = request.data.get("status", "COMPLETED")
+
+    # adjust field name if your model uses a different one:
+    jc.jobcard_status = new_status
+    jc.save(update_fields=["jobcard_status"])
+
+    return Response(
+        {
+            "ok": True,
+            "job_card_number": jc.job_card_number,
+            "jobcard_status": jc.jobcard_status,
+        },
+        status=status.HTTP_200_OK,
+    )
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def jobcard_pdfs(request):
+    base_url = request.build_absolute_uri(settings.MEDIA_URL)
+
+    pdfs = []
+    for jc in JobCard.objects.all():
+        name = f"JobCard_{jc.job_card_number}_Rev_{jc.rev}.pdf"
+        file_path = os.path.join(settings.MEDIA_ROOT, name)
+        if os.path.exists(file_path):
+            pdfs.append({
+                "name": name,
+                "url": base_url + name
+            })
+
+    return Response({"pdfs": pdfs})
