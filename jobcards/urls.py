@@ -104,6 +104,9 @@ urlpatterns = [
     path('jobcards/planning/', views.jobcards_planning_list, name='jobcards_planning_list'),
     path('jobcards/<str:jobcard_id>/advance/', views.change_jobcard_status, name='change_jobcard_status'),
 
+    path('rfid/modal/<int:stock_id>/', views.rfid_modal, name='rfid_modal'),
+    path('rfid/add/<int:stock_id>/', views.rfid_add, name='rfid_add'),
+
     # Tokens
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
@@ -119,6 +122,21 @@ urlpatterns = [
 
     # Outros endpoints auxiliares
     path('api/revisoes_ultimas/', views.api_revisoes_ultimas, name='api_revisoes_ultimas'),
+
+    # Atualização do Estoque 
+    path("api/rfid/check/", views.check_rfid, name="check_rfid"),
+    path("api/rfid/update-location/", views.update_location, name="update_location"),
+
+
+    # -------- API Impediments --------
+    path('api/impediments/', views.api_list_impediments, name='api_list_impediments'),
+    path('api/impediments/create/', views.api_create_impediment, name='api_create_impediment'),
+    path('api/impediments/<int:pk>/', views.api_impediment_detail, name='api_impediment_detail'),
+    path('api/impediments/<int:pk>/update/', views.api_update_impediment, name='api_update_impediment'),
+    path('api/impediments/<int:pk>/delete/', views.api_delete_impediment, name='api_delete_impediment'),
+
+    path("api/jobcard/<str:jobcard_number>/manpowers/", views.api_jobcard_manpowers, name="api_jobcard_manpowers"),
+    path("api/dfr/<str:jobcard_number>/close/", views.api_dfr_close, name="api_dfr_close"),
     
 ]
 

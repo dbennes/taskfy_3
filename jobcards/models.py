@@ -15,7 +15,7 @@ class JobCard(models.Model):
     subsystem = models.CharField(max_length=20)
     workpack_number = models.CharField(max_length=20)
     working_code = models.CharField(max_length=20)
-    tag = models.CharField(max_length=50)
+    tag = models.CharField(max_length=250)
     working_code_description = models.TextField()
     job_card_number = models.CharField(max_length=50)
     rev = models.CharField(max_length=10, blank=True, null=True,)
@@ -436,3 +436,56 @@ class WarehousePiece(models.Model):
 
     def __str__(self):
         return f"{self.rfid_tag} ({self.stock.po_number} - {self.stock.pmto_code or self.stock.tag})"
+
+# RDC
+
+class DailyFieldReport(models.Model):
+    # Identificação do relatório (repete em todas as linhas do mesmo DFR)
+    dfr_number = models.CharField(max_length=20, db_index=True)  # NÃO é unique por linha
+    line_seq = models.PositiveIntegerField(default=1)            # 1..N dentro do mesmo dfr_number
+
+    # Cabeçalho (repete em todas as linhas desse DFR)
+    jobcard_number = models.CharField(max_length=50)
+    discipline = models.CharField(max_length=100, blank=True, null=True)
+    working_code = models.CharField(max_length=50, blank=True, null=True)
+    report_date = models.DateField()
+    total_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_lines = models.IntegerField(default=0)
+    created_by = models.CharField(max_length=150, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, null=True)
+    snapshot = models.JSONField(blank=True, null=True)
+
+    # Dados da linha (variável por linha)
+    task_description = models.TextField()
+    task_order = models.IntegerField(blank=True, null=True)
+    direct_labor = models.CharField(max_length=150)
+    hours = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    qty = models.IntegerField(default=1)
+    source = models.CharField(max_length=12, blank=True, null=True)  # "ALLOCATED" / "MANUAL" etc.
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["dfr_number", "line_seq"], name="uniq_dfr_line"
+            )
+        ]
+
+    def __str__(self):
+        
+        return f"{self.dfr_number} • L{self.line_seq:02d} • {self.direct_labor}"
+
+    # util simples para gerar o próximo DFR-000001
+    @classmethod
+    def next_dfr_number(cls) -> str:
+        # pega o MAIOR número existente e soma 1
+        # (simples e suficiente para a maioria dos casos; use transaction.atomic na view)
+        
+        last = cls.objects.order_by("-id").first()
+        seq = 1
+        if last and last.dfr_number and last.dfr_number.startswith("DFR-"):
+            try:
+                seq = int(last.dfr_number.split("-")[1]) + 1
+            except Exception:
+                seq = 1
+        return f"DFR-{seq:06d}"

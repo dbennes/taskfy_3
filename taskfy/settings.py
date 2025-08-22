@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -40,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'jobcards',
     'rest_framework',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -50,7 +52,11 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
+
+# Permite qualquer origem (para desenvolvimento)
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'taskfy.urls'
 
@@ -81,7 +87,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'taskfy',
         'USER': 'postgres',
-        'PASSWORD': 'utc@2025',
+        'PASSWORD': 'Mabu@2030!',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -153,4 +159,9 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=3650),  # 10 anos
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=3650),
 }

@@ -38,7 +38,7 @@ from django.views.decorators.http import require_GET, require_POST
 from datetime import datetime
 from datetime import date
 import io
-from jobcards.models import DocumentoRevisaoAlterada, DocumentoControle
+from jobcards.models import DocumentoRevisaoAlterada, DocumentoControle, DailyFieldReport
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db import transaction
@@ -71,7 +71,7 @@ import json
 from .models import ProcurementBase, WarehouseStock, WarehousePiece
 from django.db import models
 from django.contrib import messages
-from .serializers import JobCardSerializer
+from .serializers import AllocatedManpowerSerializer, JobCardSerializer
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
@@ -80,6 +80,16 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from django.http import FileResponse, Http404
 from django.utils.encoding import smart_str
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .models import WarehousePiece
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Impediments
+from .serializers import ImpedimentSerializer
 
 
 
@@ -2406,7 +2416,7 @@ def export_mr_excel(request):
 
     df = pd.DataFrame(list(data))
     if 'qty' in df.columns:
-        df['qty'] = df['qty'].apply(lambda x: '{:.2f}'.format(x).replace('.', ',') if pd.notnull(x) else '')
+        df['qty'] = df['qty'].apply(lambda x: '{:.2f}'.format(x) if pd.notnull(x) else '')
 
     response = HttpResponse(content_type='application/vnd.ms-excel')
     response['Content-Disposition'] = 'attachment; filename=mr_base_export.xlsx'
@@ -3119,3 +3129,220 @@ def jobcard_pdfs(request):
             })
 
     return Response({"pdfs": pdfs})
+
+# ESTOQUE E RFIDs conexões
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def check_rfid(request):
+    rfids = request.data.get("rfids", [])
+    results = []
+    for tag in rfids:
+        piece = WarehousePiece.objects.filter(rfid_tag=tag).first()
+        if piece:
+            results.append({
+                "rfid": tag,
+                "status": "Found",
+                "location": piece.location,
+                "stock_id": piece.stock.id,
+            })
+        else:
+            results.append({"rfid": tag, "status": "Not Registered"})
+    return Response(results)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def update_location(request):
+    user = request.user
+    rfids = request.data.get("rfids", [])
+    new_location = request.data.get("location")
+    updated = []
+
+    for tag in rfids:
+        piece = WarehousePiece.objects.filter(rfid_tag=tag).first()
+        if piece:
+            piece.location = new_location
+            piece.received_by = user.username
+            piece.save()
+            updated.append(tag)
+
+    return Response({"updated": updated})
+
+# Criar impedimento
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def api_create_impediment(request):
+    serializer = ImpedimentSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(created_by=request.user.username if request.user else None)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Listar todos impedimentos
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_list_impediments(request):
+    impediments = Impediments.objects.all().order_by('-created_at')
+    serializer = ImpedimentSerializer(impediments, many=True)
+    return Response(serializer.data)
+
+
+# Detalhar um impedimento específico
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_impediment_detail(request, pk):
+    try:
+        imp = Impediments.objects.get(pk=pk)
+    except Impediments.DoesNotExist:
+        return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = ImpedimentSerializer(imp)
+    return Response(serializer.data)
+
+
+# Atualizar impedimento
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def api_update_impediment(request, pk):
+    try:
+        imp = Impediments.objects.get(pk=pk)
+    except Impediments.DoesNotExist:
+        return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = ImpedimentSerializer(imp, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Deletar impedimento
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def api_delete_impediment(request, pk):
+    try:
+        imp = Impediments.objects.get(pk=pk)
+    except Impediments.DoesNotExist:
+        return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    imp.delete()
+    return Response({'message': 'Deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def api_jobcard_manpowers(request, jobcard_number):
+    jobcard = get_object_or_404(JobCard, job_card_number=jobcard_number)
+
+    # Manpowers dessa jobcard
+    manpowers = AllocatedManpower.objects.filter(
+        jobcard_number=jobcard_number
+    ).order_by("task_order")
+
+    serializer = AllocatedManpowerSerializer(manpowers, many=True)
+
+    # Catálogo global de direct_labor (sem repetir)
+    # Se preferir, filtre por disciplina do jobcard: .filter(discipline=jobcard.discipline)
+    all_labors = list(
+        AllocatedManpower.objects
+        .exclude(direct_labor__isnull=True)
+        .exclude(direct_labor__exact="")
+        .values_list("direct_labor", flat=True)
+        .distinct()
+        .order_by("direct_labor")
+    )
+
+    return Response({
+        "jobcard": jobcard.job_card_number,
+        "discipline": jobcard.discipline,
+        "working_code": jobcard.working_code,
+        "manpowers": serializer.data,
+        "all_labors": all_labors,  # 👈 catálogo global, sem repetir
+    })
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def api_dfr_close(request, jobcard_number: str):
+    """
+    Payload esperado:
+    {
+      "report_date": "2025-08-20",
+      "items": [
+        {"task_description":"...", "task_order":1, "direct_labor":"...", "hours": 1.5, "qty":1, "source": "MANUAL"},
+        ...
+      ],
+      "notes": "optional",
+      "snapshot": {...}  // optional
+    }
+    """
+    data = request.data or {}
+    report_date = data.get("report_date")
+    items = data.get("items") or []
+    notes = data.get("notes")
+    snapshot = data.get("snapshot")
+
+    if not report_date:
+        return Response({"detail": "report_date is required."}, status=400)
+    if not items:
+        return Response({"detail": "items is required and cannot be empty."}, status=400)
+
+    # metadados do JobCard no momento do fechamento
+    discipline = None
+    working_code = None
+    try:
+        jc = JobCard.objects.get(job_card_number=jobcard_number)
+        discipline = jc.discipline
+        working_code = jc.working_code
+    except JobCard.DoesNotExist:
+        pass
+
+    # gera número do DFR uma vez por relatório
+    dfr_number = DailyFieldReport.next_dfr_number()
+
+    # calcula totais
+    total_hours = 0.0
+    total_lines = 0
+    for it in items:
+        h = float(it.get("hours") or 0)
+        total_hours += h
+        total_lines += 1
+
+    total_hours = round(total_hours, 2)
+
+    # cria cada linha (mesma tabela)
+    line_seq = 1
+    created_rows = []
+    for it in items:
+        row = DailyFieldReport.objects.create(
+            dfr_number=dfr_number,
+            line_seq=line_seq,
+            jobcard_number=jobcard_number,
+            discipline=discipline,
+            working_code=working_code,
+            report_date=report_date,
+            total_hours=total_hours,
+            total_lines=total_lines,
+            created_by=str(request.user),
+            notes=notes,
+            snapshot=snapshot,
+
+            task_description=it.get("task_description") or "",
+            task_order=it.get("task_order"),
+            direct_labor=it.get("direct_labor") or "",
+            hours=round(float(it.get("hours") or 0), 2),
+            qty=int(it.get("qty") or 1),
+            source=(it.get("source") or "MANUAL")[:12],
+        )
+        created_rows.append(row.id)
+        line_seq += 1
+
+    summary = {
+        "dfr_number": dfr_number,
+        "report_date": report_date,
+        "jobcard_number": jobcard_number,
+        "total_hours": total_hours,
+        "total_lines": total_lines,
+    }
+    return Response(summary, status=status.HTTP_201_CREATED)
