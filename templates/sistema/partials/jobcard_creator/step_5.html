@@ -1,52 +1,275 @@
-<div class="step-content d-none" id="step-5" style="font-size: 12px;">
-    <h5 class="mb-3">
-        <i class="fa-solid fa-file-lines me-2"></i>
-        Engineering Documents for "{{ job.job_card_number }}"
-    </h5>
+{% load dict_extras %}
 
-    {% if engineering_list %}
-        <table class="table table-sm table-bordered" style="font-size: 11px;">
-            <thead class="table-light text-center">
-                <tr>
-                    <th>Discipline</th>
-                    <th>Document</th>
-                    <th>Jobcard</th>
-                    <th>Rev.</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for eng in engineering_list %}
-                <tr class="align-middle">
-                    <td class="text-center">
-                        {{ eng.discipline }}
-                        <input type="hidden" name="eng_discipline[]" value="{{ eng.discipline }}">
-                    </td>
-                    <td>
-                        {{ eng.document }}
-                        <input type="hidden" name="eng_document[]" value="{{ eng.document }}">
-                    </td>
-                    <td class="text-center">
-                        {{ eng.jobcard_number }}
-                        <input type="hidden" name="eng_tag[]" value="{{ eng.jobcard_number }}">
-                    </td>
-                    <td class="text-center">
-                        {{ eng.rev }}
-                        <input type="hidden" name="eng_rev[]" value="{{ eng.rev }}">
-                    </td>
-                    <td class="text-center">
-                        <span class="badge {% if eng.status == 'AFC' %}bg-success{% elif eng.status == 'NOT APPROVED' %}bg-danger{% else %}bg-secondary{% endif %}">
-                            {{ eng.status|default:"—" }}
-                        </span>
-                        <input type="hidden" name="eng_status[]" value="{{ eng.status }}">
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <div class="alert alert-warning" style="font-size: 12px;">
-            No engineering documents found for working code <strong>{{ job.job_card_number }}</strong>.
+<div class="step-content d-none" id="step-5" style="font-size: 12px;">
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h5 class="m-0">
+      <i class="fa-solid fa-file-lines me-2"></i>
+      Documents · <span class="text-muted">JobCard {{ job.job_card_number }}</span>
+    </h5>
+  </div>
+
+  <style>
+    /* ===== Table polish ===== */
+    .eng-table-wrap { border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+    .eng-table thead th { background: #f4f5f8 !important; color:#232323; font-weight:600; border:0; }
+    .eng-table tbody td { vertical-align: middle; }
+    .eng-table tbody tr:hover { background:#fafafa; }
+    .eng-table tbody tr:nth-child(even) { background:#fcfcfd; }
+    .table-head-sticky thead th { position: sticky; top: 0; z-index: 2; }
+
+    /* ===== Status badges ===== */
+    .pill { border-radius: 999px; padding: 2px 10px; font-weight:600; font-size: 11px; }
+    .pill-afc { background:#e8f5ee; color:#1f7a1f; border:1px solid #bfe7d2; }
+    .pill-na  { background:#fdecea; color:#a11a1a; border:1px solid #f5c2c0; }
+    .pill-oth { background:#eef1f7; color:#3b4151; border:1px solid #d8dcee; }
+
+    /* ===== Image cards (one per line) ===== */
+    .img-slot { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; min-height: 220px;
+                display:flex; flex-direction:column; gap:10px; transition: box-shadow .15s ease, border-color .15s ease; }
+    .img-slot:hover{ box-shadow:0 6px 18px rgba(0,0,0,.06); border-color:#d8dbe2; }
+    .img-slot .slot-head { display:flex; align-items:center; justify-content:space-between; }
+    .img-slot .slot-title { font-weight:700; font-size:12px; letter-spacing:.02em; color:#1f2937; }
+    .img-slot .slot-hint { font-size:11px; color:#6b7280; }
+    .dropzone {
+      border:1px dashed #cbd5e1; border-radius:10px; background:#f9fafb; color:#6b7280;
+      flex:1; display:flex; align-items:center; justify-content:center; text-align:center;
+      padding:10px; cursor:pointer; transition: background .12s ease, border-color .12s ease;
+    }
+    .dropzone:hover { background:#f3f4f6; }
+    .dropzone.dragover { background:#eef6ff; border-color:#93c5fd; }
+    .dropzone img { max-width: 100%; max-height: 100%; border-radius:8px; object-fit:contain; }
+    .slot-actions { display:flex; gap:8px; justify-content:flex-end; }
+    .slot-actions .btn { padding:3px 8px; font-size:11px; }
+  </style>
+
+  {% if engineering_list %}
+    <div class="eng-table-wrap table-head-sticky mb-3">
+      <table class="table table-sm eng-table m-0">
+        <thead>
+          <tr class="text-center">
+            <th style="width:16%;">Discipline</th>
+            <th style="width:44%;">Document</th>
+            <th style="width:16%;">JobCard</th>
+            <th style="width:8%;">Rev.</th>
+            <th style="width:16%;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for eng in engineering_list %}
+          <tr>
+            <td class="text-center">
+              <i class="fa-solid fa-sitemap me-1 text-muted"></i>{{ eng.discipline }}
+              <input type="hidden" name="eng_discipline[]" value="{{ eng.discipline }}">
+            </td>
+            <td>
+              <i class="fa-regular fa-file-lines me-1 text-muted"></i>{{ eng.document }}
+              <input type="hidden" name="eng_document[]" value="{{ eng.document }}">
+            </td>
+            <td class="text-center">
+              {{ eng.jobcard_number }}
+              <input type="hidden" name="eng_tag[]" value="{{ eng.jobcard_number }}">
+            </td>
+            <td class="text-center">
+              {{ eng.rev }}
+              <input type="hidden" name="eng_rev[]" value="{{ eng.rev }}">
+            </td>
+            <td class="text-center">
+              {% if eng.status == 'AFC' %}
+                <span class="pill pill-afc">AFC</span>
+              {% elif eng.status == 'NOT APPROVED' %}
+                <span class="pill pill-na">Not Approved</span>
+              {% else %}
+                <span class="pill pill-oth">{{ eng.status|default:"—" }}</span>
+              {% endif %}
+              <input type="hidden" name="eng_status[]" value="{{ eng.status }}">
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-light border d-flex align-items-center gap-2" style="font-size:12px;">
+      <i class="fa-regular fa-circle-question text-muted"></i>
+      <div>No documents found for JobCard <strong>{{ job.job_card_number }}</strong>.</div>
+    </div>
+  {% endif %}
+
+  <div class="d-flex align-items-center justify-content-between mt-3 mb-2">
+    <h6 class="m-0">
+      <i class="fa-regular fa-images me-2"></i>
+      Attach up to 4 images
+      <span class="text-muted fw-normal">· paste (Ctrl+V), drop, or click to select</span>
+    </h6>
+  </div>
+
+  <!-- One image per line -->
+  <div class="row gy-3">
+    {% for i in "1234" %}
+      {% with field_name="image_"|add:i %}
+      <div class="col-12">
+        <div class="img-slot">
+          <div class="slot-head">
+            <div class="slot-title">Image {{ i }}</div>
+            <div class="slot-actions">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-action="replace" data-input="file_input_{{ i }}">
+                <i class="fa-regular fa-pen-to-square me-1"></i>Replace
+              </button>
+              <button type="button" class="btn btn-outline-dark btn-sm" data-action="reset" data-input="file_input_{{ i }}" data-area="drop_{{ i }}">
+                <i class="fa-regular fa-trash-can me-1"></i>Reset
+              </button>
+            </div>
+          </div>
+
+          {% with img=job|get_attr:field_name %}
+            {% if img %}
+              <div class="slot-hint">Current file shown below. Selecting/pasting will overwrite.</div>
+              <div class="dropzone" id="drop_{{ i }}" data-input="file_input_{{ i }}" contenteditable="false">
+                <img src="{{ img.url }}" alt="current image {{ i }}">
+              </div>
+            {% else %}
+              <div class="slot-hint">Paste or drop an image here, or click the area to browse.</div>
+              <div class="dropzone" id="drop_{{ i }}" data-input="file_input_{{ i }}" contenteditable="true">
+                <div>
+                  <div class="mb-1"><i class="fa-regular fa-image" style="font-size:20px;"></i></div>
+                  <div><strong>Paste</strong> (Ctrl+V), <strong>Drop</strong>, or <strong>Click</strong> to upload</div>
+                </div>
+              </div>
+            {% endif %}
+          {% endwith %}
+
+          <!-- hidden file input bound to this slot -->
+          <input type="file" name="{{ field_name }}" id="file_input_{{ i }}" accept="image/*" style="display:none;">
         </div>
-    {% endif %}
+      </div>
+      {% endwith %}
+    {% endfor %}
+  </div>
 </div>
+
+<script>
+(function(){
+  function bindSlot(dropId, inputId){
+    const dz = document.getElementById(dropId);
+    const input = document.getElementById(inputId);
+    if(!dz || !input) return;
+
+    // Click opens picker
+    dz.addEventListener('click', () => input.click());
+
+    // Preview helper
+    function preview(file){
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e){
+        dz.innerHTML = '<img src="'+ e.target.result +'" alt="preview">';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Input change -> preview
+    input.addEventListener('change', () => {
+      if(input.files && input.files[0]) preview(input.files[0]);
+    });
+
+    // Paste image
+    dz.addEventListener('paste', (e) => {
+      const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items || [];
+      for (let it of items){
+        if (it.type && it.type.indexOf('image') === 0){
+          const file = it.getAsFile();
+          try {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+            preview(file);
+          } catch(err) {
+            // Fallback: preview only
+            preview(file);
+            console.warn('Could not assign file to input via DataTransfer:', err);
+          }
+          e.preventDefault();
+          break;
+        }
+      }
+    });
+
+    // Drag & Drop
+    ;['dragenter','dragover'].forEach(evt => dz.addEventListener(evt, (e)=>{
+      e.preventDefault(); e.stopPropagation(); dz.classList.add('dragover');
+    }));
+    ;['dragleave','dragend','drop'].forEach(evt => dz.addEventListener(evt, (e)=>{
+      e.preventDefault(); e.stopPropagation(); dz.classList.remove('dragover');
+    }));
+    dz.addEventListener('drop', (e)=>{
+      const file = e.dataTransfer?.files?.[0];
+      if(!file) return;
+      try{
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+      }catch(err){
+        console.warn('DataTransfer not supported when dropping:', err);
+      }
+      preview(file);
+    });
+  }
+
+  // Bind all four slots (1 per line)
+  ['1','2','3','4'].forEach(i => bindSlot('drop_'+i, 'file_input_'+i));
+
+  // Quick actions (Replace / Reset)
+  document.querySelectorAll('[data-action]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const action = btn.getAttribute('data-action');
+      const inputId = btn.getAttribute('data-input');
+      const areaId  = btn.getAttribute('data-area');
+      const input = document.getElementById(inputId);
+      const dz = areaId ? document.getElementById(areaId) : null;
+      if(!input) return;
+
+      if(action === 'replace'){
+        input.click();
+      }
+      if(action === 'reset'){
+        input.value = "";
+        if(dz){
+          dz.innerHTML = '<div><div class="mb-1"><i class="fa-regular fa-image" style="font-size:20px;"></i></div><div><strong>Paste</strong> (Ctrl+V), <strong>Drop</strong>, or <strong>Click</strong> to upload</div></div>';
+        }
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-action="reset"]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const inputId = btn.getAttribute('data-input');
+      const areaId  = btn.getAttribute('data-area');
+      const input = document.getElementById(inputId);
+      const dz = areaId ? document.getElementById(areaId) : null;
+      const index = inputId.replace('file_input_', '');
+      const jobcard_number = "{{ job.job_card_number }}";
+
+      // Chama backend para apagar imagem e zerar campo
+      fetch("{% url 'delete_jobcard_image' %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-CSRFToken": "{{ csrf_token }}"
+        },
+        body: `jobcard_number=${encodeURIComponent(jobcard_number)}&index=${encodeURIComponent(index)}`
+      })
+      .then(resp => resp.json())
+      .then(data => {
+        if(data.success) {
+          input.value = "";
+          if(dz){
+            dz.innerHTML = '<div><div class="mb-1"><i class="fa-regular fa-image" style="font-size:20px;"></i></div><div><strong>Paste</strong> (Ctrl+V), <strong>Drop</strong>, or <strong>Click</strong> to upload</div></div>';
+          }
+        } else {
+          alert("Erro ao remover imagem: " + (data.error || "Desconhecido"));
+        }
+      });
+    });
+  });
+})();
+</script>

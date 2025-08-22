@@ -26,10 +26,7 @@ def get_mp_by_labor(manpower_list, direct_labor):
     return None
 
 @register.filter
-def get_item(dictionary, key):
-    return dictionary.get(key)
-
-@register.filter
-def get_item(dictionary, key):
-    return dictionary.get(key)
+def get_attr(obj, attr):
+    """Retorna o atributo de um objeto, ou None se não existir."""
+    return getattr(obj, attr, None)
 

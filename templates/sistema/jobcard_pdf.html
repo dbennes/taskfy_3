@@ -1,4 +1,6 @@
 {% load static %}
+{% load dict_extras %}
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -482,5 +484,85 @@
                     <tr ><td colspan="5" style="padding-bottom: 40px;">{{ job.company_comments }}</td></tr>
                 </tbody>
             </table>
+
+            <!-- Page with 4 images (2x2) — rendered as a separate PDF page -->
+<div style="page-break-before: always;"></div>
+
+<section class="photo-grid"
+         style="width:100%; padding:5mm; box-sizing:border-box; font-family:Arial, sans-serif; font-size:9px; page-break-inside:avoid;">
+  <h3 style="margin:0 0 2mm 0; font-size:12px;">3D Images</h3>
+
+  <!-- Anula bordas herdadas só aqui e define quadro alto -->
+  <style>
+    .photo-grid .pg-grid,
+    .photo-grid .pg-grid table,
+    .photo-grid .pg-grid th,
+    .photo-grid .pg-grid td { border:0 !important; }
+
+    /* Ajustes principais */
+    .photo-grid .cell  { border:0.25mm solid #000; height:96mm; padding:1.5mm; page-break-inside:avoid; }
+    .photo-grid .frame { display:table; width:100%; height:100%; }
+    .photo-grid .frame > div { display:table-cell; text-align:center; vertical-align:middle; }
+    .photo-grid img { max-width:100%; max-height:100%; display:block; margin:0 auto; image-rendering:-webkit-optimize-contrast; }
+  </style>
+
+  <!-- 2x2 grid com pouco espaço entre células para aumentar as fotos -->
+  <table class="pg-grid"
+         style="width:100%; table-layout:fixed; border-collapse:separate; border-spacing:4mm 5mm;">
+    <tr>
+      <td style="width:50%; padding:0; vertical-align:top;">
+        <div class="cell">
+          <div class="frame"><div>
+            {% if image_files.image_1 %}
+              <img src="{{ image_files.image_1 }}">
+            {% elif job.image_1 %}
+              <img src="{{ job.image_1.url }}">
+            {% endif %}
+          </div></div>
+        </div>
+      </td>
+
+      <td style="width:50%; padding:0; vertical-align:top;">
+        <div class="cell">
+          <div class="frame"><div>
+            {% if image_files.image_2 %}
+              <img src="{{ image_files.image_2 }}">
+            {% elif job.image_2 %}
+              <img src="{{ job.image_2.url }}">
+            {% endif %}
+          </div></div>
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="width:50%; padding:0; vertical-align:top;">
+        <div class="cell">
+          <div class="frame"><div>
+            {% if image_files.image_3 %}
+              <img src="{{ image_files.image_3 }}">
+            {% elif job.image_3 %}
+              <img src="{{ job.image_3.url }}">
+            {% endif %}
+          </div></div>
+        </div>
+      </td>
+
+      <td style="width:50%; padding:0; vertical-align:top;">
+        <div class="cell">
+          <div class="frame"><div>
+            {% if image_files.image_4 %}
+              <img src="{{ image_files.image_4 }}">
+            {% elif job.image_4 %}
+              <img src="{{ job.image_4.url }}">
+            {% endif %}
+          </div></div>
+        </div>
+      </td>
+    </tr>
+  </table>
+</section>
+
+
 </body>
 </html>

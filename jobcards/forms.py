@@ -1,5 +1,5 @@
 from django import forms
-from .models import Discipline, Area, WorkingCode, System, Impediments
+from .models import Discipline, Area, WorkingCode, System, Impediments, JobCard
 
 
 class DisciplineForm(forms.ModelForm):
@@ -126,3 +126,8 @@ class ImpedimentsForm(forms.ModelForm):
                 'id': 'id_notes'
             }),
         }
+
+class JobCardImageForm(forms.ModelForm):
+    class Meta:
+        model = JobCard
+        fields = ['image_1', 'image_2', 'image_3', 'image_4']

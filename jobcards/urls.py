@@ -138,6 +138,10 @@ urlpatterns = [
     path("api/jobcard/<str:jobcard_number>/manpowers/", views.api_jobcard_manpowers, name="api_jobcard_manpowers"),
     path("api/dfr/<str:jobcard_number>/close/", views.api_dfr_close, name="api_dfr_close"),
     
+    #deleta imagens do 3D
+    path('jobcard/delete_image/', views.delete_jobcard_image, name='delete_jobcard_image'),
+
+    path ('jobcard/upload_documents/', views.upload_documents, name='upload_documents')
 ]
 
 

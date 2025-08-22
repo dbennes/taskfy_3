@@ -19,7 +19,7 @@ from io import BytesIO
 from django.views.generic import ListView, CreateView
 from django.urls import reverse_lazy
 from .models import Discipline, Area, WorkingCode, System
-from .forms import DisciplineForm, AreaForm, WorkingCodeForm, SystemForm, ImpedimentsForm
+from .forms import DisciplineForm, AreaForm, WorkingCodeForm, SystemForm, ImpedimentsForm, JobCardImageForm
 import datetime
 from django.conf import settings
 from .models import (
@@ -90,6 +90,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Impediments
 from .serializers import ImpedimentSerializer
+
+from collections import defaultdict
+import re
+from django.db.models import Sum
 
 
 
@@ -477,9 +481,7 @@ def create_jobcard(request, jobcard_id=None):
 @login_required(login_url='login')
 @permission_required('jobcards.change_jobcard', raise_exception=True)
 def edit_jobcard(request, jobcard_id=None):
-    from collections import defaultdict
-    import re
-    from django.db.models import Sum
+    
 
     job = get_object_or_404(JobCard, job_card_number=jobcard_id) if jobcard_id else None
 
@@ -719,6 +721,18 @@ def edit_jobcard(request, jobcard_id=None):
         job.rev = '1'
         job.save(update_fields=['total_duration_hs', 'total_man_hours', 'rev'])
 
+        # --- Upload das imagens (salva com nomes baseados na jobcard, sobrescrevendo antigas) ---
+        for i in range(1, 5):
+            uploaded = request.FILES.get(f'image_{i}')
+            if uploaded:
+                try:
+                    _save_jobcard_image(job, uploaded, i)
+                except Exception as e:
+                    # opcional: log/notify; não interrompe o fluxo principal
+                    print(f"Erro salvando imagem {i} para {job.job_card_number}: {e}")
+        # garante que campos image_* sejam persistidos
+        job.save()
+
         return redirect('generate_pdf', jobcard_id=job.job_card_number)
 
     # --- GET ---
@@ -835,27 +849,21 @@ def allocate_resources(request, jobcard_id):
 @permission_required('jobcards.change_jobcard', raise_exception=True)
 def generate_pdf(request, jobcard_id):
     job = get_object_or_404(JobCard, job_card_number=jobcard_id)
-    
-    # Busca a área correspondente à localização (location == code)
     area_info = Area.objects.filter(area_code=job.location).first() if job.location else None
 
     # Gerar código de barras
     barcode_folder = os.path.join(settings.BASE_DIR, 'static', 'barcodes')
     os.makedirs(barcode_folder, exist_ok=True)
-
     barcode_filename = f'{job.job_card_number}.png'
     barcode_path = os.path.join(barcode_folder, barcode_filename)
-
     if not os.path.exists(barcode_path):
         CODE128 = barcode.get_barcode_class('code128')
         code128 = CODE128(job.job_card_number, writer=ImageWriter())
         code128.write(open(barcode_path, 'wb'), options={'write_text': False})
-
     barcode_url = f'file:///{barcode_path.replace("\\", "/")}'
 
     if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
         job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
-        # Só seta se nunca foi preenchido
         if not job.checked_preliminary_by and not job.checked_preliminary_at:
             job.checked_preliminary_by = request.user.username
             job.checked_preliminary_at = timezone.now()
@@ -872,7 +880,56 @@ def generate_pdf(request, jobcard_id):
     image_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', '3.jpg')
     image_url = f'file:///{image_path.replace("\\", "/")}'
 
-    half = len(allocated_tools) // 2
+    # Limpa campos image_* se arquivo não existe
+    updated_fields = []
+    for i in range(1, 5):
+        field = f'image_{i}'
+        f = getattr(job, field, None)
+        if f:
+            exists = False
+            try:
+                if hasattr(f, 'path') and os.path.exists(f.path):
+                    exists = True
+                elif hasattr(f, 'name') and default_storage.exists(f.name):
+                    exists = True
+            except Exception:
+                exists = False
+            if not exists:
+                setattr(job, field, None)
+                updated_fields.append(field)
+    if updated_fields:
+        job.save(update_fields=updated_fields)
+
+    # Monta image_files para template
+    image_files = {}
+    for i in range(1, 5):
+        field = f'image_{i}'
+        f = getattr(job, field, None)
+        if f:
+            try:
+                if hasattr(f, 'path') and os.path.exists(f.path):
+                    image_files[field] = 'file:///' + f.path.replace('\\', '/')
+                elif hasattr(f, 'name') and default_storage.exists(f.name):
+                    storage_path = default_storage.path(f.name)
+                    image_files[field] = 'file:///' + storage_path.replace('\\', '/')
+                elif hasattr(f, 'url'):
+                    image_files[field] = request.build_absolute_uri(f.url)
+                else:
+                    image_files[field] = None
+            except Exception:
+                image_files[field] = getattr(f, 'url', None)
+        else:
+            image_files[field] = None
+
+    half = len(allocated_tools) // 2 if allocated_tools else 0
+
+    local_config = None
+    try:
+        if path_wkhtmltopdf and os.path.exists(path_wkhtmltopdf):
+            local_config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+    except Exception:
+        local_config = None
+
     context = {
         'job': job,
         'allocated_manpowers': allocated_manpowers,
@@ -884,54 +941,52 @@ def generate_pdf(request, jobcard_id):
         'allocated_engineerings': allocated_engineerings,
         'image_path': image_url,
         'barcode_image': barcode_url,
-        'area_info': area_info,  # <-- Adicione ao contexto!
+        'area_info': area_info,
+        'image_files': image_files,
     }
 
     html_string = render_to_string('sistema/jobcard_pdf.html', context, request=request)
-
-    # Renderizar header e footer com contexto
     header_html_string = render_to_string('sistema/header.html', context, request=request)
     footer_html_string = render_to_string('sistema/footer.html', context, request=request)
-
-    # Criar arquivos temporários
     header_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
     footer_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
-
     header_temp.write(header_html_string.encode('utf-8'))
     footer_temp.write(footer_html_string.encode('utf-8'))
-
     header_temp.close()
     footer_temp.close()
 
-    pdf_file = pdfkit.from_string(
-        html_string,
-        False,
-        configuration=config,
-        options={
-            'enable-local-file-access': '',
-            'margin-top': '35mm',
-            'margin-bottom': '30mm',
-            'header-html': f'file:///{header_temp.name.replace("\\", "/")}',
-            'footer-html': f'file:///{footer_temp.name.replace("\\", "/")}',
-            'header-spacing': '5',
-            'footer-spacing': '5',
-        }
-    )
+    try:
+        pdf_file = pdfkit.from_string(
+            html_string,
+            False,
+            configuration=local_config,
+            options={
+                'enable-local-file-access': None,
+                'margin-top': '35mm',
+                'margin-bottom': '30mm',
+                'header-html': f'file:///{header_temp.name.replace("\\", "/")}',
+                'footer-html': f'file:///{footer_temp.name.replace("\\", "/")}',
+                'header-spacing': '5',
+                'footer-spacing': '5',
+                'quiet': ''
+            }
+        )
+    except Exception as e:
+        raise RuntimeError(f"wkhtmltopdf failed: {e}. Verifique se imagens referenciadas existem no storage e se os campos image_* do JobCard foram atualizados.")
 
-    # Backup versionado
     backup_filename = f'JobCard_{jobcard_id}_Rev_{job.rev}.pdf'
     backups_dir = os.path.join(settings.BASE_DIR, 'jobcard_backups')
     os.makedirs(backups_dir, exist_ok=True)
-
     backup_path = os.path.join(backups_dir, backup_filename)
     with open(backup_path, 'wb') as f:
         f.write(pdf_file)
 
-    # Limpar arquivos temporários
-    os.unlink(header_temp.name)
-    os.unlink(footer_temp.name)
+    try:
+        os.unlink(header_temp.name)
+        os.unlink(footer_temp.name)
+    except Exception:
+        pass
 
-    # Resposta para download
     response = HttpResponse(pdf_file, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename=JobCard_{jobcard_id}_Rev_{job.rev}.pdf'
     return response
@@ -3346,3 +3401,136 @@ def api_dfr_close(request, jobcard_number: str):
         "total_lines": total_lines,
     }
     return Response(summary, status=status.HTTP_201_CREATED)
+
+from django.core.files.storage import default_storage, FileSystemStorage
+import os, re
+import time
+from django.utils.text import slugify
+
+def _save_jobcard_image(job, uploaded_file, index):
+    field = f'image_{index}'
+    base = re.sub(r'[^A-Za-z0-9_.-]', '_', (job.job_card_number or str(job.id)))
+    ext = os.path.splitext(uploaded_file.name)[1] or '.png'
+    filename = f"{base}_{index}{ext}"
+    path = os.path.join('jobcard_images', filename)
+
+    # remover existente
+    existing = getattr(job, field)
+    try:
+        if existing and default_storage.exists(existing.name):
+            default_storage.delete(existing.name)
+    except Exception:
+        pass
+
+    saved_path = default_storage.save(path, uploaded_file)
+    setattr(job, field, saved_path)
+    return saved_path
+
+
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
+def delete_jobcard_image(request):
+    """
+    POST: {'jobcard_number': 'A01.PS-EL-0001', 'index': 1}
+    Remove arquivo do storage e zera campo no banco.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+    jobcard_number = request.POST.get('jobcard_number')
+    try:
+        index = int(request.POST.get('index'))
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Invalid index'}, status=400)
+
+    job = get_object_or_404(JobCard, job_card_number=jobcard_number)
+    field = f'image_{index}'
+    f = getattr(job, field, None)
+    if f:
+        try:
+            if hasattr(f, 'name') and default_storage.exists(f.name):
+                default_storage.delete(f.name)
+        except Exception:
+            pass
+        setattr(job, field, None)
+        job.save(update_fields=[field])
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'No image to delete'}, status=404)
+
+ALLOWED_EXT = ".pdf"
+MAX_SIZE_MB = 50  # ajuste se quiser
+
+def _is_pdf(file_obj) -> bool:
+    """
+    Validação robusta: extensão .pdf e header %PDF (magic bytes).
+    """
+    name_ok = file_obj.name.lower().endswith(ALLOWED_EXT)
+    pos = file_obj.tell()
+    head = file_obj.read(5)  # b'%PDF-'
+    file_obj.seek(pos)
+    header_ok = head.startswith(b"%PDF")
+    return name_ok and header_ok
+
+@login_required(login_url="login")
+@permission_required("jobcards.change_jobcard", raise_exception=True)
+def upload_documents(request):
+    if request.method == "GET":
+        # Renderiza a página de upload
+        return render(request, "sistema/upload_documents/upload_documents.html")
+
+    if request.method == "POST":
+        files = request.FILES.getlist("documents")
+        if not files:
+            messages.error(request, "No files selected.")
+            return redirect("upload_documents")  # mantenha o nome da sua rota aqui
+
+        # Pasta de destino: MEDIA_ROOT/documents_jobcards/
+        rel_dir = os.path.join("documents_jobcards")
+        abs_dir = os.path.join(settings.MEDIA_ROOT, rel_dir)
+        os.makedirs(abs_dir, exist_ok=True)
+
+        storage = FileSystemStorage(
+            location=abs_dir,
+            base_url=settings.MEDIA_URL + rel_dir + "/"
+        )
+
+        saved, errors = [], []
+
+        for f in files:
+            # Tamanho
+            if f.size > MAX_SIZE_MB * 1024 * 1024:
+                errors.append(f"{f.name}: file too large (> {MAX_SIZE_MB}MB).")
+                continue
+
+            # Apenas PDF (ext + magic bytes)
+            if not _is_pdf(f):
+                errors.append(f"{f.name}: only PDF files are allowed.")
+                continue
+
+            # Nome seguro (sem timestamp para permitir overwrite "1:1")
+            base, _ = os.path.splitext(f.name)
+            safe_name = f"{slugify(base)[:80]}.pdf"
+
+            # OVERWRITE: se existir, apaga antes de salvar
+            abs_target = os.path.join(abs_dir, safe_name)
+            if os.path.exists(abs_target):
+                try:
+                    os.remove(abs_target)
+                except OSError as e:
+                    errors.append(f"{f.name}: failed to overwrite ({e}).")
+                    continue
+
+            # Salva (FileSystemStorage não sobrescreve por padrão)
+            filename = storage.save(safe_name, f)
+            saved.append(storage.url(filename))
+
+        if saved:
+            messages.success(request, f"{len(saved)} PDF(s) uploaded successfully (overwritten when same name).")
+        if errors:
+            messages.warning(request, " | ".join(errors))
+
+        return redirect("upload_documents")
+
+    # Outros métodos → volta pra página
+    messages.error(request, "Method not allowed.")
+    return redirect("upload_documents")

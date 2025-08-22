@@ -39,6 +39,10 @@ class JobCard(models.Model):
     offshore_field_check = models.CharField(max_length=3, choices=[('NO', 'No'), ('YES', 'Yes')],default='NO')
     checked_preliminary_by = models.CharField(max_length=100, blank=True, null=True, verbose_name="Checked Preliminary By")
     checked_preliminary_at = models.DateTimeField(blank=True, null=True, verbose_name="Checked Preliminary At")
+    image_1 = models.ImageField(upload_to='jobcard_images/', blank=True, null=True)
+    image_2 = models.ImageField(upload_to='jobcard_images/', blank=True, null=True)
+    image_3 = models.ImageField(upload_to='jobcard_images/', blank=True, null=True)
+    image_4 = models.ImageField(upload_to='jobcard_images/', blank=True, null=True)
 
     def __str__(self):
         return f"{self.job_card_number} - {self.activity_id}"

@@ -1,10 +1,11 @@
 {% extends 'sistema/base.html' %}
+{% load dict_extras %}
 {% load static %}
 {% block content %}
 
 
 <div class="container-fluid">
-  <form method="post" id="stepForm" action="{% url 'edit_jobcard' job.job_card_number %}">
+  <form method="post" enctype="multipart/form-data" id="stepForm" action="{% url 'edit_jobcard' job.job_card_number %}">
   {% csrf_token %}
 
   <div class="row">
@@ -26,17 +27,11 @@
         </div>
 
         <div class="card-body">
-          <form method="post" id="stepForm" action="{% url 'edit_jobcard' job.job_card_number %}">
-            {% csrf_token %}
-
-               
-
-
-            {% include 'sistema/partials/jobcard_creator/step_1.html' %}
-            {% include 'sistema/partials/jobcard_creator/step_2.html' %}
-            {% include 'sistema/partials/jobcard_creator/step_3.html' %}
-            {% include 'sistema/partials/jobcard_creator/step_4.html' %}
-            {% include 'sistema/partials/jobcard_creator/step_5.html' %}
+           {% include 'sistema/partials/jobcard_creator/step_1.html' %}
+           {% include 'sistema/partials/jobcard_creator/step_2.html' %}
+           {% include 'sistema/partials/jobcard_creator/step_3.html' %}
+           {% include 'sistema/partials/jobcard_creator/step_4.html' %}
+           {% include 'sistema/partials/jobcard_creator/step_5.html' %}
 
             <!-- Bolinhas -->
             <div class="text-center my-3">
@@ -58,10 +53,10 @@
               <button type="submit" name="generate_pdf" class="btn btn-success d-none" id="submitBtn">Save & Finish</button>
             </div>
 
-          </form>
-        </div>
-      </div>
-    </div>
+            <!-- formulário principal encerra mais abaixo -->
+         </div>
+       </div>
+     </div>
 
     <!-- Card lateral -->
     <div class="col-5">

@@ -147,7 +147,11 @@
                             </span>
                         </a>
                         <div class="dropdown-menu">
-                            
+                            <a class="dropdown-item" href="{% url 'upload_documents' %}">
+                                
+                                <i class="fas fa-file-upload fa-sm fa-fw  text-gray-400"></i>
+                                Save Documents
+                            </a>
                         </div>
                     </li>
 
@@ -194,15 +198,15 @@
                         </a>
 
                         <div class="dropdown-menu">
-                            <a class="dropdown-item" href="{% url 'allocated_material_list' %}">Material Base</a>
+                            <a class="dropdown-item" href="{% url 'allocated_material_list' %}">Material Allocated</a>
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'allocated_manpower_list' %}">Manpower Base</a>
+                            <a class="dropdown-item" href="{% url 'allocated_manpower_list' %}">Manpower Allocated</a>
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'allocated_tool_list' %}">Tools Base</a>
+                            <a class="dropdown-item" href="{% url 'allocated_tool_list' %}">Tools Allocated</a>
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'allocated_engineering_list' %}">Engineering Base</a>
+                            <a class="dropdown-item" href="{% url 'allocated_engineering_list' %}">Engineering Allocated</a>
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'allocated_task_list' %}">Task Base</a>
+                            <a class="dropdown-item" href="{% url 'allocated_task_list' %}">Task Allocated</a>
                         </div>
 
                     </li>
