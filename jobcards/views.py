@@ -3068,11 +3068,21 @@ def jobcards_planning_list(request):
         docs_status = []
         all_docs_available = True
 
+        # for doc in allocated_docs:
+        #     doc_ok = DocumentoControle.objects.filter(
+        #         codigo=doc.document,
+        #         revisao='AFC'
+        #     ).exists()
+        #     docs_status.append({
+        #         "document": doc.document,
+        #         "rev": doc.rev,
+        #         "available": doc_ok,
+        #     })
+        #     if not doc_ok:
+        #         all_docs_available = False
+
         for doc in allocated_docs:
-            doc_ok = DocumentoControle.objects.filter(
-                codigo=doc.document,
-                revisao='AFC'
-            ).exists()
+            doc_ok = doc.status == 'AFC'
             docs_status.append({
                 "document": doc.document,
                 "rev": doc.rev,
