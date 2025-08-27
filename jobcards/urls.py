@@ -122,6 +122,7 @@ urlpatterns = [
 
     # Outros endpoints auxiliares
     path('api/revisoes_ultimas/', views.api_revisoes_ultimas, name='api_revisoes_ultimas'),
+    path('jobcard/<str:jobcard_id>/allocation/<int:task_order>/', views.save_allocation, name='save_allocation'),
 
     # Atualização do Estoque 
     path("api/rfid/check/", views.check_rfid, name="check_rfid"),
@@ -141,7 +142,10 @@ urlpatterns = [
     #deleta imagens do 3D
     path('jobcard/delete_image/', views.delete_jobcard_image, name='delete_jobcard_image'),
 
-    path ('jobcard/upload_documents/', views.upload_documents, name='upload_documents')
+    path ('jobcard/upload_documents/', views.upload_documents, name='upload_documents'),
+
+
+    
 ]
 
 
