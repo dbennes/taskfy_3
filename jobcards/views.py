@@ -2488,34 +2488,39 @@ def procurement_list(request):
 
 @login_required(login_url='login')
 @csrf_exempt
+@login_required(login_url='login')
+@csrf_exempt
 def import_procurement(request):
     if request.method == 'POST' and request.FILES.get('file'):
         try:
             file = request.FILES['file']
             df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
+
+            # 1. Apaga toda a base antes de importar (base absoluta)
+            ProcurementBase.objects.all().delete()
+
+            # 2. Insere todos os registros da planilha, seguindo as regras de unicidade
             for _, row in df.iterrows():
-                obj, created = ProcurementBase.objects.update_or_create(
-                po_number=row['PO Number'],
-                pmto_code=row['PMTO CODE'],
-                tag=row['TAG'],
-                mr_number=row['MR Number'],
-                mr_rev=row['MR Rev'],
-                defaults={
-                    "po_status": row.get("Status", ""),
-                    "po_date": row.get("PO Date"),
-                    "vendor": row.get("Vendor", ""),
-                    "expected_delivery_date": row.get("Expected Delivery Date"),
-                    "qty_mr": row.get("Qty MR"),
-                    "qty_mr_unit": row.get("Qty MR [UNIT]", ""),
-                    "item_type": row.get("Item Type", ""),
-                    "discipline": row.get("Discipline", ""),
-                    "tam_2026": row.get("TAM 2026", ""),
-                    "detailed_description": row.get("Detailed Description", ""),
-                    "qty_purchased": row.get("Qty Purchased"),
-                    "qty_purchased_unit": row.get("Qty Purchased [UNIT]", ""),
-                    "qty_received": row.get("Qty Received", 0)
-                }
-            )
+                ProcurementBase.objects.create(
+                    po_number=row['PO Number'],
+                    po_status=row.get("Status", ""),
+                    po_date=row.get("PO Date"),
+                    vendor=row.get("Vendor", ""),
+                    expected_delivery_date=row.get("Expected Delivery Date"),
+                    mr_number=row.get("MR Number", ""),
+                    mr_rev=row.get("MR Rev", ""),
+                    qty_mr=row.get("Qty MR"),
+                    qty_mr_unit=row.get("Qty MR [UNIT]", ""),
+                    item_type=row.get("Item Type", ""),
+                    discipline=row.get("Discipline", ""),
+                    tam_2026=row.get("TAM 2026", ""),
+                    pmto_code=row.get("PMTO CODE", ""),
+                    tag=row.get("TAG", ""),
+                    detailed_description=row.get("Detailed Description", ""),
+                    qty_purchased=row.get("Qty Purchased"),
+                    qty_purchased_unit=row.get("Qty Purchased [UNIT]", ""),
+                    qty_received=row.get("Qty Received", 0)
+                )
             return JsonResponse({'status': 'ok'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
@@ -2872,9 +2877,12 @@ def warehouse_receive_form(request, pk):
             qty_purchased_unit=po.qty_purchased_unit,
         )
 
+    saldo = (po.qty_purchased or 0) - (po.qty_received or 0)
+    
     return render(request, 'sistema/warehouse/partials/warehouse_receive_form.html', {
         'po': po,
         'ws': ws,
+        'saldo': saldo,
     })
       
 def warehouse_rfid(request):
@@ -3544,3 +3552,12 @@ def upload_documents(request):
     # Outros métodos → volta pra página
     messages.error(request, "Method not allowed.")
     return redirect("upload_documents")
+
+
+
+# --------- AREA DE SUPRIMENTOS --------------- #
+
+@login_required(login_url="login")
+@permission_required("jobcards.change_jobcard", raise_exception=True)
+def modify_jobcard(request):
+    return render(request, 'sistema/modify_jobcard/modify_jobcard.html')

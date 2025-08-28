@@ -145,7 +145,10 @@ urlpatterns = [
     path ('jobcard/upload_documents/', views.upload_documents, name='upload_documents'),
 
 
-    
+    # -------- API Impediments -------- #
+
+    path ('jobcard/modify/', views.modify_jobcard, name='modify_jobcard'),
+
 ]
 
 

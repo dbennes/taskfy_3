@@ -6,7 +6,7 @@
         data-po-search="{{ po.po_number|default_if_none:'' }} {{ po.vendor|default_if_none:'' }} {{ po.detailed_description|default_if_none:'' }}">
         <div class="kanban-card-title">{{ po.po_number }}</div>
         <div class="kanban-card-meta">
-            {{ po.vendor|default:"—"|truncatechars:20 }}<br>
+            {{ po.tag|default:"—"|truncatechars:20 }}<br>
             {{ po.detailed_description|default:"—"|truncatechars:30 }}
         </div>
     </div>

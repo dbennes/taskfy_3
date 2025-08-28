@@ -75,64 +75,47 @@
     </div>
   </div>
 
-  
-  <!-- RECEIVING FORM -->
+  <!-- WAREHOUSE RECEIVING FORM -->
   <div class="pt-1 mt-0">
-      <span class="fw-bold" style="font-size:15px; color:#44bd32; letter-spacing:0.02em;">
-        Warehouse Receiving
-      </span>
-      <form id="receiveForm" action="{% url 'warehouse_receive' pk=po.id %}" method="post" autocomplete="off" class="mt-3">
-        {% csrf_token %}
-        <div class="row g-2">
-          <div class="col-md-4">
-            <label class="form-label mb-1 fw-semibold">Qty to Receive</label>
-            <input type="number" min="0" max="{{ saldo }}" step="any" name="qty_received" class="form-control form-control-sm border-primary" required>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label mb-1 fw-semibold">Notes</label>
-            <input type="text" name="notes" class="form-control form-control-sm border-info">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label mb-1 fw-semibold">Registration Type</label>
-            <select name="registration_type" class="form-select form-select-sm border-success" required>
-              <option value="">Select...</option>
-              <option value="unit">Unitary (one by one, ex: valves)</option>
-              <option value="lot">Lot (grouped, ex: bolts)</option>
-            </select>
-          </div>
+    <span class="fw-bold" style="font-size:15px; color:#44bd32; letter-spacing:0.02em;">
+      Warehouse Receiving
+    </span>
+    <form id="receiveForm" action="{% url 'warehouse_receive' pk=po.id %}" method="post" autocomplete="off" class="mt-3">
+      {% csrf_token %}
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label mb-1 fw-semibold">Qty to Receive</label>
+          <input type="number"
+                 min="0"
+                 max="{{ saldo }}"
+                 step="any"
+                 name="qty_received"
+                 class="form-control form-control-sm border-primary"
+                 required
+                 id="inputQtyToReceive">
+          <small class="text-muted">
+            Maximum allowed: {{ saldo }} {{ po.qty_purchased_unit|default:"" }}
+          </small>
         </div>
-        <button type="submit" class="btn btn-primary w-100 mt-3 fw-bold py-2" style="font-size:13px;letter-spacing:.04em;">
-          <i class="fas fa-circle-check me-2" style="font-size:15px;"></i>
-          Confirm Receiving
-        </button>
-      </form>
-  </div>  
-
-
-
+        <div class="col-md-4">
+          <label class="form-label mb-1 fw-semibold">Notes</label>
+          <input type="text" name="notes" class="form-control form-control-sm border-info">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label mb-1 fw-semibold">Registration Type</label>
+          <select name="registration_type" class="form-select form-select-sm border-success" required>
+            <option value="">Select...</option>
+            <option value="unit">Unitary (one by one, ex: valves)</option>
+            <option value="lot">Lot (grouped, ex: bolts)</option>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary w-100 mt-3 fw-bold py-2" style="font-size:13px;letter-spacing:.04em;">
+        <i class="fas fa-circle-check me-2" style="font-size:15px;"></i>
+        Confirm Receiving
+      </button>
+    </form>
+  </div>
 </div>
 
-<script>
-document.getElementById('receiveForm').onsubmit = function(e) {
-  e.preventDefault();
-  const data = Object.fromEntries(new FormData(this).entries());
-  fetch(this.action, {
-    method: 'POST',
-    headers: {
-      'Content-Type':'application/json',
-      'X-CSRFToken': data['csrfmiddlewaretoken']
-    },
-    body: JSON.stringify(data)
-  })
-  .then(res => res.json())
-  .then(json => {
-    if (json.result === "ok") {
-      const modal = bootstrap.Modal.getInstance(document.getElementById('warehouseModal'));
-      if (modal) modal.hide();
-      location.reload();
-    } else {
-      alert("Receiving error.");
-    }
-  });
-};
-</script>
+

@@ -102,6 +102,7 @@
             <!-- Busca rápida local -->
             <input type="text" class="form-control form-control-sm kanban-search-input mt-1" placeholder="Filtrar..." data-status="{{ status }}" style="font-size:10px; border-radius: 5px;">
           </div>
+
           <div class="kanban-cards" data-status="{{ status }}">
             {% for item in kanban|get_item:status %}
               <div class="kanban-card"
@@ -134,6 +135,7 @@
               <p class="text-center text-muted" style="font-size:9px;">Nenhum item em “{{ status }}”.</p>
             {% endfor %}
           </div>
+          
         </div>
       {% endfor %}
     </div>
@@ -162,7 +164,7 @@
         </thead>
         <tbody>
           {% for ws in stocks %}
-            <tr style="cursor:pointer;" onclick="openWarehouseModal({{ ws.id }})">
+            <tr style="cursor:pointer;"">
               <td>{{ ws.po_number }}</td>
               <td>{{ ws.item_type|default:"—" }}</td>
               <td>{{ ws.vendor|default:"—" }}</td>
@@ -196,6 +198,8 @@
       </table>
     </div>
   </div>
+
+
 </div>
 
 <!-- Modal de detalhes -->
@@ -365,13 +369,33 @@ function openWarehouseModal(id, status=null) {
       const receiveForm = document.getElementById('receiveForm');
       if (receiveForm) {
         receiveForm.onsubmit = function(e) {
+          const qtyInput = document.getElementById('inputQtyToReceive');
+          const max = parseFloat(qtyInput.max.replace(',', '.'));
+          const value = parseFloat(qtyInput.value.replace(',', '.'));
+
+          const EPSILON = 0.00001; // tolerância mínima para ponto flutuante
+
+          if (isNaN(value) || value > max + EPSILON) {
+            e.preventDefault();
+            alert("A quantidade recebida não pode ser maior que o saldo disponível! (Max: " + max.toFixed(2) + ")");
+            qtyInput.focus();
+            return false;
+          }
+          if (value <= 0) {
+            e.preventDefault();
+            alert("Informe uma quantidade maior que zero.");
+            qtyInput.focus();
+            return false;
+          }
+
+          // Só envia o AJAX se passou pela validação!
           e.preventDefault();
           const data = Object.fromEntries(new FormData(this).entries());
           fetch(receiveForm.action, {
             method: 'POST',
             headers: {
               'Content-Type':'application/json',
-              'X-CSRFToken':'{{ csrf_token }}'
+              'X-CSRFToken': data['csrfmiddlewaretoken']
             },
             body: JSON.stringify(data)
           })
