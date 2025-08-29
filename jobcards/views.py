@@ -2901,6 +2901,13 @@ def warehouse_rfid(request):
     paginator = Paginator(qs, 50)  # 50 cards por página
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+
+    # Adiciona saldo (to_register) em cada stock
+    for stock in page_obj:
+        total_registered = stock.pieces.aggregate(total=models.Sum('lot_qty'))['total'] or 0
+        stock.to_register = float(stock.qty_received or 0) - float(total_registered or 0)
+        stock.registered_qty = float(total_registered or 0)
+
     return render(request, 'sistema/warehouse/warehouse_rfid.html', {
         'warehouse_stocks': page_obj,  # agora itere sobre page_obj
         'page_obj': page_obj,
@@ -2911,13 +2918,18 @@ def warehouse_rfid(request):
     
 def rfid_modal(request, stock_id):
     stock = get_object_or_404(WarehouseStock, pk=stock_id)
-    # Traga os pieces relacionados, se necessário
-    pieces = stock.pieces.all()  # Se tiver related_name='pieces'
+    pieces = stock.pieces.all()
+    registered_qty = pieces.aggregate(total=models.Sum('lot_qty'))['total'] or 0
+    to_register = float(stock.qty_received or 0) - float(registered_qty or 0)
     return render(request, 'sistema/warehouse/partials/rfid_modal.html', {
         'stock': stock,
         'pieces': pieces,
+        'to_register': to_register,
+        'registered_qty': registered_qty,
     })
     
+
+@csrf_exempt
 @csrf_exempt
 def rfid_add(request, stock_id):
     if request.method == "POST":
@@ -2925,7 +2937,10 @@ def rfid_add(request, stock_id):
         data = json.loads(request.body)
         rfid_tag = data.get("rfid_tag")
         location = data.get("location") or "Warehouse at Aveon Yard"
-        lot_qty = int(data.get("lot_qty", 1))
+        try:
+            lot_qty = Decimal(str(data.get("lot_qty", 1)))
+        except (TypeError, ValueError, decimal.InvalidOperation):
+            return JsonResponse({'result': 'error', 'msg': 'Invalid quantity!'}, status=400)
         received_by = request.user.get_username() if request.user.is_authenticated else ""
 
         # Do not allow registration if limit has been reached
@@ -2938,8 +2953,8 @@ def rfid_add(request, stock_id):
             return JsonResponse({'result': 'error', 'msg': 'RFID already exists.'})
 
         # Optional: If using lot_qty > 1, ensure total does not exceed qty_received
-        total_qty = stock.pieces.aggregate(total=models.Sum('lot_qty'))['total'] or 0
-        if (total_qty + lot_qty) > stock.qty_received:
+        total_qty = stock.pieces.aggregate(total=models.Sum('lot_qty'))['total'] or Decimal('0')
+        if (total_qty + lot_qty) > Decimal(str(stock.qty_received)):
             return JsonResponse({'result': 'error', 'msg': 'The sum of the batches exceeds the received quantity!'})
 
         WarehousePiece.objects.create(
@@ -3555,9 +3570,14 @@ def upload_documents(request):
 
 
 
-# --------- AREA DE SUPRIMENTOS --------------- #
+# --------- AREA DE MODIFICAÇÃO DA JOBCARDS --------------- #
 
 @login_required(login_url="login")
 @permission_required("jobcards.change_jobcard", raise_exception=True)
-def modify_jobcard(request):
-    return render(request, 'sistema/modify_jobcard/modify_jobcard.html')
+def modify_jobcard(request, jobcard):
+
+    jobcard_obj = get_object_or_404(JobCard, job_card_number=jobcard)
+
+    return render(request, 'sistema/modify_jobcard/modify_jobcard.html', {
+        "jobcard": jobcard_obj
+    })

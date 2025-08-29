@@ -12,7 +12,19 @@
   {% if stock.registration_type == "lot" %}
   <div class="mb-2">
     <label>Quantity for this batch</label>
-    <input type="number" name="lot_qty" class="form-control" min="1" max="{{ stock.qty_received|add:'-stock.pieces.count' }}" value="1" required>
+    <input
+      type="number"
+      id="lotQty"
+      name="lot_qty"
+      class="form-control"
+      min="0.01"
+      max="{{ stock.qty_received|add:'-stock.pieces.count' }}"
+      value="1"
+      required
+      step="any"
+      data-received="{{ stock.qty_received }}"
+      data-registered="{{ stock.pieces.count }}"
+    >
   </div>
   {% endif %}
   <div class="mb-2">

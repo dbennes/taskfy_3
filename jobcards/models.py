@@ -414,12 +414,12 @@ class WarehousePiece(models.Model):
         max_length=100, unique=True,
         verbose_name="RFID Tag"
     )
-    lot_qty = models.PositiveIntegerField(
-        default=1, verbose_name="Quantity in Lot"
-    )  # 1 para unitário, >1 para lote
+    lot_qty = models.DecimalField(
+        max_digits=10, decimal_places=2, default=1,
+        verbose_name="Quantity in Lot"
+    )  # Aceita valores decimais!
     created_at = models.DateTimeField(auto_now_add=True)
     received_by = models.CharField(max_length=100, blank=True, null=True)
-    
     LOCATION_CHOICES = [
         ('warehouse_aveon', 'Warehouse at Aveon Yard'),
         ('dock_aveon', 'Dock at Aveon Yard'),

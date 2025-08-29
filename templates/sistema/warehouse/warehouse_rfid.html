@@ -3,104 +3,253 @@
 {% block content %}
 
 <style>
-.kanban-board { display: flex; flex-wrap: wrap; gap: 16px; min-height: 68vh; }
-.kanban-card {
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 2px 6px rgba(40,60,90,0.07);
-    border-left: 5px solid #44bd32;
-    min-width: 310px;
-    max-width: 340px;
-    flex: 1 0 320px;
-    padding: 14px 13px 13px 13px;
-    margin-bottom: 10px;
-    font-size: 12px;
-    position: relative;
-}
-.kanban-card-title { font-weight: 600; font-size: 14px; color: #232323; }
-.kanban-card-meta { font-size: 11px; color: #6a6b72; margin-bottom: 6px; }
-.kanban-card .btn { font-size: 12px; }
-.kanban-card .badge { font-size: 11px; }
-.pagination { margin-top: 24px; }
+  :root{
+    --bg:#f7f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280; --line:#e6e8ef;
+    --success:#22c55e; --warn:#f59e0b; --danger:#ef4444; --primary:#0d6efd;
+    --shadow:0 4px 14px rgba(16,24,40,.06);
+    --r:12px; --fs11:11.5px; --fs12:12px; --fs13:13px;
+  }
+  #content{ background:var(--bg)!important; }
+
+  /* ===== Top (filtros compactos) ===== */
+  .top-wrap{
+    position: sticky; top:-6px; z-index:8;
+    padding:10px 10px 8px; margin:-10px -10px 12px;
+    background:linear-gradient(#fff, #ffffffc6 70%, transparent);
+    border-bottom:1px solid var(--line); backdrop-filter:blur(6px);
+  }
+  .card-kicker{ font-size:var(--fs11); letter-spacing:.04em; color:#7a8191; font-weight:600; text-transform:uppercase; margin-bottom:4px; }
+  .chip{ display:inline-flex; align-items:center; gap:6px; background:#f2f4f7; border:1px solid var(--line); color:#333; border-radius:999px; padding:4px 10px; font-size:var(--fs12); cursor:pointer;}
+  .chip .x{font-size:11px; opacity:.66}
+  .pagination{ margin-top:16px; }
+  .page-link{ border-radius:8px; }
+
+  /* ===== Grid e Cards ===== */
+  .kanban-board{
+    display:grid; gap:12px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    align-items:stretch; min-height:64vh;
+  }
+  .kanban-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--r);
+    box-shadow:var(--shadow); padding:10px; position:relative;
+    display:flex; flex-direction:column; gap:8px;
+    min-height:210px; /* altura base uniforme */
+    transition:box-shadow .18s ease;
+  }
+  .kanban-card:hover{ box-shadow:0 8px 20px rgba(16,24,40,.09); }
+  .kanban-card::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:8px 0 0 8px;
+    background: linear-gradient(180deg,#22c55e,#16a34a);
+  }
+  .kanban-card.warn::before{ background: linear-gradient(180deg,#f59e0b,#d97706); }
+  .kanban-card.danger::before{ background: linear-gradient(180deg,#ef4444,#dc2626); }
+
+  /* Título com Recv dentro e sem quebra */
+  .title-row{
+    display:flex; align-items:center; gap:6px;
+    font-size:var(--fs13); color:var(--ink); font-weight:700; min-height:24px;
+  }
+  .title-text{
+    display:flex; align-items:center; gap:6px; min-width:0;
+    flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .pill{
+    border:1px solid var(--line); background:#f6f7fb; border-radius:999px;
+    padding:2px 8px; font-size:var(--fs11); font-weight:600; color:#3a3f52; white-space:nowrap;
+  }
+  .pill-green{ background:#eaf8f0; border-color:#cdeedd; color:#0f5132; }
+  .pill-amber{ background:#fff3cd; border-color:#ffe69c; color:#7a5200; }
+  .pill-gray{ background:#eef2f7; border-color:#e1e6ef; color:#3e4a5a; }
+
+  .meta-wrap{ display:flex; gap:6px; flex-wrap:wrap; }
+  .meta{ background:#f5f6fb; border:1px solid var(--line); border-radius:8px; padding:3px 7px; font-size:var(--fs12); color:var(--muted); }
+
+  /* Descrição fixa em 2 linhas para padronizar altura */
+  .desc{
+    background:#f1f4f9; border:1px solid var(--line); border-radius:8px; padding:6px 8px;
+    font-size:var(--fs12); color:#4b5563;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient: vertical; overflow:hidden;
+    min-height:42px; /* ~2 linhas */
+  }
+
+  /* Progresso compacto */
+  .progress{ height:6px; background:#eef1f6; border-radius:999px; overflow:hidden; }
+  .progress-bar{ height:100%; width:0%; transition:width .25s ease; }
+  .ok{ background:linear-gradient(90deg,#22c55e,#16a34a); }
+  .mid{ background:linear-gradient(90deg,#f59e0b,#d97706); }
+  .low{ background:linear-gradient(90deg,#ef4444,#dc2626); }
+
+  /* Pílulas "Reg" e "To Reg" */
+  .stats-row{
+    display:flex; gap:8px; align-items:center; justify-content:space-between; font-size:var(--fs12);
+  }
+
+  /* Rodapé sem saltos */
+  .card-spacer{ flex:1 1 auto; }
+  .actions{ display:flex; gap:6px; }
+  .btn-slim{ font-size:var(--fs12); padding:6px 9px; border-radius:9px; }
+  .rfid-list{ max-height:140px; overflow:auto; border:1px dashed var(--line); border-radius:10px; padding:6px 8px; }
+
+  .empty{ background:#fff; border:1px dashed var(--line); border-radius:12px; padding:24px; text-align:center; color:#7b8191; }
 </style>
 
-<div class="container-fluid">
-  <!-- FILTRO BACKEND -->
-  <form class="row align-items-end mb-3" method="get">
-    <div class="col-md-3 mb-2">
-      <input class="form-control" name="po" value="{{ po }}" placeholder="Search PO Number...">
-    </div>
-    <div class="col-md-3 mb-2">
-      <input class="form-control" name="pmto" value="{{ pmto }}" placeholder="Search PMTO Code...">
-    </div>
-    <div class="col-md-3 mb-2">
-      <input class="form-control" name="tag" value="{{ tag }}" placeholder="Search Tag...">
-    </div>
-    <div class="col-md-3 mb-2">
-      <button class="btn btn-primary w-100" type="submit">Filter</button>
-    </div>
-  </form>
+<div class="container-fluid px-2 px-md-3">
 
-  <!-- CARDS -->
+  <!-- ===== Filtros + Quick ===== -->
+  <div class="top-wrap">
+    <form class="row g-2 align-items-end" method="get" autocomplete="off">
+      <div class="col-12 col-md-3">
+        <div class="card-kicker">PO Number</div>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="fa-solid fa-file-invoice"></i></span>
+          <input class="form-control" name="po" value="{{ po }}" placeholder="e.g. 4500XXXX">
+        </div>
+      </div>
+      <div class="col-12 col-md-3">
+        <div class="card-kicker">PMTO</div>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="fa-solid fa-boxes-stacked"></i></span>
+          <input class="form-control" name="pmto" value="{{ pmto }}" placeholder="e.g. PMTO-1234">
+        </div>
+      </div>
+      <div class="col-12 col-md-3">
+        <div class="card-kicker">Tag</div>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="fa-solid fa-tag"></i></span>
+          <input class="form-control" name="tag" value="{{ tag }}" placeholder="e.g. TAG-123">
+        </div>
+      </div>
+      <div class="col-8 col-md-2">
+        <button class="btn btn-primary btn-sm w-100" type="submit"><i class="fa-solid fa-filter me-1"></i>Filter</button>
+      </div>
+      <div class="col-4 col-md-1">
+        <a class="btn btn-outline-secondary btn-sm w-100" href="?" title="Clear"><i class="fa-solid fa-rotate"></i></a>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <div class="card-kicker">Quick Filter (client-side)</div>
+        <input id="quickFilter" class="form-control form-control-sm" placeholder="Type PO / PMTO / Tag on this page…">
+      </div>
+
+      <div class="col-12">
+        {% if po %}<span class="chip" data-chip="po">{{ po }} <span class="x">&times;</span></span>{% endif %}
+        {% if pmto %}<span class="chip" data-chip="pmto">{{ pmto }} <span class="x">&times;</span></span>{% endif %}
+        {% if tag %}<span class="chip" data-chip="tag">{{ tag }} <span class="x">&times;</span></span>{% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- ===== GRID ===== -->
   <div class="kanban-board" id="kanbanBoard">
     {% for stock in page_obj %}
       <div class="kanban-card"
-        data-po="{{ stock.po_number|lower }}"
-        data-pmto="{{ stock.pmto_code|default:''|lower }}"
-        data-tag="{{ stock.tag|default:''|lower }}">
-        <div class="kanban-card-title">
-          {{ stock.po_number }} — {{ stock.pmto_code|default:stock.tag|default:"—" }}
-          <span class="badge bg-secondary float-end">Received: {{ stock.qty_received }}</span>
+           data-po="{{ stock.po_number|lower }}"
+           data-pmto="{{ stock.pmto_code|default:''|lower }}"
+           data-tag="{{ stock.tag|default:''|lower }}"
+           data-registered="{{ stock.registered_qty|default:0 }}"
+           data-to-register="{{ stock.to_register|default:0 }}"
+           data-received="{{ stock.qty_received|default:0 }}">
+
+        <!-- Título (recv interno, sem quebra) -->
+        <div class="title-row">
+          <div class="title-text">
+            <span class="text-muted"><i class="fa-regular fa-box"></i></span>
+            <span>{{ stock.po_number }}</span>
+            <span class="text-muted">—</span>
+            <span>{{ stock.pmto_code|default:stock.tag|default:"—" }}</span>
+          </div>
+          <span class="pill pill-gray">Recv: {{ stock.qty_received|floatformat:2 }}</span>
         </div>
-        <div class="kanban-card-meta mb-1">
-          <b>Tag:</b> {{ stock.tag|default:"—" }}<br>
-          <b>Description:</b> {{ stock.detailed_description|truncatechars:45|default:"—" }}
+
+        <div class="meta-wrap">
+          <span class="meta"><b>Tag:</b> {{ stock.tag|default:"—" }}</span>
         </div>
+
+        <div class="desc">
+          {{ stock.detailed_description|default:"—"|truncatechars:160 }}
+        </div>
+
+        <!-- Progresso + pílulas -->
         <div>
-          <b>RFIDs Registered:</b>
-          <span class="badge bg-success">{{ stock.pieces.count }}</span>
-          <b class="ms-3">To Register:</b>
-          <span class="badge bg-warning text-dark">{{ stock.qty_received|add:"-stock.pieces.count" }}</span>
+          <div class="progress" aria-label="Registration progress">
+            <div class="progress-bar"></div>
+          </div>
+          <div class="stats-row mt-1">
+            <span class="pill pill-green">Reg: {{ stock.registered_qty|default:"0"|floatformat:2 }}</span>
+            <span class="pill pill-amber ms-auto">To Reg: {{ stock.to_register|default:"0"|floatformat:2 }}</span>
+          </div>
         </div>
-        <button class="btn btn-outline-success w-100 mt-2"
-          onclick="openRfidModal({{ stock.id }}, '{{ stock.po_number }}', '{{ stock.pmto_code }}')">
-          Add/View RFID
-        </button>
+
+        <div class="card-spacer"></div>
+
+        <div class="actions">
+          <button class="btn btn-outline-success btn-slim flex-grow-1 btn-open-rfid"
+                  data-stock-id="{{ stock.id }}"
+                  data-po="{{ stock.po_number|escapejs }}"
+                  data-pmto="{{ stock.pmto_code|default:''|escapejs }}">
+            <i class="fa-solid fa-wifi me-1"></i>Add / View RFID
+          </button>
+          {% if stock.tag %}
+            <button class="btn btn-outline-secondary btn-slim copy-btn" data-copy="{{ stock.tag }}" title="Copy Tag">
+              <i class="fa-regular fa-copy"></i>
+            </button>
+          {% endif %}
+        </div>
+
         {% if stock.pieces.all %}
-          <div class="mt-2">
-            <b>RFIDs:</b>
-            <ul class="mb-0 ps-3 small" style="max-height: 100%; overflow-y: auto;">
-              {% for piece in stock.pieces.all %}
-                <li class="text-success">{{ piece.rfid_tag }}</li>
-              {% endfor %}
-            </ul>
+          <div>
+            <button class="btn btn-light btn-slim w-100 text-start mt-2"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#rfidList-{{ stock.id }}"
+                    aria-expanded="false">
+              <i class="fa-solid fa-list-check me-1"></i>RFIDs ({{ stock.pieces.all|length }})
+            </button>
+            <div id="rfidList-{{ stock.id }}" class="collapse mt-2">
+              <div class="rfid-list">
+                <ul class="mb-0 ps-3 small">
+                  {% for piece in stock.pieces.all %}
+                    <li class="text-success">
+                      <i class="fa-solid fa-circle-check me-1"></i>{{ piece.rfid_tag }}
+                      <span class="text-muted">— batch qty: {{ piece.lot_qty|floatformat:2 }}</span>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
           </div>
         {% endif %}
 
       </div>
     {% empty %}
-      <div class="text-center text-muted w-100" style="font-size:14px;">No items found.</div>
+      <div class="empty w-100">
+        <div class="mb-1" style="font-size:24px;">🧭</div>
+        <div class="fw-semibold">No items found</div>
+        <div class="small">Try clearing filters or reducing the query.</div>
+      </div>
     {% endfor %}
   </div>
 
-  <!-- Paginação -->
+  <!-- ===== Paginação ===== -->
   {% if page_obj.has_other_pages %}
     <div class="d-flex justify-content-center">
-      <nav>
-        <ul class="pagination">
+      <nav aria-label="Pagination">
+        <ul class="pagination pagination-sm">
           {% if page_obj.has_previous %}
             <li class="page-item">
-              <a class="page-link" href="?po={{ po }}&pmto={{ pmto }}&tag={{ tag }}&page={{ page_obj.previous_page_number }}">Previous</a>
+              <a class="page-link" href="?po={{ po }}&pmto={{ pmto }}&tag={{ tag }}&page={{ page_obj.previous_page_number }}">
+                <i class="fa-solid fa-chevron-left"></i> Previous
+              </a>
             </li>
           {% endif %}
           <li class="page-item disabled">
-            <span class="page-link">
-              Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-            </span>
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
           </li>
           {% if page_obj.has_next %}
             <li class="page-item">
-              <a class="page-link" href="?po={{ po }}&pmto={{ pmto }}&tag={{ tag }}&page={{ page_obj.next_page_number }}">Next</a>
+              <a class="page-link" href="?po={{ po }}&pmto={{ pmto }}&tag={{ tag }}&page={{ page_obj.next_page_number }}">
+                Next <i class="fa-solid fa-chevron-right"></i>
+              </a>
             </li>
           {% endif %}
         </ul>
@@ -109,14 +258,14 @@
   {% endif %}
 </div>
 
-<!-- Modal para cadastrar/visualizar RFIDs -->
+<!-- ===== Modal RFID ===== -->
 <div class="modal fade" id="rfidModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header" style="background:#e4f5e9;">
-        <h5 class="modal-title text-success">
-          RFID Register <span id="rfidModalTitle" class="ms-2"></span>
-        </h5>
+      <div class="modal-header" style="background:#eaf6ef;">
+        <h6 class="modal-title text-success m-0">
+          <i class="fa-solid fa-wifi me-1"></i> RFID Register <span id="rfidModalTitle" class="ms-1"></span>
+        </h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="rfidModalBody">
@@ -128,81 +277,123 @@
   </div>
 </div>
 
-
 <script>
-// Função para abrir o modal e carregar o HTML via AJAX
-function openRfidModal(stockId, po, pmto) {
-  document.getElementById('rfidModalTitle').textContent = `${po} / ${pmto}`;
-  fetch(`/rfid/modal/${stockId}/`)
-    .then(res => res.text())
-    .then(html => {
-      document.getElementById('rfidModalBody').innerHTML = html;
-      new bootstrap.Modal(document.getElementById('rfidModal')).show();
-      activateRfidFormHandler(); // <-- sempre ativa o handler após carregar o HTML
-    });
-}
-
-// Função que ativa o submit AJAX do form do modal
-function activateRfidFormHandler() {
-  const form = document.getElementById('rfidAddForm');
-  if (!form) {
-    console.warn('Form não encontrado!');
-    return;
-  }
-  form.onsubmit = function(e) {
-    e.preventDefault();
-    console.log('Interceptou submit!');
-    const data = Object.fromEntries(new FormData(this).entries());
-    const successMsg = document.getElementById('rfid-success-msg');
-    const errorMsg = document.getElementById('rfid-error-msg');
-    if(successMsg) successMsg.style.display = 'none';
-    if(errorMsg) errorMsg.style.display = 'none';
-
-    fetch('/rfid/add/' + form.dataset.stockId + '/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCookie('csrftoken')
-      },
-      body: JSON.stringify(data)
-    })
-    .then(res => res.json())
-    .then(json => {
-      if (json.result === "ok") {
-        if(successMsg) successMsg.style.display = 'block';
-        form.reset();
-        // Fecha o modal após 0.5s
-        setTimeout(() => {
-          const modal = bootstrap.Modal.getInstance(document.getElementById('rfidModal'));
-          if(modal) modal.hide();
-          // Adicione o reload AQUI!
-          setTimeout(() => { location.reload(); }, 300); // Reload após fechar o modal
-        }, 500);
-      } else {
-        if(errorMsg) {
-          errorMsg.innerText = json.msg || "Error registering RFID!";
-          errorMsg.style.display = 'block';
-        }
-      }
-    });
-  };
-}
-
-// Função para pegar o CSRF do cookie
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
+/* ===== Helpers ===== */
+function getCookie(name){
+  let cookieValue=null;
+  if(document.cookie && document.cookie!==''){
+    const cookies=document.cookie.split(';');
+    for(let c of cookies){
+      c=c.trim();
+      if(c.substring(0,name.length+1)===(name+'=')){
+        cookieValue=decodeURIComponent(c.substring(name.length+1)); break;
       }
     }
   }
   return cookieValue;
 }
 
+/* ===== Modal RFID (AJAX) ===== */
+function openRfidModal(stockId, po, pmto){
+  document.getElementById('rfidModalTitle').textContent = `${po}${pmto ? ' / '+pmto : ''}`;
+  fetch(`/rfid/modal/${stockId}/`)
+    .then(res=>res.text())
+    .then(html=>{
+      document.getElementById('rfidModalBody').innerHTML = html;
+      new bootstrap.Modal(document.getElementById('rfidModal')).show();
+      activateRfidFormHandler();
+    });
+}
+function activateRfidFormHandler(){
+  const form=document.getElementById('rfidAddForm');
+  if(!form){ console.warn('Form não encontrado'); return; }
+  form.onsubmit=function(e){
+    e.preventDefault();
+    const data=Object.fromEntries(new FormData(this).entries());
+    const ok=document.getElementById('rfid-success-msg');
+    const er=document.getElementById('rfid-error-msg');
+    if(ok) ok.style.display='none';
+    if(er) er.style.display='none';
+
+    fetch('/rfid/add/' + form.dataset.stockId + '/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+      body: JSON.stringify(data)
+    })
+    .then(r=>r.json())
+    .then(json=>{
+      if(json.result==='ok'){
+        if(ok) ok.style.display='block';
+        form.reset();
+        setTimeout(()=>{
+          const modal=bootstrap.Modal.getInstance(document.getElementById('rfidModal'));
+          if(modal) modal.hide();
+          setTimeout(()=>location.reload(), 250);
+        }, 450);
+      }else{
+        if(er){ er.innerText = json.msg || 'Error registering RFID!'; er.style.display='block'; }
+      }
+    });
+  }
+}
+
+/* ===== UI / Cards ===== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  // Abrir modal RFID
+  document.querySelectorAll('.btn-open-rfid').forEach(btn=>{
+    btn.addEventListener('click', ()=> openRfidModal(btn.dataset.stockId, btn.dataset.po, btn.dataset.pmto));
+  });
+
+  // Copiar Tag
+  document.querySelectorAll('.copy-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const v=btn.dataset.copy||'';
+      navigator.clipboard.writeText(v);
+      btn.innerHTML='<i class="fa-solid fa-check"></i>';
+      setTimeout(()=> btn.innerHTML='<i class="fa-regular fa-copy"></i>', 900);
+    });
+  });
+
+  // Progress + status colorido consistente
+  document.querySelectorAll('.kanban-card').forEach(card=>{
+    const reg=parseFloat(card.dataset.registered||0) || 0;
+    const toreg=parseFloat(card.dataset.toRegister||0) || 0;
+    const recv=parseFloat(card.dataset.received||0) || 0;
+
+    let total = reg + toreg;
+    if(!total || total<=0) total = recv || reg;
+    const pct = total>0 ? Math.min(100, Math.round((reg/total)*100)) : 0;
+
+    const bar = card.querySelector('.progress-bar');
+    if(bar){
+      bar.style.width = pct + '%';
+      bar.classList.add(pct>=90 ? 'ok' : pct>=40 ? 'mid' : 'low');
+      bar.setAttribute('aria-valuenow', pct);
+      bar.setAttribute('aria-valuemin', 0);
+      bar.setAttribute('aria-valuemax', 100);
+    }
+    if(toreg>0 && pct<90) card.classList.add('warn');
+    if(total>0 && pct<=10) card.classList.add('danger');
+  });
+
+  // Quick filter client-side
+  const qf=document.getElementById('quickFilter');
+  qf?.addEventListener('input', ()=>{
+    const term=(qf.value||'').toLowerCase().trim();
+    document.querySelectorAll('.kanban-card').forEach(c=>{
+      const hay=(c.dataset.po+' '+c.dataset.pmto+' '+c.dataset.tag).toLowerCase();
+      c.style.display = term ? (hay.includes(term)?'':'none') : '';
+    });
+  });
+
+  // Chips: limpar param específico
+  document.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const url=new URL(window.location.href);
+      url.searchParams.delete(chip.dataset.chip);
+      window.location.href=url.toString();
+    });
+  });
+});
 </script>
 {% endblock %}
