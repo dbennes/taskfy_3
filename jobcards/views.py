@@ -94,6 +94,8 @@ from .serializers import ImpedimentSerializer
 from collections import defaultdict
 import re
 from django.db.models import Sum
+from .forms import JobCardForm, EDITABLE_FIELDS
+import csv
 
 
 
@@ -3238,6 +3240,10 @@ def check_rfid(request):
             results.append({"rfid": tag, "status": "Not Registered"})
     return Response(results)
 
+def api_rfid_all(request):
+    rfids = list(WarehousePiece.objects.values_list('rfid_tag', flat=True))
+    return JsonResponse(rfids, safe=False)
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def update_location(request):
@@ -3571,13 +3577,164 @@ def upload_documents(request):
 
 
 # --------- AREA DE MODIFICAÇÃO DA JOBCARDS --------------- #
+from django.contrib import messages
+from django.db import transaction
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth.decorators import login_required, permission_required
+
+from .forms import JobCardForm, EDITABLE_FIELDS
+from .models import JobCard
+
+from datetime import datetime
+import csv
+import io
+
+def _parse_date_maybe(value):
+    """
+    Converte strings comuns de data para date (YYYY-MM-DD, DD/MM/YYYY, etc.).
+    Retorna None se vazio; retorna string original se formato não reconhecido.
+    """
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if hasattr(value, "date"):  # ex.: Timestamp
+        try:
+            return value.date()
+        except Exception:
+            pass
+    text = str(value).strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+    return text  # deixa como veio; o ModelForm validará se necessário
+
 
 @login_required(login_url="login")
 @permission_required("jobcards.change_jobcard", raise_exception=True)
-def modify_jobcard(request, jobcard):
+def modify_jobcard_entry(request):
+    """
+    Página de entrada: usuário informa o número da JobCard.
+    """
+    if request.method == "POST":
+        number = (request.POST.get("job_card_number") or "").strip().upper()
+        if not number:
+            messages.error(request, "Informe o número da JobCard.")
+        elif not JobCard.objects.filter(job_card_number=number).exists():
+            messages.error(request, f"JobCard '{number}' não encontrada.")
+        else:
+            return redirect("modify_jobcard_edit", jobcard=number)
 
+    recent = JobCard.objects.order_by("-last_modified_at")[:20]
+    return render(request, "sistema/modify_jobcard/modify_jobcard_entry.html", {"recent_jobcards": recent})
+
+
+@login_required(login_url="login")
+@permission_required("jobcards.change_jobcard", raise_exception=True)
+def modify_jobcard_edit(request, jobcard):
+    """
+    Edição manual via formulário (com parâmetro na URL).
+    """
     jobcard_obj = get_object_or_404(JobCard, job_card_number=jobcard)
 
-    return render(request, 'sistema/modify_jobcard/modify_jobcard.html', {
-        "jobcard": jobcard_obj
+    if request.method == "POST":
+        form = JobCardForm(request.POST, instance=jobcard_obj)
+        if form.is_valid():
+            job = form.save(commit=False)
+            job.last_modified_by = request.user.username  # auditoria
+            job.save()
+            messages.success(request, "JobCard updated successfully.")
+            # permanece na página desta JobCard
+            return redirect("modify_jobcard_edit", jobcard=job.job_card_number)
+        messages.error(request, "Please correct the errors and try again.")
+    else:
+        form = JobCardForm(instance=jobcard_obj)
+
+    return render(request, "sistema/modify_jobcard/modify_jobcard.html", {
+        "form": form,
+        "jobcard": jobcard_obj,
     })
+
+
+@login_required(login_url="login")
+@permission_required("jobcards.change_jobcard", raise_exception=True)
+@transaction.atomic
+def modify_jobcard_excel_patch(request, jobcard):
+    """
+    Patch rápido por Excel (.xlsx) ou CSV:
+    - Lê a PRIMEIRA linha de dados.
+    - Cabeçalhos devem casar com nomes dos campos (ex.: prepared_by, jobcard_status, comments...).
+    - Atualiza apenas campos em EDITABLE_FIELDS.
+    """
+    job = get_object_or_404(JobCard, job_card_number=jobcard)
+
+    if request.method != "POST" or "file" not in request.FILES:
+        messages.error(request, "No file received.")
+        return redirect("modify_jobcard_edit", jobcard=jobcard)
+
+    f = request.FILES["file"]
+    filename = f.name.lower()
+
+    # Monta dict {campo: valor} da primeira linha
+    row_dict = {}
+
+    try:
+        if filename.endswith(".csv"):
+            # CSV em UTF-8 (aceita BOM)
+            data = io.TextIOWrapper(f.file, encoding="utf-8-sig")
+            reader = csv.DictReader(data)
+            first = next(reader, None)
+            if not first:
+                messages.error(request, "Empty CSV.")
+                return redirect("modify_jobcard_edit", jobcard=jobcard)
+            row_dict = {k.strip(): (v.strip() if isinstance(v, str) else v) for k, v in first.items() if k}
+
+        elif filename.endswith(".xlsx"):
+            try:
+                import openpyxl
+            except ImportError:
+                messages.error(request, "openpyxl not installed. Install with: pip install openpyxl")
+                return redirect("modify_jobcard_edit", jobcard=jobcard)
+
+            wb = openpyxl.load_workbook(f, data_only=True)
+            ws = wb.active
+            headers = []
+            for cell in next(ws.iter_rows(min_row=1, max_row=1)):
+                headers.append((str(cell.value).strip() if cell.value is not None else ""))
+
+            # pega apenas a primeira linha de dados
+            data_row = next(ws.iter_rows(min_row=2, values_only=True), None)
+            if not data_row:
+                messages.error(request, "Excel has no data rows.")
+                return redirect("modify_jobcard_edit", jobcard=jobcard)
+
+            for i, head in enumerate(headers):
+                if head:
+                    row_dict[head] = data_row[i] if i < len(data_row) else None
+
+        else:
+            messages.error(request, "Unsupported file. Use .xlsx or .csv.")
+            return redirect("modify_jobcard_edit", jobcard=jobcard)
+
+        # Aplica patch somente nos campos permitidos
+        changed = []
+        for field, value in row_dict.items():
+            if field in EDITABLE_FIELDS:
+                if field in {"start", "finish", "date_prepared", "date_approved"}:
+                    value = _parse_date_maybe(value)
+                setattr(job, field, value)
+                changed.append(field)
+
+        if changed:
+            job.last_modified_by = request.user.username
+            job.save()
+            messages.success(request, f"Patched fields: {', '.join(changed)}")
+        else:
+            messages.info(request, "No editable fields found in file.")
+
+    except Exception as e:
+        messages.error(request, f"Error reading file: {e}")
+
+    return redirect("modify_jobcard_edit", jobcard=jobcard)

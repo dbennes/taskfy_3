@@ -1,0 +1,124 @@
+{% extends 'sistema/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  body, .container { background:#f7f8fa !important; }
+  .card-clean { background:#fff; border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); border:1px solid #eceff3; }
+  .section-title { font-weight:700; letter-spacing:.01em; font-size:1rem; color:#232323; margin-bottom:8px; }
+  .muted { color:#6b7280; font-size:.9rem; }
+  .shortcut-item:hover { background:#f9fafb; }
+  /* Deixa a coluna da direita fixa no topo (apenas em telas lg+) */
+  @media (min-width: 992px) {
+    .sticky-lg-top-16 { position: sticky; top: 16px; }
+  }
+</style>
+
+<div class="container py-3" style="max-width:1140px;">
+  {% if messages %}
+    <div class="mb-2">
+      {% for m in messages %}
+        <div class="alert alert-{{ m.tags }} mb-2">{{ m }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="row g-3">
+    <!-- COLUNA ESQUERDA: FORMULÁRIO -->
+    <div class="col-12 col-lg-6">
+      <div class="card-clean mb-3">
+        <div class="p-3 border-bottom" style="background:#f5f7fb;">
+          <h5 class="mb-0">Modify JobCard</h5>
+          <div class="muted">Digite o número da JobCard para abrir a edição.</div>
+        </div>
+
+        <form method="post" class="p-3" novalidate>
+          {% csrf_token %}
+
+          <label class="form-label">JobCard Number</label>
+          <input
+            name="job_card_number"
+            class="form-control mb-3"
+            placeholder="A09.PS-EL-0001"
+            list="jobcardsList"
+            autofocus required>
+
+          <datalist id="jobcardsList">
+            {% for jc in recent_jobcards %}
+              <option value="{{ jc.job_card_number }}">
+                {{ jc.job_card_number }} — {{ jc.discipline }} {{ jc.location }}
+              </option>
+            {% endfor %}
+          </datalist>
+
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'jobcards_list' %}" class="btn btn-light">Cancelar</a>
+            <button class="btn btn-primary" type="submit">Continuar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- COLUNA DIREITA: ATALHOS -->
+    <div class="col-12 col-lg-6">
+      <div class="card-clean sticky-lg-top-16">
+        <div class="p-3 border-bottom" style="background:#f5f7fb;">
+          <div class="d-flex align-items-center justify-content-between">
+            <h6 class="mb-0">Atalhos (recentes)</h6>
+            <span class="badge text-bg-light">{{ recent_jobcards|length }}</span>
+          </div>
+        </div>
+
+        <div class="p-3">
+          <!-- Busca rápida local nos atalhos -->
+          <input id="shortcutFilter" type="text" class="form-control mb-3" placeholder="Filtrar por número, disciplina ou área...">
+
+          <div id="shortcutsList" class="row g-2">
+            {% for jc in recent_jobcards %}
+              <div class="col-12">
+                <a class="shortcut-item d-flex align-items-center p-2 border rounded text-decoration-none"
+                   href="{% url 'modify_jobcard_edit' jobcard=jc.job_card_number %}">
+                  <div class="flex-grow-1">
+                    <strong>{{ jc.job_card_number }}</strong>
+                    <div class="muted">
+                      {{ jc.discipline }} · {{ jc.location }}
+                      {% if jc.last_modified_at %} · {{ jc.last_modified_at|date:"d/m/Y H:i" }}{% endif %}
+                    </div>
+                  </div>
+                  <span class="ms-2">&rsaquo;</span>
+                </a>
+              </div>
+            {% empty %}
+              <div class="col-12 muted">Sem sugestões ainda.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div> <!-- /row -->
+</div>
+
+<script>
+  // Força o input em UPPERCASE (melhor UX p/ padrão do seu número)
+  (function() {
+    const inp = document.querySelector('input[name="job_card_number"]');
+    if (!inp) return;
+    inp.addEventListener('input', () => { inp.value = inp.value.toUpperCase(); });
+  })();
+
+  // Filtro rápido nos atalhos
+  (function() {
+    const filter = document.getElementById('shortcutFilter');
+    const list = document.getElementById('shortcutsList');
+    if (!filter || !list) return;
+
+    filter.addEventListener('input', () => {
+      const q = filter.value.trim().toLowerCase();
+      list.querySelectorAll('.shortcut-item').forEach(item => {
+        const text = item.innerText.toLowerCase();
+        item.parentElement.style.display = text.includes(q) ? '' : 'none';
+      });
+    });
+  })();
+</script>
+{% endblock %}

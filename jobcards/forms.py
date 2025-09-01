@@ -131,3 +131,60 @@ class JobCardImageForm(forms.ModelForm):
     class Meta:
         model = JobCard
         fields = ['image_1', 'image_2', 'image_3', 'image_4']
+
+
+
+
+
+# --- JobCardForm para edição + lista de campos liberados ---
+
+from django import forms
+from .models import JobCard
+
+# Campos que poderão ser editados no formulário e também via patch Excel/CSV
+EDITABLE_FIELDS = [
+    "activity_id", "start", "finish",
+    "system", "subsystem", "working_code",
+    "tag", "working_code_description",
+    "rev", "jobcard_status", "job_card_description",
+    "total_weight", "unit", "total_duration_hs",
+    "indice_kpi", "total_man_hours", "prepared_by",
+    "date_prepared", "approved_br", "date_approved",
+    "hot_work_required", "status", "comments",
+]
+
+class JobCardForm(forms.ModelForm):
+    # Exibição somente leitura do número da JobCard no topo do form
+    job_card_number_display = forms.CharField(
+        label="JobCard Number",
+        required=False,
+        disabled=True
+    )
+
+    class Meta:
+        model = JobCard
+        fields = EDITABLE_FIELDS
+        widgets = {
+            "start": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "finish": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "date_prepared": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "date_approved": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+
+            "working_code_description": forms.Textarea(attrs={"rows": 2, "class": "form-control"}),
+            "job_card_description": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+            "comments": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        instance = kwargs.get("instance")
+        super().__init__(*args, **kwargs)
+
+        # adiciona classe bootstrap aos demais inputs
+        for name, field in self.fields.items():
+            if not isinstance(field.widget, (forms.Textarea, forms.DateInput)):
+                css = field.widget.attrs.get("class", "")
+                field.widget.attrs["class"] = (css + " form-control").strip()
+
+        # Preenche o campo somente-leitura com o número da JobCard
+        if instance:
+            self.fields["job_card_number_display"].initial = instance.job_card_number

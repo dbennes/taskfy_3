@@ -126,6 +126,7 @@ urlpatterns = [
 
     # Atualização do Estoque 
     path("api/rfid/check/", views.check_rfid, name="check_rfid"),
+    path("api/rfid/all/", views.api_rfid_all, name="api_rfid_all"),
     path("api/rfid/update-location/", views.update_location, name="update_location"),
 
 
@@ -141,13 +142,15 @@ urlpatterns = [
     
     #deleta imagens do 3D
     path('jobcard/delete_image/', views.delete_jobcard_image, name='delete_jobcard_image'),
-
     path ('jobcard/upload_documents/', views.upload_documents, name='upload_documents'),
 
 
-    # -------- API Impediments -------- #
+    # -------- MODIFICAR JOBCARDS -------- #
 
-    path ('jobcard/modify/', views.modify_jobcard, name='modify_jobcard'),
+    # ENTRADA (sem parâmetro) → tela para digitar a JobCard
+    path("jobcards/modify/", views.modify_jobcard_entry, name="modify_jobcard_entry"),
+    path("jobcards/<str:jobcard>/edit/", views.modify_jobcard_edit, name="modify_jobcard_edit"),
+    path("jobcards/<str:jobcard>/edit/patch/", views.modify_jobcard_excel_patch, name="modify_jobcard_excel_patch"),
 
 ]
 
