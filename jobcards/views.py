@@ -218,8 +218,8 @@ def dashboard(request):
     preliminary_checked_count = JobCard.objects.filter(jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
     planning_checked_count = JobCard.objects.filter(jobcard_status='PLANNING JOBCARD CHECKED').count()
     offshore_checked_count = JobCard.objects.filter(jobcard_status='OFFSHORE FIELD JOBCARD CHECKED').count()
-    approved_to_execute_count = JobCard.objects.filter(jobcard_status='APPROVED TO EXECUTE').count()
-    finalized_count = JobCard.objects.filter(jobcard_status='JOBCARD FINALIZED').count()
+    approved_to_execute_count = JobCard.objects.filter(jobcard_status='RELEASED FOR EXECUTION').count()
+    finalized_count = JobCard.objects.filter(jobcard_status='JOBCARD COMPLETED').count()
     
     # Pega todos os pares únicos (code, name)
     discipline_legend = (
@@ -846,6 +846,11 @@ def allocate_resources(request, jobcard_id):
         )
 
     return redirect('generate_pdf', jobcard_id=job.job_card_number)
+
+
+from django.http import JsonResponse
+
+
 
 @login_required(login_url='login')
 @permission_required('jobcards.change_jobcard', raise_exception=True)
@@ -3153,8 +3158,8 @@ def change_jobcard_status(request, jobcard_id):
 
 
 @api_view(["GET"])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
+#@authentication_classes([JWTAuthentication])
+#@permission_classes([IsAuthenticated])
 def api_jobcard_list(request):
     qs = JobCard.objects.all().order_by('job_card_number')  # ajuste se quiser
     return Response(JobCardSerializer(qs, many=True).data)
@@ -3738,3 +3743,542 @@ def modify_jobcard_excel_patch(request, jobcard):
         messages.error(request, f"Error reading file: {e}")
 
     return redirect("modify_jobcard_edit", jobcard=jobcard)
+
+
+# --- CONFIGURAÇÃO DO IMPORT/MODIFY ------------------------------------------
+# (deixe isso perto dos seus imports)
+
+# Campos que NÃO podem ser atualizados (a sua coluna vermelha)
+FORBIDDEN_FIELDS = {
+    "seq_number","discipline","discipline_code","location","level",
+    "total_duration_hs","indice_kpi","total_man_hours","prepared_by",
+    "date_prepared","approved_br","date_approved","status",
+    "checked_preliminary_by","checked_preliminary_at",
+}
+
+# Campos que PODEM aparecer no template e ser atualizados (a sua coluna da direita)
+ALLOWED_FOR_MODIFY = [
+    "activity_id","start","finish","system","subsystem","workpack_number",
+    "working_code","tag","working_code_description",
+    "rev","jobcard_status","job_card_description","completed",
+    "total_weight","unit","hot_work_required","comments",
+]
+
+# Campos que vamos ignorar mesmo que apareçam
+IGNORED_ON_IMPORT = {"image_1","image_2","image_3","image_4","last_modified_at"}
+
+DATE_FIELDS = {"start", "finish", "date_prepared", "date_approved", "checked_preliminary_at"}
+
+def _parse_date_any(val):
+    """
+    Converte diferentes formatos em date.
+    Retorna None para vazio/NULL/NONE ou se não reconhecer.
+    """
+    if val is None:
+        return None
+
+    # already date/datetime
+    if isinstance(val, date) and not isinstance(val, datetime):
+        return val
+    if isinstance(val, datetime):
+        return val.date()
+
+    s = str(val).strip()
+    if s == "":
+        return None
+
+    # palavras-chave
+    lowered = s.lower()
+    if lowered in {"today", "hoje", "now", "agora"}:
+        return date.today()
+
+    # ISO com 'T'
+    if "t" in lowered:
+        try:
+            return datetime.fromisoformat(s.replace("Z", "")).date()
+        except Exception:
+            pass
+
+    # serial numérico do Excel (ex.: 45123, 45123.0)
+    # Excel (Windows) usa base 1899-12-30 por conta do bug do ano 1900
+    try:
+        # aceita "45123", "45123.0", "45123,0"
+        s_num = s.replace(",", ".")
+        serial = float(s_num)
+        if 1 <= serial < 100000:  # guarda-chuva razoável
+            base = date(1899, 12, 30)
+            return base + timedelta(days=int(round(serial)))
+    except Exception:
+        pass
+
+    # formatos comuns
+    fmts = (
+        "%Y-%m-%d",
+        "%d/%m/%Y",
+        "%d-%m-%Y",
+        "%Y/%m/%d",
+        "%Y-%m-%d %H:%M:%S",
+        "%d.%m.%Y",
+        "%m/%d/%Y",            # se alguém mandar em US
+        "%Y-%m-%d %H:%M",      # com hora sem segundos
+    )
+    for fmt in fmts:
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+
+    # última tentativa: só data da parte antes do espaço
+    if " " in s:
+        try:
+            return datetime.strptime(s.split(" ")[0], "%Y-%m-%d").date()
+        except Exception:
+            pass
+
+    # não reconhecido → None (e você decide se ignora ou trata como erro)
+    return None
+
+def _yn(val, default="NO"):
+    if val in (None, ""):
+        return default
+    s = str(val).strip().upper()
+    return "YES" if s in {"YES","Y","SIM","TRUE","1"} else "NO"
+
+def _hotwork(val):
+    if val in (None, ""):
+        return "NO"
+    s = str(val).strip().upper()
+    if s in {"YES","Y","SIM","TRUE","1"}: return "YES"
+    if s in {"NO","N","NAO","FALSE","0"}: return "NO"
+    return "NO"
+
+# === NOVA VIEW: baixar template com todos os campos ==========================
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
+def download_jobcard_modify_template(request):
+    """
+    Gera .xlsx para o import_jobcard_modify:
+    - Cabeçalho = job_card_number + SOMENTE os campos de ALLOWED_FOR_MODIFY.
+    """
+    import io, pandas as pd
+
+    headers = ["job_card_number"] + ALLOWED_FOR_MODIFY
+    example_row = ["A01.PS-EL-0001"] + [""] * len(ALLOWED_FOR_MODIFY)
+
+    df = pd.DataFrame([example_row], columns=headers)
+
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        df.to_excel(writer, sheet_name="ModifyJobCards", index=False)
+
+        info = pd.DataFrame({
+            "Dica": [
+                "Preencha apenas as colunas que quer atualizar.",
+                'Deixe a célula vazia para NÃO alterar o valor atual.',
+                'Escreva "NULL" para LIMPAR (salvar None) um campo.',
+                "Não altere o job_card_number — ele precisa existir no banco.",
+            ]
+        })
+        info.to_excel(writer, sheet_name="Instrucoes", index=False)
+
+    buf.seek(0)
+    return HttpResponse(
+        buf.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="jobcard_modify_template.xlsx"'},
+    )
+
+
+
+# === SUBSTITUA SUA FUNÇÃO import_jobcard POR ESTA VERSÃO ====================
+
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
+def import_jobcard_modify(request):
+    """
+    Atualiza JobCards existentes a partir de .xlsx/.csv.
+    - NÃO cria novas.
+    - Só aplica colunas em ALLOWED_FOR_MODIFY (vazias são ignoradas; "NULL"/"NONE" zera).
+    """
+    if request.method != "POST":
+        return JsonResponse({'status': 'error', 'message': 'Invalid request.'}, status=405)
+
+    f = request.FILES.get('file')
+    if not f:
+        return JsonResponse({'status': 'error', 'message': 'No file uploaded.'}, status=400)
+
+    import pandas as pd, re
+    try:
+        df = (pd.read_csv(f, dtype=str) if f.name.lower().endswith('.csv')
+              else pd.read_excel(f, dtype=str)).fillna("")
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': f'Could not read file: {e}'}, status=400)
+
+    # normaliza nomes de coluna
+    df.columns = [c.strip() for c in df.columns]
+    if 'job_card_number' not in df.columns:
+        return JsonResponse({'status': 'error', 'message': "Missing column: 'job_card_number'."}, status=400)
+
+    # só vamos considerar as colunas realmente permitidas
+    cols_to_apply = [c for c in df.columns if c in ALLOWED_FOR_MODIFY]
+    if not cols_to_apply:
+        return JsonResponse({'status': 'error', 'message': 'No updatable columns found.'}, status=400)
+
+    # valida duplicadas e formato do número
+    pattern = r"^[A-Z0-9]{3}\.[A-Z0-9]{2}-[A-Z0-9]{2}-\d{4}$"
+    dupes = df['job_card_number'].str.upper().duplicated(keep=False)
+    if dupes.any():
+        dups_list = df.loc[dupes, 'job_card_number'].str.upper().unique().tolist()
+        return JsonResponse({'status': 'error', 'message': f"Duplicated job_card_number in file: {', '.join(dups_list)}"}, status=400)
+
+    payload = []
+    invalid = []
+    for _, row in df.iterrows():
+        jobnum = str(row['job_card_number']).strip().upper()
+        if not jobnum:
+            continue
+        if not re.match(pattern, jobnum):
+            invalid.append(jobnum); continue
+
+        entry = {'job_card_number': jobnum}
+        for k in cols_to_apply:
+            entry[k] = row.get(k, "")
+        payload.append(entry)
+
+    if invalid:
+        return JsonResponse({'status': 'error', 'message': f"Invalid JobCard format: {', '.join(invalid)}"}, status=400)
+    if not payload:
+        return JsonResponse({'status': 'error', 'message': 'No useful rows to import.'}, status=400)
+
+    # existem todas?
+    jobnums = [r['job_card_number'] for r in payload]
+    existing = set(JobCard.objects.filter(job_card_number__in=jobnums).values_list('job_card_number', flat=True))
+    missing = sorted(set(jobnums) - existing)
+    if missing:
+        return JsonResponse({'status': 'not_found', 'missing': missing, 'message': 'Some JobCards do not exist.'}, status=400)
+
+    # aplica
+    from django.db import transaction
+    updated = 0
+    who = request.user.username or request.user.email or "importer"
+
+    with transaction.atomic():
+        for row in payload:
+            jobnum = row['job_card_number']
+
+            # monta updates (regras: vazio = não mexe; "NULL"/"NONE" = None)
+            updates = {}
+            for k, v in row.items():
+                if k == 'job_card_number' or k in IGNORED_ON_IMPORT:
+                    continue
+
+                val = (v or "").strip()
+                if val == "":
+                    continue
+                if val.upper() in {"NULL", "NONE"}:
+                    updates[k] = None
+                    continue
+
+                # normalizações específicas
+                if k in DATE_FIELDS:
+                    updates[k] = _parse_date_any(val)
+                elif k == "completed":
+                    updates[k] = _yn(val, default="NO")
+                elif k == "hot_work_required":
+                    updates[k] = _hotwork(val)
+                elif k == "jobcard_status":
+                    updates[k] = val.upper()
+                else:
+                    updates[k] = val
+
+            if not updates:
+                continue
+
+            updates['last_modified_by'] = who
+            JobCard.objects.filter(job_card_number=jobnum).update(**updates)
+            updated += 1
+
+    return JsonResponse({'status': 'ok', 'updated': updated})
+
+
+
+
+#====================== RENDERIZA NOVAMENTE OS PDFS ==========================#
+
+# views.py (imports extras)
+import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from django.core.cache import cache
+from django.views.decorators.http import require_POST, require_GET
+from django.template.loader import render_to_string
+from django.core.files.storage import default_storage
+import tempfile, os
+from django.views.decorators.http import require_POST
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+
+def _render_jobcard_pdf_to_disk(job_card_number: str):
+    """
+    Renderiza o PDF da JobCard atualizada e grava em jobcard_backups/JobCard_{num}_Rev_{rev}.pdf
+    Retorna (True, None) em sucesso, ou (False, 'erro...') em falha.
+    """
+    try:
+        job = JobCard.objects.get(job_card_number=job_card_number)
+    except JobCard.DoesNotExist:
+        return (False, "JobCard not found")
+
+    try:
+        area_info = Area.objects.filter(area_code=job.location).first() if job.location else None
+
+        # Código de barras (igual ao generate_pdf)
+        barcode_folder = os.path.join(settings.BASE_DIR, 'static', 'barcodes')
+        os.makedirs(barcode_folder, exist_ok=True)
+        barcode_filename = f'{job.job_card_number}.png'
+        barcode_path = os.path.join(barcode_folder, barcode_filename)
+        if not os.path.exists(barcode_path):
+            CODE128 = barcode.get_barcode_class('code128')
+            code128 = CODE128(job.job_card_number, writer=ImageWriter())
+            with open(barcode_path, 'wb') as bf:
+                code128.write(bf, options={'write_text': False})
+        barcode_url = f'file:///{barcode_path.replace("\\", "/")}'
+
+        allocated_manpowers   = AllocatedManpower.objects.filter(jobcard_number=job_card_number).order_by('task_order')
+        allocated_materials   = AllocatedMaterial.objects.filter(jobcard_number=job.job_card_number)
+        allocated_tools       = AllocatedTool.objects.filter(jobcard_number=job_card_number)
+        allocated_tasks       = AllocatedTask.objects.filter(jobcard_number=job_card_number).order_by('task_order')
+        allocated_engineering = AllocatedEngineering.objects.filter(jobcard_number=job.job_card_number)
+
+        image_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', '3.jpg')
+        image_url  = f'file:///{image_path.replace("\\", "/")}'
+
+        # Limpa referências quebradas de imagens
+        updated_fields = []
+        for i in range(1, 5):
+            field = f'image_{i}'
+            f = getattr(job, field, None)
+            if f:
+                exists = False
+                try:
+                    if hasattr(f, 'path') and os.path.exists(f.path):
+                        exists = True
+                    elif hasattr(f, 'name') and default_storage.exists(f.name):
+                        exists = True
+                except Exception:
+                    exists = False
+                if not exists:
+                    setattr(job, field, None)
+                    updated_fields.append(field)
+        if updated_fields:
+            job.save(update_fields=updated_fields)
+
+        # Monta caminhos file:/// para o template
+        image_files = {}
+        for i in range(1, 5):
+            field = f'image_{i}'
+            f = getattr(job, field, None)
+            if f:
+                try:
+                    if hasattr(f, 'path') and os.path.exists(f.path):
+                        image_files[field] = 'file:///' + f.path.replace('\\', '/')
+                    elif hasattr(f, 'name') and default_storage.exists(f.name):
+                        storage_path = default_storage.path(f.name)
+                        image_files[field] = 'file:///' + storage_path.replace('\\', '/')
+                    elif hasattr(f, 'url'):
+                        # sem request aqui – prefira caminhos file:///
+                        image_files[field] = image_files.get(field)
+                    else:
+                        image_files[field] = None
+                except Exception:
+                    image_files[field] = None
+            else:
+                image_files[field] = None
+
+        half = len(allocated_tools) // 2 if allocated_tools else 0
+
+        local_config = None
+        try:
+            if path_wkhtmltopdf and os.path.exists(path_wkhtmltopdf):
+                local_config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+        except Exception:
+            local_config = None
+
+        context = {
+            'job': job,
+            'allocated_manpowers': allocated_manpowers,
+            'allocated_materials': allocated_materials,
+            'allocated_tools': allocated_tools,
+            'allocated_tools_left': allocated_tools[:half],
+            'allocated_tools_right': allocated_tools[half:],
+            'allocated_tasks': allocated_tasks,
+            'allocated_engineerings': allocated_engineering,
+            'image_path': image_url,
+            'barcode_image': barcode_url,
+            'area_info': area_info,
+            'image_files': image_files,
+        }
+
+        html_string         = render_to_string('sistema/jobcard_pdf.html', context)
+        header_html_string  = render_to_string('sistema/header.html', context)
+        footer_html_string  = render_to_string('sistema/footer.html', context)
+        header_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
+        footer_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
+        header_temp.write(header_html_string.encode('utf-8'))
+        footer_temp.write(footer_html_string.encode('utf-8'))
+        header_temp.close(); footer_temp.close()
+
+        try:
+            pdf_bytes = pdfkit.from_string(
+                html_string,
+                False,
+                configuration=local_config,
+                options={
+                    'enable-local-file-access': None,
+                    'margin-top': '35mm',
+                    'margin-bottom': '30mm',
+                    'header-html': f'file:///{header_temp.name.replace("\\", "/")}',
+                    'footer-html': f'file:///{footer_temp.name.replace("\\", "/")}',
+                    'header-spacing': '5',
+                    'footer-spacing': '5',
+                    'quiet': '',
+                }
+            )
+        except Exception as e:
+            try:
+                os.unlink(header_temp.name); os.unlink(footer_temp.name)
+            except Exception: pass
+            return (False, f"wkhtmltopdf error: {e}")
+
+        try:
+            os.unlink(header_temp.name); os.unlink(footer_temp.name)
+        except Exception:
+            pass
+
+        backups_dir = os.path.join(settings.BASE_DIR, 'jobcard_backups')
+        os.makedirs(backups_dir, exist_ok=True)
+        backup_filename = f'JobCard_{job.job_card_number}_Rev_{job.rev}.pdf'
+        backup_path     = os.path.join(backups_dir, backup_filename)
+        with open(backup_path, 'wb') as f:
+            f.write(pdf_bytes)
+
+        return (True, None)
+    except Exception as e:
+        return (False, str(e))
+
+
+# views.py — inicia uma corrida e devolve run_id + total
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
+@require_POST
+def api_pdf_run_start(request):
+    ids = list(
+        JobCard.objects
+        .exclude(jobcard_status__in=['NO CHECKED','NOT CHECKED'])
+        .order_by('job_card_number')
+        .values_list('job_card_number', flat=True)
+    )
+    run_id = uuid.uuid4().hex[:8].upper()
+
+    # zera contadores na cache (use Redis/Memcached p/ produção)
+    ttl = 2 * 60 * 60  # 2h
+    cache.set(f'pdf:{run_id}:total', len(ids), ttl)
+    cache.set(f'pdf:{run_id}:done',  0, ttl)
+    cache.set(f'pdf:{run_id}:ok',    0, ttl)
+    cache.set(f'pdf:{run_id}:err',   0, ttl)
+
+    return JsonResponse({'status':'ok','run_id':run_id,'total':len(ids)})
+
+# views.py — consulta progresso da corrida
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
+@require_GET
+def api_pdf_run_progress(request):
+    run_id = request.GET.get('run_id','')
+    total = cache.get(f'pdf:{run_id}:total', 0) or 0
+    done  = cache.get(f'pdf:{run_id}:done',  0) or 0
+    ok    = cache.get(f'pdf:{run_id}:ok',    0) or 0
+    err   = cache.get(f'pdf:{run_id}:err',   0) or 0
+    return JsonResponse({'status':'ok','run_id':run_id,'total':total,'done':done,'ok':ok,'err':err})
+
+# views.py — processa um lote (batch) com paralelismo no servidor
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
+@require_POST
+def api_regenerate_jobcards_pdfs(request):
+    """
+    POST: limit, offset, parallel, (opcional) run_id
+    Se limit=0 → só retorna total (compatibilidade com preflight antigo).
+    """
+    try:
+        limit    = int(request.POST.get('limit', 200))
+        offset   = int(request.POST.get('offset', 0))
+        parallel = int(request.POST.get('parallel', 3))
+    except ValueError:
+        return JsonResponse({'status':'error','message':'invalid params'}, status=400)
+
+    run_id = request.POST.get('run_id') or None
+
+    base_qs = JobCard.objects.exclude(jobcard_status__in=['NO CHECKED','NOT CHECKED']).order_by('job_card_number')
+    total   = base_qs.count()
+
+    if limit == 0:
+        return JsonResponse({'status':'ok','total':total})
+
+    batch = list(base_qs.values_list('job_card_number', flat=True)[offset:offset+limit])
+    processed_ids = []
+    failed = []
+
+    # segura os workers
+    max_workers = max(1, min(parallel, 8))
+
+    def _one(jobnum):
+        ok, err = _render_jobcard_pdf_to_disk(jobnum)
+        # contadores globais por corrida (se houver run_id)
+        if run_id:
+            cache.incr(f'pdf:{run_id}:done', 1)
+            if ok: cache.incr(f'pdf:{run_id}:ok', 1)
+            else:  cache.incr(f'pdf:{run_id}:err', 1)
+        return (ok, err, jobnum)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futures = [ex.submit(_one, j) for j in batch]
+        for fut in as_completed(futures):
+            ok, err, jobnum = fut.result()
+            if ok:
+                processed_ids.append(jobnum)
+            else:
+                failed.append({'job': jobnum, 'error': err})
+
+    return JsonResponse({
+        'status': 'ok',
+        'total': total,
+        'processed_batch': len(processed_ids) + len(failed),
+        'processed_ids': processed_ids,
+        'failed': failed
+    })
+
+
+
+@login_required(login_url='login')
+def ajax_tools_for_manpowers(request):
+    working_code = request.GET.get('working_code')
+    direct_labors = request.GET.getlist('direct_labors[]')
+
+    # Filtra só ferramentas do working code E dos manpowers alocados
+    tools = ToolsBase.objects.filter(
+        working_code=working_code,
+        direct_labor__in=direct_labors
+    ).order_by('item')
+
+    data = [
+        {
+            'item': t.item,
+            'discipline': t.discipline,
+            'working_code': t.working_code,
+            'direct_labor': t.direct_labor,
+            'qty_direct_labor': t.qty_direct_labor,
+            'special_tooling': t.special_tooling,
+            'qty': t.qty,
+        }
+        for t in tools
+    ]
+    return JsonResponse({'tools': data})

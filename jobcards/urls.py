@@ -145,12 +145,30 @@ urlpatterns = [
     path ('jobcard/upload_documents/', views.upload_documents, name='upload_documents'),
 
 
+
+    path('ajax_tools_for_manpowers/', views.ajax_tools_for_manpowers, name='ajax_tools_for_manpowers'),
+
     # -------- MODIFICAR JOBCARDS -------- #
 
     # ENTRADA (sem parâmetro) → tela para digitar a JobCard
     path("jobcards/modify/", views.modify_jobcard_entry, name="modify_jobcard_entry"),
-    path("jobcards/<str:jobcard>/edit/", views.modify_jobcard_edit, name="modify_jobcard_edit"),
     path("jobcards/<str:jobcard>/edit/patch/", views.modify_jobcard_excel_patch, name="modify_jobcard_excel_patch"),
+
+
+
+    
+    path('jobcards/modify/<str:jobcard>/', views.modify_jobcard_edit, name='modify_jobcard_edit'),  # se você já tem essa view, mantenha
+    path('jobcards/import/modify/', views.import_jobcard_modify, name='import_jobcard_modify'),
+    path('jobcards/export/', views.export_jobcard_excel, name='export_jobcard_excel'),
+    path('jobcards/template/', views.download_jobcard_modify_template, name='download_jobcard_template'),
+
+
+    #path('api/jobcards/regenerate-pdfs', views.api_regenerate_jobcards_pdfs, name='api_regenerate_jobcards_pdfs'),
+
+    path("api/pdf-run/start", views.api_pdf_run_start, name="api_pdf_run_start"),
+    path("api/pdf-run/progress", views.api_pdf_run_progress, name="api_pdf_run_progress"),
+    path("api/pdf-regenerate", views.api_regenerate_jobcards_pdfs, name="api_regenerate_jobcards_pdfs"),
+
 
 ]
 

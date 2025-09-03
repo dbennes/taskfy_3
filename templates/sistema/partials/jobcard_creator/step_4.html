@@ -1,58 +1,232 @@
-<div class="step-content d-none" id="step-4" style="font-size: 12px;">
-    <h5 class="mb-3">Tools for Working Code: <span class="text-primary">{{ job.working_code }}</span></h5>
+<!-- ===== Step 4 – Tools for Working Code (NÃO ALTERA as views nem o HTML dos manpowers) ===== -->
+<div class="step-content" id="step-4" style="font-size:12px;">
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h5 class="mb-0">
+      Tools for Working Code: <span class="text-primary">{{ job.working_code }}</span>
+    </h5>
+    <div class="d-flex align-items-center gap-2">
+      <small id="tools-dl-counter" class="text-muted">0 manpowers in scope</small>
+      <div id="toolsSpinner" class="spinner-border spinner-border-sm text-secondary d-none" role="status" aria-hidden="true"></div>
+      <button type="button" id="toolsRefreshBtn" class="btn btn-sm btn-outline-secondary">Refresh</button>
+    </div>
+  </div>
 
-    {% if tools_list %}
-        <table class="table table-sm table-bordered" style="font-size: 11px;">
-            <thead class="table-light text-center">
-                <tr>
-                    <th>Item</th>
-                    <th>Discipline</th>
-                    <th>Working Code</th>
-                    <th>Direct Labor</th>
-                    <th>Qty DL</th>
-                    <th>Special Tooling</th>
-                    <th>Qty</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for tool in tools_list %}
-                    <tr>
-                        <td class="text-center text-secondary">
-                            {{ tool.item }}
-                            <input type="hidden" name="tool_item[]" value="{{ tool.item }}">
-                        </td>
-                        <td class="text-center text-dark">
-                            {{ tool.discipline }}
-                            <input type="hidden" name="tool_discipline[]" value="{{ tool.discipline }}">
-                        </td>
-                        <td class="text-center">
-                            {{ tool.working_code }}
-                            <input type="hidden" name="tool_working_code[]" value="{{ tool.working_code }}">
-                        </td>
-                        <td class="text-center">
-                            {{ tool.direct_labor }}
-                            <input type="hidden" name="tool_direct_labor[]" value="{{ tool.direct_labor }}">
-                        </td>
-                        <td class="text-center">
-                            {{ tool.qty_direct_labor|floatformat:2 }}
-                            <input type="hidden" name="tool_qty_direct_labor[]" value="{{ tool.qty_direct_labor|floatformat:2 }}">
-                        </td>
-                        <td>
-                            {{ tool.special_tooling }}
-                            <input type="hidden" name="tool_special_tooling[]" value="{{ tool.special_tooling }}">
-                        </td>
-                        <td class="text-center">
-                            {{ tool.qty|floatformat:2 }}
-                            <input type="hidden" step="any" class="form-control form-control-sm text-center"
-                                   name="tool_qty[]" value="{{ tool.qty|floatformat:2 }}">
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <div class="alert alert-warning" style="font-size: 12px;">
-            No tools found for working code <strong>{{ job.working_code }}</strong>.
-        </div>
-    {% endif %}
+  <div id="tools-na-alert" class="alert alert-warning py-2 px-3 d-none" role="alert" style="font-size:12px;">
+    All tasks are marked as <b>N/A</b> or have no manpowers. Tools are hidden for this working code.
+  </div>
+
+  <table class="table table-sm table-bordered mb-0" style="font-size:11px;">
+    <thead class="table-light text-center">
+      <tr>
+        <th>Item</th>
+        <th>Discipline</th>
+        <th>Working Code</th>
+        <th>Direct Labor</th>
+        <th>Qty DL</th>
+        <th>Special Tooling</th>
+        <th>Qty</th>
+      </tr>
+    </thead>
+    <tbody id="tools-table-body">
+      <tr>
+        <td colspan="7" class="text-center text-muted">Loading tools…</td>
+      </tr>
+    </tbody>
+  </table>
 </div>
+
+<script>
+// ===============================
+// Step 4 – Tools (apenas front-end)
+// ===============================
+
+// Pequeno util de debounce p/ não "spammar" o servidor
+function debounce(fn, ms) {
+  let t; 
+  return function(...args){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), ms); };
+}
+
+// Coleta TODOS os direct labors das tasks NÃO-N/A percorrendo o DOM existente
+function collectDirectLaborsFromDOM() {
+  const dlSet = new Set();
+
+  // 1) percorre todas as checkboxes de N/A (já presentes no seu HTML)
+  const naChecks = document.querySelectorAll('input.not-applicable-checkbox[id^="task-not-applicable-"]');
+
+  naChecks.forEach(chk => {
+    const idx = chk.id.replace('task-not-applicable-','');
+    if (chk.checked) return; // ignora tasks marcadas como N/A
+
+    // 2) acha o modal correspondente (já existe no DOM, mesmo fechado)
+    const modal = document.getElementById('modalAtividade' + idx);
+    if (!modal) return;
+
+    // 3) em cada linha da tabela do modal, a 2ª coluna é o nome do direct labor
+    modal.querySelectorAll('tbody tr').forEach(row => {
+      const nameCell = row.querySelector('td:nth-child(2)');
+      const dl = nameCell ? nameCell.textContent.trim() : '';
+      if (dl) dlSet.add(dl);
+    });
+  });
+
+  return Array.from(dlSet);
+}
+
+// Atualiza contador de DL e mostra/oculta aviso de N/A global
+function updateDLHeaderState(directLabors) {
+  const counter = document.getElementById('tools-dl-counter');
+  const naAlert = document.getElementById('tools-na-alert');
+  if (counter) counter.textContent = `${directLabors.length} manpowers in scope`;
+  // Se não há DLs coletados, pode ser que todas tasks estejam N/A (ou vazias) → mostra alerta
+  if (naAlert) naAlert.classList.toggle('d-none', directLabors.length > 0);
+}
+
+// Faz a chamada AJAX p/ sua view usando o nome certo do parâmetro: direct_labors[]
+function fetchTools(workingCode, directLabors) {
+  return $.get('/ajax_tools_for_manpowers/', {
+    working_code: workingCode,
+    'direct_labors[]': directLabors || []
+  });
+}
+
+// Renderiza a tabela de ferramentas
+function renderToolsTable(tools, workingCode) {
+  const tbody = document.getElementById('tools-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!tools || tools.length === 0) {
+    tbody.innerHTML = `<tr>
+      <td colspan="7" class="text-center">No tools found for working code <strong>${workingCode}</strong>.</td>
+    </tr>`;
+    return;
+  }
+
+  const rows = tools.map(tool => `
+    <tr>
+      <td class="text-center text-secondary">
+        ${tool.item}
+        <input type="hidden" name="tool_item[]" value="${tool.item}">
+      </td>
+      <td class="text-center text-dark">
+        ${tool.discipline}
+        <input type="hidden" name="tool_discipline[]" value="${tool.discipline}">
+      </td>
+      <td class="text-center">
+        ${tool.working_code}
+        <input type="hidden" name="tool_working_code[]" value="${tool.working_code}">
+      </td>
+      <td class="text-center">
+        ${tool.direct_labor}
+        <input type="hidden" name="tool_direct_labor[]" value="${tool.direct_labor}">
+      </td>
+      <td class="text-center">
+        ${parseFloat(tool.qty_direct_labor).toFixed(2)}
+        <input type="hidden" name="tool_qty_direct_labor[]" value="${parseFloat(tool.qty_direct_labor).toFixed(2)}">
+      </td>
+      <td>
+        ${tool.special_tooling}
+        <input type="hidden" name="tool_special_tooling[]" value="${tool.special_tooling}">
+      </td>
+      <td class="text-center">
+        ${parseFloat(tool.qty).toFixed(2)}
+        <input type="hidden" step="any" class="form-control form-control-sm text-center"
+               name="tool_qty[]" value="${parseFloat(tool.qty).toFixed(2)}">
+      </td>
+    </tr>
+  `).join('');
+
+  tbody.insertAdjacentHTML('beforeend', rows);
+}
+
+// Mostra/oculta spinner
+function setToolsLoading(isLoading) {
+  const sp = document.getElementById('toolsSpinner');
+  const tbody = document.getElementById('tools-table-body');
+  if (sp) sp.classList.toggle('d-none', !isLoading);
+  if (tbody && isLoading) {
+    tbody.innerHTML = `<tr>
+      <td colspan="7" class="text-center text-muted">Loading tools…</td>
+    </tr>`;
+  }
+}
+
+// Refresh principal (pega DL do DOM, atualiza header, busca e renderiza)
+const refreshTools = debounce(function(){
+  const workingCode = "{{ job.working_code }}"; // veio do backend
+  const directLabors = collectDirectLaborsFromDOM();
+
+  updateDLHeaderState(directLabors);
+
+  // Se não tiver nenhum DL (ex.: todas N/A), apenas limpa a tabela e mostra aviso
+  if (directLabors.length === 0) {
+    setToolsLoading(false);
+    renderToolsTable([], workingCode);
+    return;
+  }
+
+  setToolsLoading(true);
+  fetchTools(workingCode, directLabors)
+    .done(response => {
+      renderToolsTable(response.tools || [], workingCode);
+    })
+    .fail(() => {
+      // fallback simples
+      const tbody = document.getElementById('tools-table-body');
+      if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Failed to load tools.</td></tr>`;
+    })
+    .always(() => setToolsLoading(false));
+}, 300); // 300ms de debounce
+
+// Ligações de eventos (sem alterar o HTML original dos manpowers)
+document.addEventListener('DOMContentLoaded', () => {
+  // Botão manual de refresh
+  const btn = document.getElementById('toolsRefreshBtn');
+  if (btn) btn.addEventListener('click', refreshTools);
+
+  // 1) Sempre que marcar/desmarcar N/A → atualiza
+  document.body.addEventListener('change', (e) => {
+    if (e.target && e.target.classList.contains('not-applicable-checkbox')) {
+      refreshTools();
+    }
+    // alguns fluxos adicionam via select; se quiser reagir ao select também:
+    if (e.target && e.target.classList.contains('manpower-select')) {
+      // o add em si acontece em outro botão, então também usamos MutationObserver abaixo
+      refreshTools();
+    }
+  });
+
+  // 2) Mudança de qty/hours → atualiza
+  document.body.addEventListener('input', (e) => {
+    if (!e.target) return;
+    if (e.target.classList.contains('manpower-qty-input') ||
+        e.target.classList.contains('manpower-hh-input')) {
+      refreshTools();
+    }
+  });
+
+  // 3) Remoção de linha → atualiza
+  document.body.addEventListener('click', (e) => {
+    const btnRemove = e.target.closest && e.target.closest('.manpower-remove-btn');
+    if (btnRemove) {
+      // a linha sai logo após o clique; dá um microtempo e atualiza
+      setTimeout(refreshTools, 50);
+    }
+  });
+
+  // 4) Observa adições/remoções de linhas nas tabelas dos modais (MutationObserver)
+  document.querySelectorAll('[id^="modalAtividade"] tbody').forEach(tbody => {
+    const mo = new MutationObserver(() => refreshTools());
+    mo.observe(tbody, { childList: true });
+  });
+
+  // 5) Ao abrir/fechar qualquer modal de manpowers, força um refresh
+  document.querySelectorAll('[id^="modalAtividade"]').forEach(modal => {
+    modal.addEventListener('shown.bs.modal', refreshTools);
+    modal.addEventListener('hidden.bs.modal', refreshTools);
+  });
+
+  // 6) Primeiro carregamento
+  refreshTools();
+});
+</script>

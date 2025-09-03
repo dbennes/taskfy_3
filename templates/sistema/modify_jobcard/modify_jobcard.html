@@ -3,50 +3,121 @@
 
 {% block content %}
 <style>
-  body, .container { background:#f7f8fa !important; }
+  /* ===== Base + largura FLUID (usa o máximo possível da tela) ===== */
+  body, .container-fluid { background:#f7f8fa !important; }
+  .container-fluid { max-width: 1600px; } /* mais largo que padrão para “respirar” */
   .card-clean { background:#fff; border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); border:1px solid #eceff3; }
-  .section-title { font-weight:700; letter-spacing:.01em; font-size:1rem; color:#232323; margin-bottom:8px; }
-  .muted { color:#6b7280; font-size:.9rem; }
-  .readonly-chip { display:inline-block; padding:6px 10px; border:1px dashed #d1d5db; border-radius:10px; background:#f3f4f6; font-weight:600; }
-  .small-label { font-size:.88rem; color:#4b5563; }
-  .chip { padding:.35rem .6rem; border-radius:999px; font-weight:600; font-size:.8rem; border:1px solid #e5e7eb; background:#f8fafc; cursor:pointer; }
+
+  /* ===== Tipografia compacta (13px) + tokens ===== */
+  .form-label, .form-check-label { font-size:13px; color:#111827; margin-bottom:4px; font-weight:600; }
+  .form-control, .form-select { font-size:13px; border-radius:10px; padding:.42rem .55rem; }
+  .form-control:focus, .form-select:focus { border-color:#93c5fd; box-shadow:0 0 0 .2rem rgba(37,99,235,.12); }
+  .muted { color:#6b7280; font-size:12px; }
+  .section-title { font-weight:700; letter-spacing:.01em; font-size:14px; color:#232323; margin:14px 0 10px; display:flex; align-items:center; gap:8px; }
+  .section-title:before { content:""; width:6px; height:6px; border-radius:999px; background:#2563eb; display:inline-block; opacity:.7; }
+
+  /* ===== Topbar preta (estilo janela) ===== */
+  .topbar-black { background:#1f1f1f; border-radius:12px; padding:10px 12px; margin-bottom:12px; }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .dot.red{background:#ff5f57} .dot.yellow{background:#febc2e} .dot.green{background:#28c840}
+  .topbar-title { color:#fff; margin:0; font-size:.95rem; font-weight:700; opacity:.95; }
+  .btn-topbar { --bs-btn-padding-y:.35rem; --bs-btn-padding-x:.6rem; --bs-btn-font-size:.8rem; border-radius:10px; }
+
+  /* ===== Chips de status (segmentados) ===== */
+  .chips-wrap { display:flex; gap:.45rem; flex-wrap:wrap; }
+  .chip { padding:.34rem .6rem; border-radius:999px; font-weight:700; font-size:12px; border:1px solid #e5e7eb; background:#f9fafb; cursor:pointer; user-select:none; color:#1f2937; }
+  .chip:hover { background:#f3f4f6; }
   .chip.active { border-color:#2563eb; background:#eff6ff; color:#1d4ed8; }
-  .toolbar { gap:.5rem; flex-wrap:wrap; }
-  .toolbar .btn { border-radius:10px; }
-  .sidebar-item { display:flex; justify-content:space-between; align-items:center; padding:.4rem 0; border-bottom:1px dashed #eef2f7; }
-  .sidebar-item:last-child { border-bottom:0; }
-  .status-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:.4rem; }
+  .status-dot { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:.4rem; vertical-align:middle; }
   .dot-danger { background:#ef4444; } .dot-warning { background:#f59e0b; } .dot-info { background:#3b82f6; } .dot-success { background:#10b981; }
-  .field-hint { font-size:.8rem; color:#94a3b8; }
-  .input-group .btn { border-radius:0 .5rem .5rem 0; }
-  .sticky-save { position:sticky; bottom:0; background:#fff; border-top:1px solid #eceff3; padding:.75rem; display:flex; justify-content:space-between; align-items:center; border-radius:0 0 16px 16px; }
-  @media (min-width: 992px) { .sticky-lg-top-16 { position: sticky; top: 16px; } }
+
+  /* ===== Grid de 12 colunas (organização previsível) ===== */
+  .grid-12 { display:grid; grid-template-columns:repeat(12, minmax(0, 1fr)); gap:12px 14px; }
+  .span-12 { grid-column: span 12; }
+  .span-6  { grid-column: span 6; }
+  .span-4  { grid-column: span 4; }
+  .span-3  { grid-column: span 3; }
+  .span-2  { grid-column: span 2; }
+  .span-8  { grid-column: span 8; }
+
+  /* responsivo: em telas médias, aumentar as spans para caber melhor */
+  @media (max-width: 1399.98px) {
+    .span-3 { grid-column: span 4; }  /* 3 col → 4 col */
+    .span-2 { grid-column: span 3; }
+  }
+  @media (max-width: 991.98px) {
+    .grid-12 { grid-template-columns:repeat(6, minmax(0, 1fr)); }
+    .span-6 { grid-column: span 6; }
+    .span-4 { grid-column: span 6; }
+    .span-3 { grid-column: span 6; }
+    .span-2 { grid-column: span 3; }
+  }
+  @media (max-width: 575.98px) {
+    .grid-12 { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+    .span-2, .span-3, .span-4, .span-6, .span-8, .span-12 { grid-column: 1 / -1; }
+  }
+
+  /* ===== Field container padronizado ===== */
+  .field { display:flex; flex-direction:column; }
+  .hint { margin-top:4px; font-size:11.5px; color:#9aa3af; }
+
+  /* ===== Sticky action bar ===== */
+  .sticky-save { position:sticky; bottom:0; background:#fff; border-top:1px solid #eceff3; padding:.65rem; display:flex; justify-content:space-between; align-items:center; border-radius:0 0 16px 16px; gap:.6rem; }
+  .sticky-save .btn { border-radius:10px; }
+
+  /* ===== “Saving…” overlay ===== */
+  .saving-overlay { position: fixed; inset: 0; background: rgba(255,255,255,.75); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(2px); }
+  .saving-card { background:#111827; color:#fff; padding: 12px 14px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.2); display:flex; align-items:center; gap:.55rem; font-weight:700; font-size:13px; }
+
+  /* ===== Summary compacto ===== */
+  .summary-row { display:flex; justify-content:space-between; gap:10px; padding:.45rem 0; border-bottom:1px dashed #eef2f7; font-size:13px; }
+  .summary-row:last-child { border-bottom:0; }
 </style>
 
-<div class="container py-3" style="max-width:1200px;">
+<div class="container-fluid mt-2 px-2">
+  <!-- Topbar -->
+  <div class="d-flex align-items-center justify-content-between topbar-black">
+    <div class="d-flex align-items-center">
+      <span class="dot red me-1"></span><span class="dot yellow me-1"></span><span class="dot green"></span>
+      <h6 class="topbar-title ms-3">JobCard — Edit</h6>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'jobcards_list' %}" class="btn btn-outline-light btn-sm btn-topbar">
+        <i class="fa fa-arrow-left me-1"></i> Back to list
+      </a>
+      {% if jobcard and jobcard.job_card_number %}
+        <a href="{% url 'generate_pdf' jobcard_id=jobcard.job_card_number %}" class="btn btn-light btn-sm btn-topbar">
+          <i class="fa fa-file-pdf me-1"></i> Generate PDF
+        </a>
+      {% else %}
+        <button type="button" class="btn btn-light btn-sm btn-topbar" disabled data-bs-toggle="tooltip" data-bs-title="Open a JobCard to enable">
+          <i class="fa fa-file-pdf me-1"></i> Generate PDF
+        </button>
+      {% endif %}
+    </div>
+  </div>
+
   {% if messages %}
     <div class="mb-2">
       {% for m in messages %}
-        <div class="alert alert-{{ m.tags }} mb-2">{{ m }}</div>
+        <div class="alert alert-{{ m.tags }} mb-2" style="font-size:13px;">{{ m }}</div>
       {% endfor %}
     </div>
   {% endif %}
 
-  <div class="row g-3">
-    <!-- COLUNA PRINCIPAL -->
-    <div class="col-12 col-lg-8">
+  <div class="row gx-3">
+    <!-- Coluna principal SUPER LARGA -->
+    <div class="col-12 col-xl-9 col-xxl-10">
       <div class="card-clean mb-3">
-        <!-- HEADER -->
+        <!-- Header do card -->
         <div class="p-3 border-bottom" style="background:#f5f7fb;">
           <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div>
-              <div class="small-label">Editando</div>
-              <h5 class="mb-1">
-                JobCard <span class="readonly-chip">{{ jobcard.job_card_number }}</span>
-              </h5>
-              <div class="toolbar d-flex">
-                <!-- Quick status chips (clicou, troca o select de status) -->
-                {% comment %} Ajuste os rótulos conforme seu domínio {% endcomment %}
+              <div class="muted">Editing</div>
+              <h6 class="mb-1" style="font-weight:700;">
+                JobCard <span class="readonly-chip">{{ jobcard.job_card_number|default:"—" }}</span>
+              </h6>
+              <div class="chips-wrap">
                 <span class="chip js-status" data-value="NO CHECKED"><span class="status-dot dot-danger"></span>NO CHECKED</span>
                 <span class="chip js-status" data-value="PRELIMINARY JOBCARD CHECKED"><span class="status-dot dot-info"></span>PRELIMINARY</span>
                 <span class="chip js-status" data-value="PLANNING JOBCARD CHECKED"><span class="status-dot dot-warning"></span>PLANNING</span>
@@ -56,165 +127,140 @@
               </div>
             </div>
             <div class="text-end">
-              <div class="small-label">Última modificação</div>
-              <div class="muted">
-                {{ jobcard.last_modified_by|default:"—" }} · {{ jobcard.last_modified_at|date:"d/m/Y H:i" }}
-              </div>
-              <div class="mt-2">
-                <a class="btn btn-sm btn-outline-primary" href="{% url 'generate_pdf' jobcard.job_card_number %}">
-                  <i class="fas fa-file-pdf me-1"></i>Gerar PDF
-                </a>
-              </div>
+              <div class="muted">Last modified</div>
+              <div style="font-size:13px;">{{ jobcard.last_modified_by|default:"—" }} · {{ jobcard.last_modified_at|date:"d/m/Y H:i" }}</div>
             </div>
           </div>
         </div>
 
-        <!-- FORM -->
-        <form method="post" class="p-3" id="jobcardEditForm" novalidate>
+        <!-- ===== FORM PRINCIPAL: 12-col grid, seções limpas ===== -->
+        <form method="post" class="p-3 pt-2" id="jobcardEditForm" novalidate>
           {% csrf_token %}
 
-          {% if form.job_card_number_display %}
-          <div class="mb-3">
-            {{ form.job_card_number_display.label_tag }}
-            {{ form.job_card_number_display }}
-            <div class="field-hint">Número é somente leitura. Use esta tela para atualizar os demais campos.</div>
+          <!-- IDENTIFIER -->
+          <div class="section-title">Identifier</div>
+          <div class="grid-12">
+            {% if form.job_card_number_display %}
+              <div class="field span-4">
+                {{ form.job_card_number_display.label_tag }}{{ form.job_card_number_display }}
+                <div class="hint">Read-only</div>
+              </div>
+            {% elif form.job_card_number %}
+              <div class="field span-4">
+                {{ form.job_card_number.label_tag }}{{ form.job_card_number }}
+                <div class="hint">Read-only</div>
+              </div>
+            {% endif %}
+            <div class="field span-4">{{ form.activity_id.label_tag }}{{ form.activity_id }}</div>
+            <div class="field span-4">{{ form.workpack_number.label_tag }}{{ form.workpack_number }}</div>
           </div>
-          {% endif %}
 
-          <!-- Datas & Status -->
+          <!-- SCHEDULE & STATUS -->
           <div class="section-title">Schedule & Status</div>
-          <div class="row g-3 mb-3">
-            <div class="col-md-3">{{ form.start.label_tag }}{{ form.start }}<div class="field-hint">Data de início</div></div>
-            <div class="col-md-3">{{ form.finish.label_tag }}{{ form.finish }}<div class="field-hint">Data de término</div></div>
-            <div class="col-md-3">
+          <div class="grid-12">
+            <div class="field span-3">
+              {{ form.start.label_tag }}{{ form.start }}
+              <div class="hint">Start date</div>
+            </div>
+            <div class="field span-3">
+              {{ form.finish.label_tag }}{{ form.finish }}
+              <div class="hint">Finish date</div>
+            </div>
+            <div class="field span-4">
               {{ form.jobcard_status.label_tag }}{{ form.jobcard_status }}
-              <div class="field-hint">Use os chips acima para preencher rápido</div>
+              <div class="hint">Use the chips above</div>
             </div>
-            <div class="col-md-3">{{ form.status.label_tag }}{{ form.status }}</div>
-          </div>
-
-          <!-- Códigos & Tag -->
-          <div class="section-title">Codes & Tag</div>
-          <div class="row g-3 mb-3">
-            <div class="col-md-3">{{ form.system.label_tag }}{{ form.system }}</div>
-            <div class="col-md-3">{{ form.subsystem.label_tag }}{{ form.subsystem }}</div>
-            <div class="col-md-3">{{ form.working_code.label_tag }}{{ form.working_code }}</div>
-            <div class="col-md-3">{{ form.tag.label_tag }}{{ form.tag }}</div>
-          </div>
-
-          <!-- Descrições -->
-          <div class="section-title">Descriptions</div>
-          <div class="row g-3 mb-3">
-            <div class="col-12">{{ form.working_code_description.label_tag }}{{ form.working_code_description }}</div>
-            <div class="col-12">{{ form.job_card_description.label_tag }}{{ form.job_card_description }}</div>
-            <div class="col-12">{{ form.comments.label_tag }}{{ form.comments }}</div>
-          </div>
-
-          <!-- Métricas -->
-          <div class="section-title">Metrics</div>
-          <div class="row g-3 mb-3">
-            <div class="col-md-3">{{ form.total_weight.label_tag }}{{ form.total_weight }}</div>
-            <div class="col-md-3">{{ form.unit.label_tag }}{{ form.unit }}</div>
-            <div class="col-md-3">
-              <label class="form-label">Total Duration (hs)</label>
-              <div class="input-group">
-                {{ form.total_duration_hs }}
-                <button type="button" class="btn btn-outline-secondary js-format-2d" data-target-id="id_total_duration_hs">.00</button>
-              </div>
+            <div class="field span-2">
+              {{ form.completed.label_tag }}{{ form.completed }}
             </div>
-            <div class="col-md-3">
-              <label class="form-label">Total Man Hours</label>
-              <div class="input-group">
-                {{ form.total_man_hours }}
-                <button type="button" class="btn btn-outline-secondary js-format-2d" data-target-id="id_total_man_hours">.00</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- KPI / Rev / Hot Work -->
-          <div class="section-title">KPI, Revision & Safety</div>
-          <div class="row g-3 mb-3">
-            <div class="col-md-3">{{ form.indice_kpi.label_tag }}{{ form.indice_kpi }}</div>
-            <div class="col-md-3">
+            <div class="field span-2">
               <label class="form-label">Revision</label>
               <div class="input-group">
                 {{ form.rev }}
-                <button type="button" class="btn btn-outline-primary" id="btnRevUp"><i class="fas fa-plus"></i></button>
+                <button type="button" class="btn btn-outline-primary" id="btnRevUp" title="Increment numeric revision"><i class="fas fa-plus"></i></button>
               </div>
-              <div class="field-hint">Incrementa automaticamente se for numérica</div>
             </div>
-            <div class="col-md-3">
+          </div>
+
+          <!-- CODES & TAG -->
+          <div class="section-title">Codes & Tag</div>
+          <div class="grid-12">
+            <div class="field span-3">{{ form.system.label_tag }}{{ form.system }}</div>
+            <div class="field span-3">{{ form.subsystem.label_tag }}{{ form.subsystem }}</div>
+            <div class="field span-3">{{ form.working_code.label_tag }}{{ form.working_code }}</div>
+            <div class="field span-3">{{ form.tag.label_tag }}{{ form.tag }}</div>
+          </div>
+
+          <!-- DESCRIPTIONS (textos grandes ocupam linhas inteiras) -->
+          <div class="section-title">Descriptions</div>
+          <div class="grid-12">
+            <div class="field span-12">{{ form.working_code_description.label_tag }}{{ form.working_code_description }}</div>
+            <div class="field span-12">{{ form.job_card_description.label_tag }}{{ form.job_card_description }}</div>
+            <div class="field span-12">{{ form.comments.label_tag }}{{ form.comments }}</div>
+          </div>
+
+          <!-- METRICS & SAFETY -->
+          <div class="section-title">Metrics & Safety</div>
+          <div class="grid-12">
+            <div class="field span-3">{{ form.total_weight.label_tag }}{{ form.total_weight }}</div>
+            <div class="field span-3">{{ form.unit.label_tag }}{{ form.unit }}</div>
+            <div class="field span-6">
               <label class="form-label d-block">Hot Work</label>
-              <!-- Switch bonito controlando o field original -->
               <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" id="hotWorkSwitch">
                 <label class="form-check-label" for="hotWorkSwitch">Required?</label>
               </div>
-              <div class="field-hint">Alterna entre YES/NO</div>
-              <!-- mantém o original visível caso prefira -->
+              <div class="muted">Toggles YES/NO</div>
               <div class="mt-2">{{ form.hot_work_required }}</div>
             </div>
           </div>
 
-          <!-- Preparação & Aprovação (expandível) -->
-          <div class="section-title d-flex align-items-center justify-content-between">
-            <span>Prepared & Approved</span>
-            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#preparedBlock">
-              <i class="fas fa-chevron-down me-1"></i>Mostrar/Ocultar
-            </button>
-          </div>
-          <div class="collapse show" id="preparedBlock">
-            <div class="row g-3 mb-3">
-              <div class="col-md-4">{{ form.prepared_by.label_tag }}{{ form.prepared_by }}</div>
-              <div class="col-md-4">{{ form.date_prepared.label_tag }}{{ form.date_prepared }}</div>
-              <div class="col-md-4">{{ form.approved_br.label_tag }}{{ form.approved_br }}</div>
-              <div class="col-md-4">{{ form.date_approved.label_tag }}{{ form.date_approved }}</div>
-            </div>
-          </div>
-
-          <!-- BAR STICKY DE AÇÕES -->
-          <div class="sticky-save">
-            <div class="muted"><i class="fas fa-info-circle me-1"></i>Você pode aplicar patch via Excel/CSV.</div>
+          <!-- Ações -->
+          <div class="sticky-save mt-2">
+            <div class="muted d-none d-md-block"><i class="fas fa-info-circle me-1"></i>Use chips to change status quickly. Press <b>Ctrl/Cmd + S</b> to save.</div>
             <div class="d-flex gap-2">
-              <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#patchModal">
-                <i class="fas fa-file-upload me-1"></i>Patch Excel/CSV
-              </button>
-              <a href="{% url 'jobcards_list' %}" class="btn btn-light">Cancelar</a>
-              <button type="submit" class="btn btn-primary">
-                <span class="me-1"><i class="fas fa-save"></i></span> Salvar alterações
-              </button>
+              <a href="{% url 'jobcards_list' %}" class="btn btn-light">Cancel</a>
+              <button type="submit" class="btn btn-primary"><span class="me-1"><i class="fas fa-save"></i></span> Save changes</button>
             </div>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- COLUNA LATERAL -->
-    <div class="col-12 col-lg-4">
+    <!-- Sidebar -->
+    <div class="col-12 col-xl-3 col-xxl-2">
       <div class="card-clean sticky-lg-top-16">
         <div class="p-3 border-bottom" style="background:#f5f7fb;">
-          <h6 class="mb-0">Resumo</h6>
+          <h6 class="mb-0" style="font-size:14px;">Summary</h6>
         </div>
         <div class="p-3">
-          <div class="sidebar-item"><span class="small-label">JobCard</span> <strong>{{ jobcard.job_card_number }}</strong></div>
-          <div class="sidebar-item"><span class="small-label">Discipline</span> <span>{{ jobcard.discipline|default:"—" }}</span></div>
-          <div class="sidebar-item"><span class="small-label">Location</span> <span>{{ jobcard.location|default:"—" }}</span></div>
-          <div class="sidebar-item"><span class="small-label">Status</span> <span>{{ jobcard.jobcard_status|default:"—" }}</span></div>
-          <div class="sidebar-item"><span class="small-label">Rev</span> <span>{{ jobcard.rev|default:"—" }}</span></div>
+          <div class="summary-row"><span class="muted">JobCard</span><strong>{{ jobcard.job_card_number|default:"—" }}</strong></div>
+          <div class="summary-row"><span class="muted">Discipline</span><span>{{ jobcard.discipline|default:"—" }}</span></div>
+          <div class="summary-row"><span class="muted">Location</span><span>{{ jobcard.location|default:"—" }}</span></div>
+          <div class="summary-row"><span class="muted">Status</span><span>{{ jobcard.jobcard_status|default:"—" }}</span></div>
+          <div class="summary-row"><span class="muted">Revision</span><span>{{ jobcard.rev|default:"—" }}</span></div>
+
           <div class="mt-3 d-grid gap-2">
-            <button type="button" class="btn btn-outline-secondary" id="btnCopyNumber">
-              <i class="fas fa-copy me-1"></i>Copiar número
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCopyNumber" {% if not jobcard or not jobcard.job_card_number %}disabled{% endif %}>
+              <i class="fas fa-copy me-1"></i> Copy JobCard number
             </button>
-            <a class="btn btn-outline-primary" href="{% url 'generate_pdf' jobcard.job_card_number %}">
-              <i class="fas fa-file-pdf me-1"></i>Gerar PDF
-            </a>
+            {% if jobcard and jobcard.job_card_number %}
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'generate_pdf' jobcard_id=jobcard.job_card_number %}">
+                <i class="fas fa-file-pdf me-1"></i> Generate PDF
+              </a>
+            {% else %}
+              <button class="btn btn-outline-primary btn-sm" type="button" disabled data-bs-toggle="tooltip" data-bs-title="Open a JobCard to enable">
+                <i class="fas fa-file-pdf me-1"></i> Generate PDF
+              </button>
+            {% endif %}
           </div>
+
           <hr>
-          <div class="small-label mb-1">Dicas rápidas</div>
+          <div class="muted">Quick tips</div>
           <ul class="mb-0 muted" style="padding-left:1rem;">
-            <li>Use os chips para mudar o status rapidamente.</li>
-            <li>Rev +1 incrementa revisões numéricas.</li>
-            <li>“Patch Excel/CSV” atualiza vários campos de uma vez.</li>
+            <li>Click a chip to set the JobCard status.</li>
+            <li>Use <b>Revision +</b> to increment numeric revisions.</li>
+            <li>Toggle <b>Hot Work</b> to set YES/NO.</li>
           </ul>
         </div>
       </div>
@@ -222,135 +268,88 @@
   </div>
 </div>
 
-<!-- Modal: Patch via Excel/CSV -->
-<div class="modal fade" id="patchModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <form class="modal-content" method="post" action="{% url 'modify_jobcard_excel_patch' jobcard.job_card_number %}" enctype="multipart/form-data">
-      {% csrf_token %}
-      <div class="modal-header">
-        <h5 class="modal-title">Patch via Excel/CSV</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p class="mb-2">
-          Envie um arquivo <strong>.xlsx</strong> (Excel) ou <strong>.csv</strong> com cabeçalhos iguais aos nomes dos campos
-          (ex.: <code>prepared_by</code>, <code>jobcard_status</code>, <code>comments</code>, ...).
-          Apenas os campos permitidos serão atualizados.
-        </p>
-        <input type="file" name="file" accept=".xlsx,.csv" class="form-control" required>
-        <small class="text-muted">Somente a primeira linha de dados é aplicada.</small>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Fechar</button>
-        <button class="btn btn-primary" type="submit">Aplicar Patch</button>
-      </div>
-    </form>
+<!-- Overlay “Saving…” -->
+<div class="saving-overlay" id="savingOverlay" aria-hidden="true">
+  <div class="saving-card">
+    <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+    <span>Saving changes…</span>
   </div>
 </div>
 
 <script>
 (function(){
-  // 1) Avisa sobre alterações não salvas
+  /* ===== Apenas comportamento no TEMPLATE (sem tocar as views) ===== */
+
+  // Tooltips Bootstrap
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => { try { new bootstrap.Tooltip(el); } catch(e){} });
+
   const form = document.getElementById("jobcardEditForm");
+  const overlay = document.getElementById("savingOverlay");
   let dirty = false;
-  form.addEventListener("change", () => dirty = true);
-  window.addEventListener("beforeunload", function (e) { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
-  form.addEventListener("submit", () => { dirty = false; });
 
-  // 2) Aplica classes Bootstrap em widgets padrão (se o form não já aplica)
-  document.querySelectorAll("#jobcardEditForm input[type='text'],#jobcardEditForm input[type='number'],#jobcardEditForm input[type='date'],#jobcardEditForm textarea").forEach(el=>{
-    if(!el.classList.contains("form-control")) el.classList.add("form-control");
-  });
-  document.querySelectorAll("#jobcardEditForm select").forEach(el=>{
-    if(!el.classList.contains("form-select")) el.classList.add("form-select");
-  });
+  // Marca alterações
+  form?.addEventListener("change", () => dirty = true);
 
-  // 3) Date inputs: força tipo date se suportado
-  ["id_start","id_finish","id_date_prepared","id_date_approved"].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el && !el.type.includes("date")) { try { el.type = "date"; } catch(e){} }
+  // Warn on unload
+  window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+
+  // Feedback de envio
+  form?.addEventListener("submit", () => {
+    dirty = false;
+    if (overlay) {
+      overlay.style.display = "flex";
+      setTimeout(() => { overlay.style.display = "none"; }, 30000);
+    }
   });
 
-  // 4) Chips de status → setam o select
+  // Fallback: garantir classes Bootstrap
+  document.querySelectorAll("#jobcardEditForm input[type='text'],#jobcardEditForm input[type='number'],#jobcardEditForm input[type='date'],#jobcardEditForm textarea")
+    .forEach(el=>{ if(!el.classList.contains("form-control")) el.classList.add("form-control"); });
+  document.querySelectorAll("#jobcardEditForm select")
+    .forEach(el=>{ if(!el.classList.contains("form-select")) el.classList.add("form-select"); });
+
+  // Datas como date nativo se possível
+  ["id_start","id_finish"].forEach(id=>{ const el=document.getElementById(id); if(el && !el.type.includes("date")) { try{ el.type="date"; }catch(e){} } });
+
+  // Chips de status -> select
   const statusSelect = document.getElementById("id_jobcard_status");
   const chips = document.querySelectorAll(".js-status");
-  function highlightChip(value){
-    chips.forEach(c => c.classList.toggle("active", c.dataset.value === value));
-  }
-  chips.forEach(ch=>{
-    ch.addEventListener("click", ()=>{
-      if(statusSelect){
-        statusSelect.value = ch.dataset.value;
-        highlightChip(statusSelect.value);
-        dirty = true;
-      }
-    });
-  });
+  function highlightChip(v){ chips.forEach(c=>c.classList.toggle("active", c.dataset.value === v)); }
+  chips.forEach(ch => ch.addEventListener("click", ()=>{
+    if(statusSelect){ statusSelect.value = ch.dataset.value; highlightChip(statusSelect.value); dirty = true; }
+  }));
   if(statusSelect){ highlightChip(statusSelect.value); }
 
-  // 5) Rev +1 se numérico
+  // Revision +1
   const btnRevUp = document.getElementById("btnRevUp");
-  if(btnRevUp){
-    btnRevUp.addEventListener("click", ()=>{
-      const rev = document.getElementById("id_rev");
-      if(!rev) return;
-      const v = (rev.value || "").trim();
-      if(/^\d+$/g.test(v)){ rev.value = String(parseInt(v,10)+1); dirty = true; }
-      else { rev.classList.add("is-invalid"); setTimeout(()=>rev.classList.remove("is-invalid"), 1200); }
-    });
-  }
+  btnRevUp?.addEventListener("click", ()=>{
+    const rev = document.getElementById("id_rev");
+    if(!rev) return;
+    const v = (rev.value || "").trim();
+    if(/^\d+$/g.test(v)){ rev.value = String(parseInt(v,10)+1); dirty = true; }
+    else { rev.classList.add("is-invalid"); setTimeout(()=>rev.classList.remove("is-invalid"), 1200); }
+  });
 
-  // 6) Hot Work switch ↔ select YES/NO (mantém ambos sincronizados)
+  // Hot Work: switch <-> select YES/NO
   const hotSwitch = document.getElementById("hotWorkSwitch");
   const hotSelect = document.getElementById("id_hot_work_required");
   if(hotSwitch && hotSelect){
-    // inicial
     hotSwitch.checked = (String(hotSelect.value).toUpperCase() === "YES");
-    // UI → model
-    hotSwitch.addEventListener("change", ()=>{
-      hotSelect.value = hotSwitch.checked ? "YES" : "NO";
-      dirty = true;
-    });
-    // model → UI (se usuário mudar manualmente)
-    hotSelect.addEventListener("change", ()=>{
-      hotSwitch.checked = (String(hotSelect.value).toUpperCase() === "YES");
-      dirty = true;
-    });
+    hotSwitch.addEventListener("change", ()=>{ hotSelect.value = hotSwitch.checked ? "YES" : "NO"; dirty = true; });
+    hotSelect.addEventListener("change", ()=>{ hotSwitch.checked = (String(hotSelect.value).toUpperCase() === "YES"); dirty = true; });
   }
 
-  // 7) Botões .00 para formatar 2 casas
-  document.querySelectorAll(".js-format-2d").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const id = btn.dataset.targetId;
-      const el = document.getElementById(id);
-      if(!el) return;
-      const raw = (el.value || "").replace(",", ".").trim();
-      const num = parseFloat(raw);
-      if(!isNaN(num)){
-        el.value = num.toFixed(2);
-        dirty = true;
-      }else{
-        el.classList.add("is-invalid");
-        setTimeout(()=>el.classList.remove("is-invalid"), 1200);
-      }
-    });
+  // Copiar número
+  const btnCopy = document.getElementById("btnCopyNumber");
+  btnCopy?.addEventListener("click", async ()=>{
+    const text = "{{ jobcard.job_card_number|default:'' }}";
+    if(!text) return;
+    try { await navigator.clipboard.writeText(text); btnCopy.classList.add("btn-success"); setTimeout(()=>btnCopy.classList.remove("btn-success"), 1200); } catch(e){}
   });
 
-  // 8) Copiar número
-  const btnCopy = document.getElementById("btnCopyNumber");
-  if(btnCopy){
-    btnCopy.addEventListener("click", async ()=>{
-      const text = "{{ jobcard.job_card_number }}";
-      try { await navigator.clipboard.writeText(text); btnCopy.classList.add("btn-success"); setTimeout(()=>btnCopy.classList.remove("btn-success"), 1200);} catch(e){}
-    });
-  }
-
-  // 9) Atalho Ctrl/Cmd+S para salvar
+  // Ctrl/Cmd + S para salvar
   window.addEventListener("keydown", (e)=>{
-    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s"){
-      e.preventDefault();
-      form.requestSubmit();
-    }
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==="s"){ e.preventDefault(); form?.requestSubmit(); }
   });
 })();
 </script>

@@ -3,18 +3,59 @@
 
 {% block content %}
 <style>
-  body, .container { background:#f7f8fa !important; }
+  body, .container-fluid { background:#f7f8fa !important; }
   .card-clean { background:#fff; border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); border:1px solid #eceff3; }
-  .section-title { font-weight:700; letter-spacing:.01em; font-size:1rem; color:#232323; margin-bottom:8px; }
   .muted { color:#6b7280; font-size:.9rem; }
+  @media (min-width: 992px) { .sticky-lg-top-16 { position: sticky; top: 16px; } }
+
+  /* Window-like top bar */
+  .topbar-black { background:#313131; border-radius:8px; padding:8px 10px; margin-bottom:10px; }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .dot.red{background:#ff5f57} .dot.yellow{background:#febc2e} .dot.green{background:#28c840}
+  .topbar-title { color:#fff; margin:0; font-size:.95rem; }
+  .btn-topbar { --bs-btn-padding-y:.25rem; --bs-btn-padding-x:.5rem; --bs-btn-font-size:.8rem; }
   .shortcut-item:hover { background:#f9fafb; }
-  /* Deixa a coluna da direita fixa no topo (apenas em telas lg+) */
-  @media (min-width: 992px) {
-    .sticky-lg-top-16 { position: sticky; top: 16px; }
-  }
+
+  /* Log font */
+  #regenLog { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+  #regenHeartbeat { min-height: 22px; }
+
+  /* Modal polish */
+  .modal-header .status-pill { font-weight:600; }
+  .kpi { display:flex; gap:16px; flex-wrap:wrap; }
+  .kpi .item { background:#f8fafc; border:1px solid #eef2f7; border-radius:10px; padding:8px 10px; min-width:110px; }
+  .kpi .label { font-size:.75rem; color:#6b7280; }
+  .kpi .value { font-weight:600; }
 </style>
 
-<div class="container py-3" style="max-width:1140px;">
+<div class="container-fluid mt-2">
+
+  <!-- Top black bar -->
+  <div class="d-flex align-items-center justify-content-between topbar-black">
+    <div class="d-flex align-items-center">
+      <span class="dot red me-1"></span>
+      <span class="dot yellow me-1"></span>
+      <span class="dot green"></span>
+      <h6 class="topbar-title ms-3">JobCards — Mass Update (Excel/CSV)</h6>
+    </div>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-outline-light btn-sm btn-topbar" data-bs-toggle="modal" data-bs-target="#regenModal">
+        <i class="fa fa-sync-alt me-1"></i> Regenerate PDFs
+      </button>
+
+      <a href="{% url 'download_jobcard_template' %}" class="btn btn-outline-light btn-sm btn-topbar">
+        <i class="fa fa-download me-1"></i> Template
+      </a>
+
+      <button type="button" class="btn btn-outline-light btn-sm btn-topbar" onclick="exportJobcardsExcel()">
+        <i class="fa fa-file-excel me-1"></i> Export Excel
+      </button>
+      <button type="button" class="btn btn-success btn-sm btn-topbar" data-bs-toggle="modal" data-bs-target="#importJobcardModal">
+        <i class="fa fa-upload me-1"></i> Import
+      </button>
+    </div>
+  </div>
+
   {% if messages %}
     <div class="mb-2">
       {% for m in messages %}
@@ -24,55 +65,42 @@
   {% endif %}
 
   <div class="row g-3">
-    <!-- COLUNA ESQUERDA: FORMULÁRIO -->
+    <!-- LEFT: form -->
     <div class="col-12 col-lg-6">
       <div class="card-clean mb-3">
         <div class="p-3 border-bottom" style="background:#f5f7fb;">
           <h5 class="mb-0">Modify JobCard</h5>
-          <div class="muted">Digite o número da JobCard para abrir a edição.</div>
+          <div class="muted">Type the JobCard number to open the editor.</div>
         </div>
 
         <form method="post" class="p-3" novalidate>
           {% csrf_token %}
-
           <label class="form-label">JobCard Number</label>
-          <input
-            name="job_card_number"
-            class="form-control mb-3"
-            placeholder="A09.PS-EL-0001"
-            list="jobcardsList"
-            autofocus required>
-
+          <input name="job_card_number" class="form-control mb-3" placeholder="A09.PS-EL-0001" list="jobcardsList" autofocus required>
           <datalist id="jobcardsList">
             {% for jc in recent_jobcards %}
-              <option value="{{ jc.job_card_number }}">
-                {{ jc.job_card_number }} — {{ jc.discipline }} {{ jc.location }}
-              </option>
+              <option value="{{ jc.job_card_number }}">{{ jc.job_card_number }} — {{ jc.discipline }} {{ jc.location }}</option>
             {% endfor %}
           </datalist>
-
           <div class="d-flex justify-content-end gap-2">
-            <a href="{% url 'jobcards_list' %}" class="btn btn-light">Cancelar</a>
-            <button class="btn btn-primary" type="submit">Continuar</button>
+            <a href="{% url 'modify_jobcard_entry' %}" class="btn btn-light">Clear</a>
+            <button class="btn btn-primary" type="submit">Continue</button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- COLUNA DIREITA: ATALHOS -->
+    <!-- RIGHT: shortcuts -->
     <div class="col-12 col-lg-6">
       <div class="card-clean sticky-lg-top-16">
         <div class="p-3 border-bottom" style="background:#f5f7fb;">
           <div class="d-flex align-items-center justify-content-between">
-            <h6 class="mb-0">Atalhos (recentes)</h6>
+            <h6 class="mb-0">Shortcuts (recent)</h6>
             <span class="badge text-bg-light">{{ recent_jobcards|length }}</span>
           </div>
         </div>
-
         <div class="p-3">
-          <!-- Busca rápida local nos atalhos -->
-          <input id="shortcutFilter" type="text" class="form-control mb-3" placeholder="Filtrar por número, disciplina ou área...">
-
+          <input id="shortcutFilter" type="text" class="form-control mb-3" placeholder="Filter by number, discipline or area...">
           <div id="shortcutsList" class="row g-2">
             {% for jc in recent_jobcards %}
               <div class="col-12">
@@ -81,44 +109,445 @@
                   <div class="flex-grow-1">
                     <strong>{{ jc.job_card_number }}</strong>
                     <div class="muted">
-                      {{ jc.discipline }} · {{ jc.location }}
-                      {% if jc.last_modified_at %} · {{ jc.last_modified_at|date:"d/m/Y H:i" }}{% endif %}
+                      {{ jc.discipline }} · {{ jc.location }}{% if jc.last_modified_at %} · {{ jc.last_modified_at|date:"d/m/Y H:i" }}{% endif %}
                     </div>
                   </div>
                   <span class="ms-2">&rsaquo;</span>
                 </a>
               </div>
             {% empty %}
-              <div class="col-12 muted">Sem sugestões ainda.</div>
+              <div class="col-12 muted">No suggestions yet.</div>
             {% endfor %}
           </div>
         </div>
       </div>
     </div>
-  </div> <!-- /row -->
+  </div>
+
+</div>
+
+<!-- MODAL: Import -->
+<div class="modal fade" id="importJobcardModal" tabindex="-1" aria-labelledby="importJobcardModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="importJobcardForm" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="importJobcardModalLabel">Import JobCard (Excel/CSV)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Download the <b>Template</b>, fill the desired columns and upload it here.<br>
+          <small class="text-muted">Only provided columns will be updated; always identify by <code>job_card_number</code>.</small></p>
+          <input type="file" name="file" id="importJobcardFile" accept=".xlsx,.csv" required class="form-control"/>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Import</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Confirm overwrite -->
+<div class="modal fade" id="confirmReplaceJobcardModal" tabindex="-1" aria-labelledby="confirmReplaceJobcardLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmReplaceJobcardLabel">Overwrite JobCards?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        There are JobCards already present in this file. Do you want to <b>update</b> the existing records?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" id="confirmOverwriteJobcardBtn">Yes, Update</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Regenerate PDFs -->
+<div class="modal fade" id="regenModal" tabindex="-1" aria-labelledby="regenModalLabel" aria-hidden="true"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <div class="d-flex flex-column">
+          <h5 class="modal-title" id="regenModalLabel">Regenerate PDFs</h5>
+          <small class="text-white-50">All JobCards whose status is <b>not</b> <code>NO CHECKED</code> / <code>NOT CHECKED</code> will be processed.</small>
+        </div>
+        <div class="ms-3 d-flex align-items-center">
+          <span id="regenStatus" class="badge rounded-pill bg-secondary status-pill me-2">IDLE</span>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div id="regenHeartbeat" class="d-flex align-items-center small text-muted mb-2" aria-live="polite">
+          <span id="regenSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+          <span id="regenHeartbeatText"></span>
+        </div>
+
+        <div class="progress mb-2" role="progressbar" aria-label="Progress">
+          <div id="regenProgress" class="progress-bar" style="width:0%;">0%</div>
+        </div>
+
+        <div class="kpi mb-2">
+          <div class="item"><div class="label">Total</div><div class="value" id="regenTotal">0</div></div>
+          <div class="item"><div class="label">Done</div><div class="value" id="regenDone">0</div></div>
+          <div class="item"><div class="label">Failed</div><div class="value" id="regenFail">0</div></div>
+          <div class="item"><div class="label">Elapsed</div><div class="value" id="regenElapsed">00:00</div></div>
+          <div class="item"><div class="label">ETA</div><div class="value" id="regenETA">--</div></div>
+          <div class="item"><div class="label">Throughput</div><div class="value"><span id="regenTPS">0</span>/s</div></div>
+          <div class="item"><div class="label">Run ID</div><div class="value" id="regenRunId">—</div></div>
+        </div>
+
+        <pre id="regenLog" class="bg-light p-2 rounded small mt-2" style="height:200px; overflow:auto;"></pre>
+      </div>
+
+      <div class="modal-footer">
+        <div class="me-auto">
+          <button id="copyLogBtn" class="btn btn-outline-secondary btn-sm"><i class="fa fa-copy me-1"></i>Copy log</button>
+          <button id="clearLogBtn" class="btn btn-outline-secondary btn-sm"><i class="fa fa-eraser me-1"></i>Clear</button>
+        </div>
+        <button id="regenStartBtn" class="btn btn-success"><i class="fa fa-play me-1"></i>Start</button>
+        <button id="regenStopBtn" class="btn btn-warning" disabled><i class="fa fa-stop me-1"></i>Stop</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-  // Força o input em UPPERCASE (melhor UX p/ padrão do seu número)
-  (function() {
-    const inp = document.querySelector('input[name="job_card_number"]');
-    if (!inp) return;
-    inp.addEventListener('input', () => { inp.value = inp.value.toUpperCase(); });
-  })();
+  // export
+  function exportJobcardsExcel(){
+    const url = '{% url "export_jobcard_excel" %}';
+    window.open(url,'_blank');
+  }
 
-  // Filtro rápido nos atalhos
-  (function() {
-    const filter = document.getElementById('shortcutFilter');
-    const list = document.getElementById('shortcutsList');
-    if (!filter || !list) return;
+  // import (new route: import_jobcard_modify)
+  document.addEventListener('DOMContentLoaded', function(){
+    document.getElementById('importJobcardForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const fileInput = document.getElementById('importJobcardFile');
+      if(!fileInput.files.length){ return showResult('Error','Please select a file.'); }
 
-    filter.addEventListener('input', () => {
-      const q = filter.value.trim().toLowerCase();
-      list.querySelectorAll('.shortcut-item').forEach(item => {
-        const text = item.innerText.toLowerCase();
-        item.parentElement.style.display = text.includes(q) ? '' : 'none';
-      });
+      const fd = new FormData(this);
+      fetch("{% url 'import_jobcard_modify' %}", { method: "POST", body: fd })
+      .then(r => r.json())
+      .then(data => {
+        const up = document.getElementById('importJobcardModal');
+        if (up) bootstrap.Modal.getOrCreateInstance(up).hide();
+
+        if (data.status === 'ok') {
+          showResult('Success', `Updated: ${data.updated}`, true);
+        } else if (data.status === 'not_found') {
+          const missing = (data.missing || []).join(', ');
+          showResult('Error', `These JobCards do not exist: ${missing}`);
+        } else {
+          showResult('Error', data.message || 'An error occurred!');
+        }
+      })
+      .catch(() => showResult('Error','Upload failed.'));
     });
-  })();
+
+    function showResult(title, msg, reload){
+      const header = document.querySelector('#resultJobcardModal .modal-header');
+      const titleEl = document.getElementById('resultJobcardModalLabel');
+      const bodyEl = document.getElementById('resultJobcardModalBody');
+
+      if(title==='Success'){ header.classList.remove('bg-danger'); header.classList.add('bg-success'); titleEl.textContent = 'Import Success'; }
+      else{ header.classList.remove('bg-success'); header.classList.add('bg-danger'); titleEl.textContent = 'Import Error'; }
+
+      bodyEl.textContent = msg;
+
+      const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('resultJobcardModal'));
+      m.show();
+      if(reload){ setTimeout(()=>window.location.reload(), 1500); }
+    }
+  });
 </script>
+
+<script>
+(() => {
+  // Conservative defaults to avoid DB overload; tune if needed
+  const CONFIG = {
+    BATCH_SIZE: 80,
+    CLIENT_WORKERS: 4,
+    SERVER_PARALLEL: 3,
+
+    MAX_RETRIES: 5,
+    BACKOFF_BASE_MS: 700,
+    MAX_BACKOFF_MS: 6000,
+    WORKER_STAGGER_MS: 250
+  };
+
+  let total = 0, done = 0, fails = 0, abort = false, activeWorkers = 0;
+  let runId = null, startTs = 0;
+  let pollTimer = null, heartbeatTimer = null, dots = 0;
+  let phase = 'IDLE'; // IDLE | RUNNING | STOPPING | DONE | ERROR | STOPPED
+
+  const $progress = document.getElementById('regenProgress');
+  const $total    = document.getElementById('regenTotal');
+  const $done     = document.getElementById('regenDone');
+  const $fail     = document.getElementById('regenFail');
+  const $elapsed  = document.getElementById('regenElapsed');
+  const $eta      = document.getElementById('regenETA');
+  const $tps      = document.getElementById('regenTPS');
+  const $runlab   = document.getElementById('regenRunId');
+
+  const $log      = document.getElementById('regenLog');
+  const $start    = document.getElementById('regenStartBtn');
+  const $stop     = document.getElementById('regenStopBtn');
+  const $copy     = document.getElementById('copyLogBtn');
+  const $clear    = document.getElementById('clearLogBtn');
+
+  const $hbText   = document.getElementById('regenHeartbeatText');
+  const $hbSpin   = document.getElementById('regenSpinner');
+  const $status   = document.getElementById('regenStatus');
+
+  function csrfToken(){ const m=document.cookie.match(/csrftoken=([^;]+)/); return m?m[1]:''; }
+  const sleep = (ms)=> new Promise(res=> setTimeout(res, ms));
+
+  function fmtTime(sec){
+    if (!isFinite(sec) || sec < 0) return '--';
+    const h = Math.floor(sec/3600);
+    const m = Math.floor((sec%3600)/60);
+    const s = Math.floor(sec%60);
+    return (h? String(h).padStart(2,'0')+':' : '') + String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
+
+  function setProgressNumbers(){
+    const pct = total ? Math.round((done/total)*100) : 0;
+    $progress.style.width = pct + '%';
+    $progress.textContent = pct + '%';
+    $total.textContent = total; $done.textContent = done; $fail.textContent = fails;
+
+    const elapsedSec = startTs ? (Date.now() - startTs) / 1000 : 0;
+    $elapsed.textContent = startTs ? fmtTime(elapsedSec) : '00:00';
+
+    const rate = elapsedSec > 0 ? done / elapsedSec : 0;
+    $tps.textContent = rate.toFixed(1);
+
+    const remaining = Math.max(0, total - done);
+    const etaSec = rate > 0 ? remaining / rate : NaN;
+    $eta.textContent = startTs && isFinite(etaSec) ? fmtTime(etaSec) : '--';
+  }
+
+  function setProgressActive(isActive){
+    $progress.classList.toggle('progress-bar-striped', isActive);
+    $progress.classList.toggle('progress-bar-animated', isActive);
+  }
+
+  function setStatus(txt, cls){
+    phase = txt;
+    $status.textContent = txt;
+    $status.className = 'badge rounded-pill status-pill ' + cls;
+  }
+
+  function logLine(msg){
+    const at = new Date().toLocaleTimeString();
+    $log.textContent += `[${at}] ${msg}\n`;
+    $log.scrollTop = $log.scrollHeight;
+  }
+
+  function toggleRunning(r){
+    $start.disabled = r;
+    $stop.disabled = !r;
+    const closeBtn = document.querySelector('#regenModal .modal-header .btn-close');
+    if (closeBtn) { closeBtn.style.pointerEvents = r ? 'none' : ''; closeBtn.style.opacity = r ? .5 : 1; }
+  }
+
+  function startHeartbeat(text){
+    stopHeartbeat();
+    $hbSpin.classList.remove('d-none');
+    $hbText.textContent = text;
+    dots = 0;
+    heartbeatTimer = setInterval(()=>{
+      dots = (dots % 3) + 1;
+      // Keep base text by current phase
+      const base = (phase==='STOPPING') ? 'Stopping' : (phase==='RUNNING' ? 'Processing' : text);
+      $hbText.textContent = base + '.'.repeat(dots);
+    }, 500);
+  }
+  function stopHeartbeat(){
+    if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    $hbSpin.classList.add('d-none');
+    $hbText.textContent = '';
+  }
+
+  function guessCause(txt=''){
+    const t = (txt || '').toLowerCase();
+    if (t.includes('muitos clientes') || t.includes('too many clients')) return '(DB overload: too many connections)';
+    return '';
+  }
+
+  async function runStart(){
+    const r = await fetch("{% url 'api_pdf_run_start' %}", {
+      method:'POST',
+      headers:{'X-CSRFToken': csrfToken()}
+    });
+    if(!r.ok){
+      const t = await r.text().catch(()=> '');
+      throw new Error(`HTTP ${r.status} ${r.statusText} ${guessCause(t)}`);
+    }
+    const d = await r.json();
+    if(d.status!=='ok') throw new Error(d.message||'Failed to start run');
+    return d;
+  }
+
+  async function pollProgress(){
+    if(!runId) return;
+    try{
+      const r = await fetch("{% url 'api_pdf_run_progress' %}?run_id=" + encodeURIComponent(runId));
+      if(!r.ok) return; // transient
+      const d = await r.json();
+      if(d.status==='ok'){
+        total = d.total || 0;
+        done  = d.done  || 0;
+        fails = d.err   || 0;
+        setProgressNumbers();
+
+        // Do not overwrite STOPPING with "Processing"
+        if (phase === 'RUNNING') { /* keep spinner via heartbeat */ }
+
+        // Finalization checks
+        if ((done >= total && activeWorkers === 0) || (abort && activeWorkers === 0)){
+          clearInterval(pollTimer);
+          setProgressActive(false);
+          stopHeartbeat();
+          setStatus(abort ? 'STOPPED' : 'DONE', abort ? 'bg-secondary' : 'bg-success');
+          logLine(abort ? '🛑 Stopped.' : '✅ Completed.');
+          toggleRunning(false);
+        }
+      }
+    }catch(e){ /* ignore single poll errors */ }
+  }
+
+  async function apiBatch(limit, offset){
+    const fd = new FormData();
+    fd.append('run_id', runId);
+    fd.append('limit', limit);
+    fd.append('offset', offset);
+    fd.append('parallel', CONFIG.SERVER_PARALLEL);
+    const r = await fetch("{% url 'api_regenerate_jobcards_pdfs' %}", {
+      method:'POST', headers:{'X-CSRFToken': csrfToken()}, body: fd
+    });
+    if(!r.ok){
+      const t = await r.text().catch(()=> '');
+      throw new Error(`HTTP ${r.status} ${r.statusText} ${guessCause(t)}`);
+    }
+    return r.json();
+  }
+
+  async function apiBatchWithRetry(limit, offset){
+    for(let attempt=0; attempt<CONFIG.MAX_RETRIES; attempt++){
+      try{
+        const data = await apiBatch(limit, offset);
+        if(data.status!=='ok') throw new Error(data.message||'Server error');
+        return data;
+      }catch(e){
+        if(abort) throw e;
+        const delay = Math.min(CONFIG.MAX_BACKOFF_MS, CONFIG.BACKOFF_BASE_MS * Math.pow(2, attempt));
+        logLine(`Batch offset ${offset}: ${e.message||e} → backing off ${delay}ms (retry ${attempt+1}/${CONFIG.MAX_RETRIES})`);
+        await sleep(delay);
+      }
+    }
+    throw new Error('Max retries reached');
+  }
+
+  async function runShard(workerIndex){
+    activeWorkers++;
+    try{
+      const stride = CONFIG.BATCH_SIZE * CONFIG.CLIENT_WORKERS;
+      let offset   = workerIndex * CONFIG.BATCH_SIZE;
+
+      // staggered start to avoid initial spike
+      if (CONFIG.WORKER_STAGGER_MS) await sleep(workerIndex * CONFIG.WORKER_STAGGER_MS);
+
+      while(!abort && offset < total){
+        const data = await apiBatchWithRetry(CONFIG.BATCH_SIZE, offset);
+        // compact logs; comment out if too chatty
+        (data.processed_ids||[]).forEach(n => logLine(`[W${workerIndex}] OK  ${n}`));
+        (data.failed||[]).forEach(f => { fails++; logLine(`[W${workerIndex}] ERR ${f.job} → ${f.error}`); });
+        offset += stride;
+      }
+    } catch(e){
+      if(!abort) logLine(`[W${workerIndex}] failed: ${e.message||e}`);
+    } finally {
+      activeWorkers--;
+    }
+  }
+
+  // Buttons
+  document.getElementById('regenStartBtn')?.addEventListener('click', async ()=>{
+    // reset
+    total = done = fails = 0; abort=false; runId=null; startTs = 0;
+    $log.textContent = '';
+    setProgressNumbers();
+    setProgressActive(true);
+    toggleRunning(true);
+    setStatus('RUNNING','bg-primary');
+    startHeartbeat('Processing');
+
+    try{
+      const info = await runStart();  // POST start
+      runId = info.run_id;
+      $runlab.textContent = runId;
+      total = info.total || 0;
+      setProgressNumbers();
+      startTs = Date.now();
+
+      if(total === 0){
+        logLine('Nothing to process.');
+        setProgressActive(false);
+        stopHeartbeat();
+        setStatus('IDLE','bg-secondary');
+        toggleRunning(false);
+        return;
+      }
+
+      // poll progress (GET)
+      pollTimer = setInterval(pollProgress, 700);
+
+      // fire client workers
+      for(let i=0;i<CONFIG.CLIENT_WORKERS;i++) runShard(i);
+
+      logLine(`Run started (run_id=${runId}). Launching ${CONFIG.CLIENT_WORKERS} workers × batch ${CONFIG.BATCH_SIZE} (server parallel=${CONFIG.SERVER_PARALLEL})…`);
+    }catch(e){
+      setProgressActive(false);
+      stopHeartbeat();
+      setStatus('ERROR','bg-danger');
+      toggleRunning(false);
+      logLine('Failed to start: ' + (e.message||e));
+    }
+  });
+
+  document.getElementById('regenStopBtn')?.addEventListener('click', ()=>{
+    if (phase !== 'RUNNING') return;
+    abort = true;
+    setStatus('STOPPING','bg-warning text-dark');
+    startHeartbeat('Stopping'); // keep spinner + dots
+    logLine('Stopping after in-flight batches…');
+  });
+
+  document.getElementById('copyLogBtn')?.addEventListener('click', async ()=>{
+    try{
+      await navigator.clipboard.writeText($log.textContent || '');
+      const btn=this; btn.classList.add('btn-success'); setTimeout(()=> btn.classList.remove('btn-success'), 800);
+    }catch{}
+  });
+
+  document.getElementById('clearLogBtn')?.addEventListener('click', ()=>{ $log.textContent = ''; });
+
+  // Catch unhandled promise rejections to surface in log
+  window.addEventListener('unhandledrejection', (e)=>{
+    logLine('Unhandled error: ' + (e.reason?.message || e.reason || 'unknown'));
+  });
+})();
+</script>
+
 {% endblock %}
