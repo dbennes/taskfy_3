@@ -4016,6 +4016,10 @@ import tempfile, os
 from django.views.decorators.http import require_POST
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+import os, time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from django.core.cache import cache
+from django.db import close_old_connections   # 👈 AQUI!
 
 def _render_jobcard_pdf_to_disk(job_card_number: str):
     """
@@ -4198,6 +4202,11 @@ def api_pdf_run_progress(request):
     ok    = cache.get(f'pdf:{run_id}:ok',    0) or 0
     err   = cache.get(f'pdf:{run_id}:err',   0) or 0
     return JsonResponse({'status':'ok','run_id':run_id,'total':total,'done':done,'ok':ok,'err':err})
+
+
+# Limite global de renders simultâneos por **processo** (ajuste via env em produção)
+PDF_SEMAPHORE = threading.BoundedSemaphore(int(os.environ.get('PDF_MAX_CONCURRENCY', '4')))
+
 
 # views.py — processa um lote (batch) com paralelismo no servidor
 @login_required(login_url='login')
