@@ -4206,47 +4206,82 @@ def api_pdf_run_progress(request):
 def api_regenerate_jobcards_pdfs(request):
     """
     POST: limit, offset, parallel, (opcional) run_id
-    Se limit=0 → só retorna total (compatibilidade com preflight antigo).
+    - Nunca estoura 500 por erro de item: qualquer falha entra em failed[].
+    - Fecha conexões de BD nas threads e limita paralelismo de render.
     """
+    # ---- parâmetros seguros ----
     try:
-        limit    = int(request.POST.get('limit', 200))
-        offset   = int(request.POST.get('offset', 0))
-        parallel = int(request.POST.get('parallel', 3))
+        limit    = max(0, int(request.POST.get('limit', 200)))
+        offset   = max(0, int(request.POST.get('offset', 0)))
+        parallel = max(1, min(int(request.POST.get('parallel', 3)), 8))  # bound de segurança
     except ValueError:
         return JsonResponse({'status':'error','message':'invalid params'}, status=400)
 
     run_id = request.POST.get('run_id') or None
 
-    base_qs = JobCard.objects.exclude(jobcard_status__in=['NO CHECKED','NOT CHECKED']).order_by('job_card_number')
-    total   = base_qs.count()
-
+    # ---- queryset base ----
+    base_qs = (JobCard.objects
+               .exclude(jobcard_status__in=['NO CHECKED','NOT CHECKED'])
+               .order_by('job_card_number'))
+    total = base_qs.count()
     if limit == 0:
-        return JsonResponse({'status':'ok','total':total})
+        # preflight: só devolve total
+        return JsonResponse({'status':'ok','total': total})
 
+    # fatia do lote
     batch = list(base_qs.values_list('job_card_number', flat=True)[offset:offset+limit])
-    processed_ids = []
-    failed = []
 
-    # segura os workers
-    max_workers = max(1, min(parallel, 8))
+    processed_ids, failed = [], []
 
-    def _one(jobnum):
-        ok, err = _render_jobcard_pdf_to_disk(jobnum)
-        # contadores globais por corrida (se houver run_id)
+    # ---- worker que trata UM item com isolamento ----
+    def _one(jobnum: str):
+        """
+        - Garante que a thread tem/fecha sua própria conexão de BD.
+        - Aplica teto global de concorrência de PDF (semaforo).
+        - Converte qualquer exceção em registro de falha, sem derrubar a view.
+        """
+        # cada thread usa sua conexão de forma segura
+        close_old_connections()
+        PDF_SEMAPHORE.acquire()
+        try:
+            try:
+                ok, err = _render_jobcard_pdf_to_disk(jobnum)
+            except Exception as e:
+                # qualquer erro no render vira falha do item
+                ok, err = False, f"{type(e).__name__}: {e}"
+        finally:
+            PDF_SEMAPHORE.release()
+            close_old_connections()
+
+        # contadores de progresso por run_id (se houver)
         if run_id:
-            cache.incr(f'pdf:{run_id}:done', 1)
-            if ok: cache.incr(f'pdf:{run_id}:ok', 1)
-            else:  cache.incr(f'pdf:{run_id}:err', 1)
+            try:
+                cache.incr(f'pdf:{run_id}:done', 1)
+                cache.incr(f'pdf:{run_id}:ok' if ok else f'pdf:{run_id}:err', 1)
+            except Exception:
+                # cache não pode derrubar a requisição
+                pass
+
         return (ok, err, jobnum)
 
-    with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futures = [ex.submit(_one, j) for j in batch]
-        for fut in as_completed(futures):
-            ok, err, jobnum = fut.result()
-            if ok:
-                processed_ids.append(jobnum)
-            else:
-                failed.append({'job': jobnum, 'error': err})
+    # ---- executa o lote com paralelismo bounded ----
+    max_workers = max(1, min(parallel, 8))
+    try:
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            futures = [ex.submit(_one, j) for j in batch]
+            for fut in as_completed(futures):
+                try:
+                    ok, err, jobnum = fut.result()
+                except Exception as e:
+                    # se a própria future der exceção, captura aqui
+                    ok, err, jobnum = False, f"ThreadError: {type(e).__name__}: {e}", "?"
+                if ok:
+                    processed_ids.append(jobnum)
+                else:
+                    failed.append({'job': jobnum, 'error': str(err)})
+    except Exception as e:
+        # se algo MUITO atípico escapar (ex.: erro de serialização), ainda assim responde 200 com contexto
+        failed.append({'job': '*batch*', 'error': f'BatchError: {type(e).__name__}: {e}'})
 
     return JsonResponse({
         'status': 'ok',
