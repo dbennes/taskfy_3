@@ -274,16 +274,16 @@
 <script>
 (() => {
   // Conservative defaults to avoid DB overload; tune if needed
-  const CONFIG = {
-    BATCH_SIZE: 60,
-    CLIENT_WORKERS: 2,
-    SERVER_PARALLEL: 1,
-
-    MAX_RETRIES: 5,
-    BACKOFF_BASE_MS: 700,
-    MAX_BACKOFF_MS: 6000,
-    WORKER_STAGGER_MS: 250
-  };
+  // valores seguros para IIS
+const CONFIG = {
+  BATCH_SIZE: 8,
+  CLIENT_WORKERS: 3,
+  SERVER_PARALLEL: 1,
+  MAX_RETRIES: 5,
+  BACKOFF_BASE_MS: 700,
+  MAX_BACKOFF_MS: 3000,
+  WORKER_STAGGER_MS: 300
+};
 
   let total = 0, done = 0, fails = 0, abort = false, activeWorkers = 0;
   let runId = null, startTs = 0;
