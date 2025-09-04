@@ -4326,3 +4326,39 @@ def ajax_tools_for_manpowers(request):
         for t in tools
     ]
     return JsonResponse({'tools': data})
+
+from django.contrib.admin.views.decorators import staff_member_required
+from django.http import JsonResponse
+import subprocess, sys
+
+@staff_member_required
+def pdf_diag(request):
+    info = {}
+    try:
+        who = subprocess.run(["whoami"], capture_output=True, text=True)
+        info["whoami"] = (who.stdout or who.stderr).strip()
+    except Exception as e:
+        info["whoami"] = f"ERR: {e}"
+
+    info["python"] = sys.executable
+    info["WKHTMLTOPDF_BIN"] = settings.WKHTMLTOPDF_BIN
+    info["TEMP"] = os.environ.get("TEMP")
+    info["TMP"] = os.environ.get("TMP")
+
+    checks = []
+    for p in [settings.PDF_TEMP_DIR, settings.LOGS_DIR, settings.BARCODES_DIR, settings.BACKUPS_DIR]:
+        try:
+            tf = tempfile.NamedTemporaryFile(dir=p, delete=True)
+            tf.write(b"ok"); tf.flush(); tf.close()
+            checks.append(f"OK write: {p}")
+        except Exception as e:
+            checks.append(f"FAIL write: {p} -> {e}")
+    info["write_checks"] = checks
+
+    try:
+        r = subprocess.run([settings.WKHTMLTOPDF_BIN, "--version"], capture_output=True, text=True, timeout=10)
+        info["wkhtmltopdf_version"] = (r.stdout or r.stderr).strip()
+    except Exception as e:
+        info["wkhtmltopdf_version"] = f"ERROR: {e}"
+
+    return JsonResponse(info)

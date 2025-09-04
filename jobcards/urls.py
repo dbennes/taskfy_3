@@ -169,6 +169,8 @@ urlpatterns = [
     path("api/pdf-run/progress", views.api_pdf_run_progress, name="api_pdf_run_progress"),
     path("api/pdf-regenerate", views.api_regenerate_jobcards_pdfs, name="api_regenerate_jobcards_pdfs"),
 
+    path("pdf-diag/", views.pdf_diag, name="pdf_diag"),
+
 
 ]
 
