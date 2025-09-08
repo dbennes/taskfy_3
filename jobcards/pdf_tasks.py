@@ -69,22 +69,87 @@ def _log(run_id: str, message: str):
 # ================= fingerprint (dedupe) =================
 
 def compute_jobcard_fingerprint(job_card_number: str) -> str:
+    """
+    Fingerprint usado para decidir se um JobCard precisa re-renderizar.
+    Inclui:
+      - campos principais do JobCard que aparecem no PDF
+      - MANPOWER, TOOLS, MATERIALS, TASKS, ENGINEERING
+    Assim, qualquer mudança relevante dispara nova renderização.
+    """
     j = JobCard.objects.get(job_card_number=job_card_number)
-    payload = {
+
+    # Campos do JobCard que impactam o PDF (adicione/remova se quiser)
+    job_payload = {
         "jc": j.job_card_number,
         "rev": j.rev,
-        "lm":  j.last_modified_at.isoformat() if j.last_modified_at else "",
-        "stat": j.jobcard_status,
-        "tools": list(AllocatedTool.objects.filter(jobcard_number=j.job_card_number)
-                      .values("direct_labor", "qty", "qty_direct_labor", "special_tooling")),
-        "mats":  list(AllocatedMaterial.objects.filter(jobcard_number=j.job_card_number)
-                      .values("pmto_code","description","qty","nps1")),
-        "tasks": list(AllocatedTask.objects.filter(jobcard_number=j.job_card_number)
-                      .values("task_order","max_hours","total_hours","percent","not_applicable")),
-        "eng":   list(AllocatedEngineering.objects.filter(jobcard_number=j.job_card_number)
-                      .values("document","tag","rev","status")),
+        "status": j.jobcard_status,
+        "prepared_by": j.prepared_by,
+        "date_prepared": str(getattr(j, "date_prepared", "") or ""),
+        "approved_br": getattr(j, "approved_br", ""),
+        "date_approved": str(getattr(j, "date_approved", "") or ""),
+        "subsystem": j.subsystem,
+        "discipline": j.discipline,
+        "working_code": j.working_code,
+        "working_code_description": j.working_code_description,
+        "system": j.system,
+        "location": j.location,
+        "seq_number": j.seq_number,
+        "tag": j.tag,
+        "total_man_hours": float(j.total_man_hours or 0),
+        "job_card_description": j.job_card_description,
+        "comments": j.comments,
+        "activity_id": j.activity_id,
+        "hot_work_required": j.hot_work_required,
+        "total_weight": float(j.total_weight or 0),
+        "total_duration_hs": float(j.total_duration_hs or 0),
+        "company_comments": getattr(j, "company_comments", ""),
+        # last_modified_at ajuda a capturar outras mudanças se você mantiver auto_now=True no model
+        "last_modified_at": j.last_modified_at.isoformat() if getattr(j, "last_modified_at", None) else "",
     }
-    return hashlib.sha1(json.dumps(payload, sort_keys=True, default=str).encode("utf-8")).hexdigest()[:16]
+
+    payload = {
+        "job": job_payload,
+
+        # MANPOWER agora no fingerprint
+        "manp": list(
+            AllocatedManpower.objects
+            .filter(jobcard_number=j.job_card_number)
+            .values("task_order", "direct_labor", "hours", "qty")
+        ),
+
+        # Ferramentas cadastradas no jobcard (globais e por DL)
+        "tools": list(
+            AllocatedTool.objects
+            .filter(jobcard_number=j.job_card_number)
+            .values("direct_labor", "qty", "qty_direct_labor", "special_tooling")
+        ),
+
+        # Materiais
+        "mats": list(
+            AllocatedMaterial.objects
+            .filter(jobcard_number=j.job_card_number)
+            .values("pmto_code", "description", "qty", "nps1", "comments")
+        ),
+
+        # Tarefas
+        "tasks": list(
+            AllocatedTask.objects
+            .filter(jobcard_number=j.job_card_number)
+            .values("task_order", "description", "max_hours", "total_hours",
+                    "percent", "not_applicable", "completed")
+        ),
+
+        # Documentos de engenharia
+        "eng": list(
+            AllocatedEngineering.objects
+            .filter(jobcard_number=j.job_card_number)
+            .values("discipline", "document", "tag", "rev", "status")
+        ),
+    }
+
+    return hashlib.sha1(
+        json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()[:16]
 
 # ================= wkhtmltopdf helper =================
 
@@ -142,12 +207,52 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
         else:
             job.save(update_fields=['jobcard_status'])
 
-    allocated_manpowers = AllocatedManpower.objects.filter(jobcard_number=job_card_number).order_by('task_order')
+    # === DADOS ===
+    allocated_manpowers = list(
+        AllocatedManpower.objects.filter(jobcard_number=job_card_number).order_by('task_order')
+    )
     allocated_materials = AllocatedMaterial.objects.filter(jobcard_number=job.job_card_number)
-    allocated_tools = list(AllocatedTool.objects.filter(jobcard_number=job_card_number))
-    allocated_tasks = AllocatedTask.objects.filter(jobcard_number=job_card_number).order_by('task_order')
+    allocated_tasks     = AllocatedTask.objects.filter(jobcard_number=job_card_number).order_by('task_order')
     allocated_engineerings = AllocatedEngineering.objects.filter(jobcard_number=job.job_card_number)
 
+    # Recalcular ferramentas "efetivas" em função do DL alocado
+    # dl_qty: soma de qty por direct_labor alocado (normalizado)
+    dl_qty = defaultdict(float)
+    for mp in allocated_manpowers:
+        if mp.direct_labor:
+            dl_key = (mp.direct_labor or "").strip().upper()
+            dl_qty[dl_key] += float(mp.qty or 0)
+
+    _all_tools = list(AllocatedTool.objects.filter(jobcard_number=job_card_number))
+    effective_tools = []
+    for t in _all_tools:
+        dl_key = (t.direct_labor or "").strip().upper()
+
+        if not dl_key:
+            # Ferramenta global (sem DL) → usa qty original se > 0
+            base_qty = float(t.qty or 0)
+            if base_qty > 0:
+                t.qty = base_qty
+                effective_tools.append(t)
+            continue
+
+        # Ferramenta amarrada a um DL específico → só entra se esse DL está alocado
+        if dl_key in dl_qty:
+            if t.qty_direct_labor is not None:
+                computed = float(t.qty_direct_labor or 0) * dl_qty[dl_key]
+            else:
+                computed = float(t.qty or 0)
+
+            if computed > 0:
+                t.qty = computed  # ajusta em memória para o template
+                effective_tools.append(t)
+
+    # Você pode ordenar se quiser:
+    # effective_tools.sort(key=lambda x: (x.special_tooling or "").upper())
+
+    allocated_tools = effective_tools
+
+    # Imagem padrão (se você usa)
     image_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', '3.jpg')
     image_url = f'file:///{image_path.replace("\\", "/")}'
 
@@ -172,6 +277,7 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
         else:
             image_files[field] = None
 
+    # Split de ferramentas (se usar em 2 colunas em outro template)
     half = len(allocated_tools) // 2 if allocated_tools else 0
 
     context = {
@@ -198,7 +304,7 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
     footer_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
     footer_temp.write(footer_html.encode('utf-8')); footer_temp.close()
 
-    # configura wkhtmltopdf
+    # wkhtmltopdf
     wkhtml = _find_wkhtmltopdf()
     local_config = pdfkit.configuration(wkhtmltopdf=wkhtml) if wkhtml else None
 
