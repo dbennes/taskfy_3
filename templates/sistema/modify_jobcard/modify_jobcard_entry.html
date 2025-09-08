@@ -209,7 +209,16 @@
       </div>
 
       <div class="modal-footer">
-        <div class="me-auto">
+        <div class="me-auto d-flex align-items-center gap-3">
+          <label class="form-check-label">
+            <input type="checkbox" class="form-check-input me-1" id="forceChk"> Force
+          </label>
+          <label class="form-check-label">
+            <input type="checkbox" class="form-check-input me-1" id="hardChk"> Hard reset
+          </label>
+        </div>
+
+        <div class="me-3">
           <button id="copyLogBtn" class="btn btn-outline-secondary btn-sm"><i class="fa fa-copy me-1"></i>Copy log</button>
           <button id="clearLogBtn" class="btn btn-outline-secondary btn-sm"><i class="fa fa-eraser me-1"></i>Clear</button>
         </div>
@@ -217,6 +226,7 @@
         <button id="regenStopBtn" class="btn btn-warning" disabled><i class="fa fa-stop me-1"></i>Stop</button>
         <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
+
     </div>
   </div>
 </div>
@@ -273,22 +283,9 @@
 
 <script>
 (() => {
-  // Conservative defaults to avoid DB overload; tune if needed
-  // valores seguros para IIS
-const CONFIG = {
-  BATCH_SIZE: 8,
-  CLIENT_WORKERS: 3,
-  SERVER_PARALLEL: 1,
-  MAX_RETRIES: 5,
-  BACKOFF_BASE_MS: 700,
-  MAX_BACKOFF_MS: 3000,
-  WORKER_STAGGER_MS: 300
-};
-
-  let total = 0, done = 0, fails = 0, abort = false, activeWorkers = 0;
   let runId = null, startTs = 0;
-  let pollTimer = null, heartbeatTimer = null, dots = 0;
-  let phase = 'IDLE'; // IDLE | RUNNING | STOPPING | DONE | ERROR | STOPPED
+  let total = 0, done = 0, fails = 0;
+  let pollTimer = null;
 
   const $progress = document.getElementById('regenProgress');
   const $total    = document.getElementById('regenTotal');
@@ -297,105 +294,63 @@ const CONFIG = {
   const $elapsed  = document.getElementById('regenElapsed');
   const $eta      = document.getElementById('regenETA');
   const $tps      = document.getElementById('regenTPS');
-  const $runlab   = document.getElementById('regenRunId');
-
+  const $status   = document.getElementById('regenStatus');
+  const $hbText   = document.getElementById('regenHeartbeatText');
+  const $hbSpin   = document.getElementById('regenSpinner');
   const $log      = document.getElementById('regenLog');
   const $start    = document.getElementById('regenStartBtn');
   const $stop     = document.getElementById('regenStopBtn');
-  const $copy     = document.getElementById('copyLogBtn');
-  const $clear    = document.getElementById('clearLogBtn');
-
-  const $hbText   = document.getElementById('regenHeartbeatText');
-  const $hbSpin   = document.getElementById('regenSpinner');
-  const $status   = document.getElementById('regenStatus');
+  const $runlab   = document.getElementById('regenRunId');
+  const $force    = document.getElementById('forceChk');
+  const $hard     = document.getElementById('hardChk');
 
   function csrfToken(){ const m=document.cookie.match(/csrftoken=([^;]+)/); return m?m[1]:''; }
-  const sleep = (ms)=> new Promise(res=> setTimeout(res, ms));
-
   function fmtTime(sec){
     if (!isFinite(sec) || sec < 0) return '--';
-    const h = Math.floor(sec/3600);
-    const m = Math.floor((sec%3600)/60);
-    const s = Math.floor(sec%60);
+    const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = Math.floor(sec%60);
     return (h? String(h).padStart(2,'0')+':' : '') + String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
   }
+  function setProgressActive(x){ $progress.classList.toggle('progress-bar-striped', x); $progress.classList.toggle('progress-bar-animated', x); }
+  function setStatus(txt, cls){ $status.textContent = txt; $status.className = 'badge rounded-pill status-pill ' + cls; }
+  function logLine(msg){ const at = new Date().toLocaleTimeString(); $log.textContent += `[${at}] ${msg}\n`; $log.scrollTop = $log.scrollHeight; }
+  function toggleRunning(r){
+    $start.disabled = r; $stop.disabled = !r;
+    const closeBtn = document.querySelector('#regenModal .modal-header .btn-close');
+    if (closeBtn) { closeBtn.style.pointerEvents = r ? 'none' : ''; closeBtn.style.opacity = r ? .5 : 1; }
+  }
+  function startHeartbeat(text){
+    stopHeartbeat(); $hbSpin.classList.remove('d-none'); $hbText.textContent = text;
+    let dots = 0; window._hb = setInterval(()=>{ dots=(dots%3)+1; $hbText.textContent = text + '.'.repeat(dots); }, 500);
+  }
+  function stopHeartbeat(){ if(window._hb){ clearInterval(window._hb); window._hb = null; } $hbSpin.classList.add('d-none'); $hbText.textContent = ''; }
 
   function setProgressNumbers(){
     const pct = total ? Math.round((done/total)*100) : 0;
-    $progress.style.width = pct + '%';
-    $progress.textContent = pct + '%';
+    $progress.style.width = pct + '%'; $progress.textContent = pct + '%';
     $total.textContent = total; $done.textContent = done; $fail.textContent = fails;
-
     const elapsedSec = startTs ? (Date.now() - startTs) / 1000 : 0;
     $elapsed.textContent = startTs ? fmtTime(elapsedSec) : '00:00';
-
     const rate = elapsedSec > 0 ? done / elapsedSec : 0;
     $tps.textContent = rate.toFixed(1);
-
     const remaining = Math.max(0, total - done);
     const etaSec = rate > 0 ? remaining / rate : NaN;
     $eta.textContent = startTs && isFinite(etaSec) ? fmtTime(etaSec) : '--';
   }
 
-  function setProgressActive(isActive){
-    $progress.classList.toggle('progress-bar-striped', isActive);
-    $progress.classList.toggle('progress-bar-animated', isActive);
-  }
-
-  function setStatus(txt, cls){
-    phase = txt;
-    $status.textContent = txt;
-    $status.className = 'badge rounded-pill status-pill ' + cls;
-  }
-
-  function logLine(msg){
-    const at = new Date().toLocaleTimeString();
-    $log.textContent += `[${at}] ${msg}\n`;
-    $log.scrollTop = $log.scrollHeight;
-  }
-
-  function toggleRunning(r){
-    $start.disabled = r;
-    $stop.disabled = !r;
-    const closeBtn = document.querySelector('#regenModal .modal-header .btn-close');
-    if (closeBtn) { closeBtn.style.pointerEvents = r ? 'none' : ''; closeBtn.style.opacity = r ? .5 : 1; }
-  }
-
-  function startHeartbeat(text){
-    stopHeartbeat();
-    $hbSpin.classList.remove('d-none');
-    $hbText.textContent = text;
-    dots = 0;
-    heartbeatTimer = setInterval(()=>{
-      dots = (dots % 3) + 1;
-      // Keep base text by current phase
-      const base = (phase==='STOPPING') ? 'Stopping' : (phase==='RUNNING' ? 'Processing' : text);
-      $hbText.textContent = base + '.'.repeat(dots);
-    }, 500);
-  }
-  function stopHeartbeat(){
-    if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer = null; }
-    $hbSpin.classList.add('d-none');
-    $hbText.textContent = '';
-  }
-
-  function guessCause(txt=''){
-    const t = (txt || '').toLowerCase();
-    if (t.includes('muitos clientes') || t.includes('too many clients')) return '(DB overload: too many connections)';
-    return '';
+  function buildParams(){
+    const params = new URLSearchParams();
+    if ($force?.checked) params.append('force','1');
+    if ($hard?.checked)  params.append('hard','1');
+    return params.toString();
   }
 
   async function runStart(){
-    const r = await fetch("{% url 'api_pdf_run_start' %}", {
-      method:'POST',
-      headers:{'X-CSRFToken': csrfToken()}
-    });
-    if(!r.ok){
-      const t = await r.text().catch(()=> '');
-      throw new Error(`HTTP ${r.status} ${r.statusText} ${guessCause(t)}`);
-    }
+    const qs = buildParams();
+    const url = "{% url 'api_pdf_run_start' %}" + (qs ? '?' + qs : '');
+    const r = await fetch(url, { method:'POST', headers:{'X-CSRFToken': csrfToken()} });
+    if(!r.ok){ throw new Error(`HTTP ${r.status}`); }
     const d = await r.json();
-    if(d.status!=='ok') throw new Error(d.message||'Failed to start run');
+    if(d.status!=='ok' && d.status!=='attached') throw new Error(d.message||'Failed to start');
     return d;
   }
 
@@ -403,151 +358,100 @@ const CONFIG = {
     if(!runId) return;
     try{
       const r = await fetch("{% url 'api_pdf_run_progress' %}?run_id=" + encodeURIComponent(runId));
-      if(!r.ok) return; // transient
+      if(!r.ok) return;
       const d = await r.json();
       if(d.status==='ok'){
         total = d.total || 0;
         done  = d.done  || 0;
         fails = d.err   || 0;
         setProgressNumbers();
-
-        // Do not overwrite STOPPING with "Processing"
-        if (phase === 'RUNNING') { /* keep spinner via heartbeat */ }
-
-        // Finalization checks
-        if ((done >= total && activeWorkers === 0) || (abort && activeWorkers === 0)){
-          clearInterval(pollTimer);
-          setProgressActive(false);
-          stopHeartbeat();
-          setStatus(abort ? 'STOPPED' : 'DONE', abort ? 'bg-secondary' : 'bg-success');
-          logLine(abort ? '🛑 Stopped.' : '✅ Completed.');
-          toggleRunning(false);
+        if (total > 0 && done >= total){
+          clearInterval(pollTimer); setProgressActive(false); stopHeartbeat();
+          setStatus('DONE','bg-success'); logLine('✅ Completed.'); toggleRunning(false);
         }
       }
-    }catch(e){ /* ignore single poll errors */ }
+    }catch(e){}
   }
 
-  async function apiBatch(limit, offset){
-    const fd = new FormData();
-    fd.append('run_id', runId);
-    fd.append('limit', limit);
-    fd.append('offset', offset);
-    fd.append('parallel', CONFIG.SERVER_PARALLEL);
-    const r = await fetch("{% url 'api_regenerate_jobcards_pdfs' %}", {
-      method:'POST', headers:{'X-CSRFToken': csrfToken()}, body: fd
-    });
-    if(!r.ok){
-      const t = await r.text().catch(()=> '');
-      throw new Error(`HTTP ${r.status} ${r.statusText} ${guessCause(t)}`);
-    }
-    return r.json();
-  }
-
-  async function apiBatchWithRetry(limit, offset){
-    for(let attempt=0; attempt<CONFIG.MAX_RETRIES; attempt++){
-      try{
-        const data = await apiBatch(limit, offset);
-        if(data.status!=='ok') throw new Error(data.message||'Server error');
-        return data;
-      }catch(e){
-        if(abort) throw e;
-        const delay = Math.min(CONFIG.MAX_BACKOFF_MS, CONFIG.BACKOFF_BASE_MS * Math.pow(2, attempt));
-        logLine(`Batch offset ${offset}: ${e.message||e} → backing off ${delay}ms (retry ${attempt+1}/${CONFIG.MAX_RETRIES})`);
-        await sleep(delay);
-      }
-    }
-    throw new Error('Max retries reached');
-  }
-
-  async function runShard(workerIndex){
-    activeWorkers++;
+  async function pollLog(){
+    if(!runId) return;
     try{
-      const stride = CONFIG.BATCH_SIZE * CONFIG.CLIENT_WORKERS;
-      let offset   = workerIndex * CONFIG.BATCH_SIZE;
-
-      // staggered start to avoid initial spike
-      if (CONFIG.WORKER_STAGGER_MS) await sleep(workerIndex * CONFIG.WORKER_STAGGER_MS);
-
-      while(!abort && offset < total){
-        const data = await apiBatchWithRetry(CONFIG.BATCH_SIZE, offset);
-        // compact logs; comment out if too chatty
-        (data.processed_ids||[]).forEach(n => logLine(`[W${workerIndex}] OK  ${n}`));
-        (data.failed||[]).forEach(f => { fails++; logLine(`[W${workerIndex}] ERR ${f.job} → ${f.error}`); });
-        offset += stride;
+      const r = await fetch("{% url 'api_pdf_run_log' %}?run_id=" + encodeURIComponent(runId));
+      if(!r.ok) return;
+      const d = await r.json();
+      if(d.status === 'ok' && Array.isArray(d.log)){
+        $log.textContent = d.log.join('\n'); $log.scrollTop = $log.scrollHeight;
       }
-    } catch(e){
-      if(!abort) logLine(`[W${workerIndex}] failed: ${e.message||e}`);
-    } finally {
-      activeWorkers--;
-    }
+    }catch(e){}
   }
 
-  // Buttons
-  document.getElementById('regenStartBtn')?.addEventListener('click', async ()=>{
+  // Botões
+  $start?.addEventListener('click', async ()=>{
     // reset
-    total = done = fails = 0; abort=false; runId=null; startTs = 0;
-    $log.textContent = '';
-    setProgressNumbers();
-    setProgressActive(true);
-    toggleRunning(true);
-    setStatus('RUNNING','bg-primary');
-    startHeartbeat('Processing');
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    runId=null; total=done=fails=0; $log.textContent=''; startTs=Date.now();
+    if ($runlab) $runlab.textContent = '—';
+    setProgressNumbers(); setProgressActive(true); toggleRunning(true);
+    setStatus('RUNNING','bg-primary'); startHeartbeat('Processing');
 
     try{
-      const info = await runStart();  // POST start
-      runId = info.run_id;
-      $runlab.textContent = runId;
-      total = info.total || 0;
-      setProgressNumbers();
-      startTs = Date.now();
+      const info = await runStart();
 
-      if(total === 0){
-        logLine('Nothing to process.');
-        setProgressActive(false);
-        stopHeartbeat();
-        setStatus('IDLE','bg-secondary');
-        toggleRunning(false);
+      if (info.status === 'attached') {
+        runId = info.run_id; total = info.total || 0; done = info.done || 0;
+        logLine(`Anexado ao run em execução (run_id=${runId}).`);
+      } else {
+        runId = info.run_id; total = info.total || 0;
+        logLine(`Run iniciado (run_id=${runId}). Jobs enfileirados no servidor…`);
+      }
+      if ($runlab) $runlab.textContent = runId;
+
+      setProgressNumbers();
+      if(total===0){
+        logLine($force?.checked
+          ? 'Nada para processar (talvez filtro de status).'
+          : 'Nada para processar. Todos já estão em cache. Marque "Force" para refazer.');
+        setProgressActive(false); stopHeartbeat(); setStatus('IDLE','bg-secondary'); toggleRunning(false);
         return;
       }
 
-      // poll progress (GET)
-      pollTimer = setInterval(pollProgress, 700);
-
-      // fire client workers
-      for(let i=0;i<CONFIG.CLIENT_WORKERS;i++) runShard(i);
-
-      logLine(`Run started (run_id=${runId}). Launching ${CONFIG.CLIENT_WORKERS} workers × batch ${CONFIG.BATCH_SIZE} (server parallel=${CONFIG.SERVER_PARALLEL})…`);
+      pollTimer = setInterval(() => { pollProgress(); pollLog(); }, 700);
     }catch(e){
-      setProgressActive(false);
-      stopHeartbeat();
-      setStatus('ERROR','bg-danger');
-      toggleRunning(false);
+      setProgressActive(false); stopHeartbeat(); setStatus('ERROR','bg-danger'); toggleRunning(false);
       logLine('Failed to start: ' + (e.message||e));
     }
   });
 
-  document.getElementById('regenStopBtn')?.addEventListener('click', ()=>{
-    if (phase !== 'RUNNING') return;
-    abort = true;
-    setStatus('STOPPING','bg-warning text-dark');
-    startHeartbeat('Stopping'); // keep spinner + dots
-    logLine('Stopping after in-flight batches…');
+  $stop?.addEventListener('click', async ()=>{
+    if(!runId) return;
+    setStatus('STOPPING','bg-warning text-dark'); startHeartbeat('Stopping');
+
+    const qs = new URLSearchParams();
+    if ($hard?.checked) qs.append('hard','1');
+
+    await fetch("{% url 'api_pdf_run_stop' %}" + (qs.toString() ? '?' + qs.toString() : ''), {
+      method: 'POST', headers: {'X-CSRFToken': csrfToken()},
+      body: new URLSearchParams({run_id})
+    });
+
+    logLine($hard?.checked
+      ? 'Stop solicitado. Fila esvaziada (hard=1). Jobs já em execução vão terminar.'
+      : 'Stop solicitado. Jobs que ainda não iniciaram serão abortados ao iniciar.');
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    setProgressActive(false); stopHeartbeat(); toggleRunning(false);
   });
 
+  // utilidades do log
   document.getElementById('copyLogBtn')?.addEventListener('click', async ()=>{
-    try{
-      await navigator.clipboard.writeText($log.textContent || '');
-      const btn=this; btn.classList.add('btn-success'); setTimeout(()=> btn.classList.remove('btn-success'), 800);
-    }catch{}
+    try{ await navigator.clipboard.writeText($log.textContent||''); }catch{}
   });
-
-  document.getElementById('clearLogBtn')?.addEventListener('click', ()=>{ $log.textContent = ''; });
-
-  // Catch unhandled promise rejections to surface in log
-  window.addEventListener('unhandledrejection', (e)=>{
-    logLine('Unhandled error: ' + (e.reason?.message || e.reason || 'unknown'));
-  });
+  document.getElementById('clearLogBtn')?.addEventListener('click', ()=>{ $log.textContent=''; });
 })();
 </script>
+
+
+
+
+
 
 {% endblock %}

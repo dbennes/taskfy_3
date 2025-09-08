@@ -10,6 +10,7 @@ urlpatterns = [
 
     # Inclui todas as rotas do app jobcards (HTML + API FBVs)
     path('', include('jobcards.urls')),
+    path('django-rq/', include('django_rq.urls')),
     
     
 

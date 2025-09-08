@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from . import views_pdf_api
 
 
 # IMPORTANTE: use apenas UMA definição para cada rota de API
@@ -153,9 +154,6 @@ urlpatterns = [
     # ENTRADA (sem parâmetro) → tela para digitar a JobCard
     path("jobcards/modify/", views.modify_jobcard_entry, name="modify_jobcard_entry"),
     path("jobcards/<str:jobcard>/edit/patch/", views.modify_jobcard_excel_patch, name="modify_jobcard_excel_patch"),
-
-
-
     
     path('jobcards/modify/<str:jobcard>/', views.modify_jobcard_edit, name='modify_jobcard_edit'),  # se você já tem essa view, mantenha
     path('jobcards/import/modify/', views.import_jobcard_modify, name='import_jobcard_modify'),
@@ -163,13 +161,14 @@ urlpatterns = [
     path('jobcards/template/', views.download_jobcard_modify_template, name='download_jobcard_template'),
 
 
-    #path('api/jobcards/regenerate-pdfs', views.api_regenerate_jobcards_pdfs, name='api_regenerate_jobcards_pdfs'),
+    # AQUI EU GERO OS PDFs EM BATCH USANDO RQ (Redis Queue) - APLICAÇÃO DE FILA DE TAREFAS E EMISSAO DE PDF ASSÍNCRONA
 
-    path("api/pdf-run/start", views.api_pdf_run_start, name="api_pdf_run_start"),
-    path("api/pdf-run/progress", views.api_pdf_run_progress, name="api_pdf_run_progress"),
-    path("api/pdf-regenerate", views.api_regenerate_jobcards_pdfs, name="api_regenerate_jobcards_pdfs"),
+    path("api/pdf/run/batch",    views.api_regenerate_jobcards_pdfs, name="api_regenerate_jobcards_pdfs"),
 
-    path("pdf-diag/", views.pdf_diag, name="pdf_diag"),
+    path('api/pdf/run/start',    views_pdf_api.api_pdf_run_start,    name='api_pdf_run_start'),
+    path('api/pdf/run/progress', views_pdf_api.api_pdf_run_progress, name='api_pdf_run_progress'),
+    path('api/pdf/run/stop',     views_pdf_api.api_pdf_run_stop,     name='api_pdf_run_stop'),
+    path("api/pdf/run/log",      views_pdf_api.api_pdf_run_log,      name="api_pdf_run_log"),
 
 
 ]
