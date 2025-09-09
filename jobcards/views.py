@@ -235,19 +235,19 @@ def dashboard(request):
     )
     
     # PARA O AUTODESK Token Forge 2-legged
-    import requests
-    resp = requests.post(
-        "https://developer.api.autodesk.com/authentication/v2/token",
-        data={
-            "client_id": settings.APS_CLIENT_ID,
-            "client_secret": settings.APS_CLIENT_SECRET,
-            "grant_type": "client_credentials",
-            "scope": "data:read data:write data:create bucket:read account:read"
-        },
-    )
-    token = resp.json().get('access_token')
+    #import requests
+    #resp = requests.post(
+    #    "https://developer.api.autodesk.com/authentication/v2/token",
+    #    data={
+    #        "client_id": settings.APS_CLIENT_ID,
+    #        "client_secret": settings.APS_CLIENT_SECRET,
+    #        "grant_type": "client_credentials",
+    #        "scope": "data:read data:write data:create bucket:read account:read"
+    #    },
+    #)
+    #token = resp.json().get('access_token')
     # Substitua o URN pelo seu modelo!
-    urn = 'dXJuOmFkc2sud2lwcHJvZDpmcy5maWxlOnZmLkRRelY3XzV0UmRpTDNQRjNVWFNMVmc_dmVyc2lvbj0x'
+    #urn = 'dXJuOmFkc2sud2lwcHJvZDpmcy5maWxlOnZmLkRRelY3XzV0UmRpTDNQRjNVWFNMVmc_dmVyc2lvbj0x'
     
     #######################
     
@@ -395,8 +395,8 @@ def dashboard(request):
         'planning_percent': f"{(planning_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
         'offshore_percent': f"{(offshore_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
         'approved_percent': f"{(approved_to_execute_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
-         'token': token,
-         'urn': urn, 
+        # 'token': token,
+        # 'urn': urn, 
         'discipline_summary': discipline_summary_sorted,
         'area_summary': area_summary,
         'workpack_summary': workpack_summary,   
