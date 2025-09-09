@@ -198,14 +198,14 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
     barcode_url = f'file:///{barcode_path.replace("\\", "/")}'
 
     # Atualiza status preliminar (mesma lógica da view)
-    if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
-        job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
-        if not job.checked_preliminary_by and not job.checked_preliminary_at:
-            job.checked_preliminary_by = "worker"
-            job.checked_preliminary_at = timezone.now()
-            job.save(update_fields=['jobcard_status','checked_preliminary_by','checked_preliminary_at'])
-        else:
-            job.save(update_fields=['jobcard_status'])
+    #if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
+    #    job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
+    #    if not job.checked_preliminary_by and not job.checked_preliminary_at:
+    #        job.checked_preliminary_by = "worker"
+    #        job.checked_preliminary_at = timezone.now()
+    #        job.save(update_fields=['jobcard_status','checked_preliminary_by','checked_preliminary_at'])
+    #    else:
+    #        job.save(update_fields=['jobcard_status'])
 
     # === DADOS ===
     allocated_manpowers = list(
