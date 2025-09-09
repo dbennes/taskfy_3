@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.core.files.storage import default_storage
+from collections import defaultdict
 
 import os
 import tempfile
@@ -181,9 +182,33 @@ def _find_wkhtmltopdf() -> str | None:
 
 # ================= renderizador (usa seus templates) =================
 
-def _render_jobcard_pdf_to_disk(job_card_number: str):
+def _render_jobcard_pdf_to_disk(
+    job_card_number: str,
+    *,
+    status_override: str | None = None,
+    allow_auto_preliminary: bool = False
+):
     job = JobCard.objects.get(job_card_number=job_card_number)
     area_info = Area.objects.filter(area_code=job.location).first() if job.location else None
+
+    # ---- NOVA REGRA DE STATUS ----
+    # 1) Se veio override explícito, aplica.
+    # 2) Se NÃO veio override, mas allow_auto_preliminary=True, aí coloca PRELIMINARY (caso queira esse comportamento).
+    # 3) Caso contrário, NÃO mexe no status.
+    if status_override is not None:
+        if job.jobcard_status != status_override:
+            job.jobcard_status = status_override
+            job.save(update_fields=['jobcard_status'])
+    elif allow_auto_preliminary:
+        if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
+            job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
+            if not job.checked_preliminary_by and not job.checked_preliminary_at:
+                job.checked_preliminary_by = "worker"
+                job.checked_preliminary_at = timezone.now()
+                job.save(update_fields=['jobcard_status','checked_preliminary_by','checked_preliminary_at'])
+            else:
+                job.save(update_fields=['jobcard_status'])
+    # ---- FIM REGRA DE STATUS ----
 
     # Barcode (gera 1x por jobcard)
     barcode_folder = os.path.join(settings.BASE_DIR, 'static', 'barcodes')
@@ -197,16 +222,6 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
             code128.write(fh, options={'write_text': False})
     barcode_url = f'file:///{barcode_path.replace("\\", "/")}'
 
-    # Atualiza status preliminar (mesma lógica da view)
-    #if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
-    #    job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
-    #    if not job.checked_preliminary_by and not job.checked_preliminary_at:
-    #        job.checked_preliminary_by = "worker"
-    #        job.checked_preliminary_at = timezone.now()
-    #        job.save(update_fields=['jobcard_status','checked_preliminary_by','checked_preliminary_at'])
-    #    else:
-    #        job.save(update_fields=['jobcard_status'])
-
     # === DADOS ===
     allocated_manpowers = list(
         AllocatedManpower.objects.filter(jobcard_number=job_card_number).order_by('task_order')
@@ -215,8 +230,7 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
     allocated_tasks     = AllocatedTask.objects.filter(jobcard_number=job_card_number).order_by('task_order')
     allocated_engineerings = AllocatedEngineering.objects.filter(jobcard_number=job.job_card_number)
 
-    # Recalcular ferramentas "efetivas" em função do DL alocado
-    # dl_qty: soma de qty por direct_labor alocado (normalizado)
+    # Recalcular ferramentas em função do DL alocado
     dl_qty = defaultdict(float)
     for mp in allocated_manpowers:
         if mp.direct_labor:
@@ -229,14 +243,12 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
         dl_key = (t.direct_labor or "").strip().upper()
 
         if not dl_key:
-            # Ferramenta global (sem DL) → usa qty original se > 0
             base_qty = float(t.qty or 0)
             if base_qty > 0:
                 t.qty = base_qty
                 effective_tools.append(t)
             continue
 
-        # Ferramenta amarrada a um DL específico → só entra se esse DL está alocado
         if dl_key in dl_qty:
             if t.qty_direct_labor is not None:
                 computed = float(t.qty_direct_labor or 0) * dl_qty[dl_key]
@@ -244,19 +256,14 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
                 computed = float(t.qty or 0)
 
             if computed > 0:
-                t.qty = computed  # ajusta em memória para o template
+                t.qty = computed
                 effective_tools.append(t)
-
-    # Você pode ordenar se quiser:
-    # effective_tools.sort(key=lambda x: (x.special_tooling or "").upper())
 
     allocated_tools = effective_tools
 
-    # Imagem padrão (se você usa)
     image_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', '3.jpg')
     image_url = f'file:///{image_path.replace("\\", "/")}'
 
-    # Imagens anexas (até 4)
     image_files = {}
     for i in range(1, 5):
         field = f'image_{i}'
@@ -277,7 +284,6 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
         else:
             image_files[field] = None
 
-    # Split de ferramentas (se usar em 2 colunas em outro template)
     half = len(allocated_tools) // 2 if allocated_tools else 0
 
     context = {
@@ -304,7 +310,6 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
     footer_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
     footer_temp.write(footer_html.encode('utf-8')); footer_temp.close()
 
-    # wkhtmltopdf
     wkhtml = _find_wkhtmltopdf()
     local_config = pdfkit.configuration(wkhtmltopdf=wkhtml) if wkhtml else None
 
@@ -336,25 +341,23 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
 
     return True, None
 
+
 # ================= RQ Job (executa no worker) =================
 
 @job('pdf', timeout=60*60, result_ttl=24*60*60, failure_ttl=24*60*60)
 def render_jobcard_pdf_job(run_id: str, job_card_number: str, owner_id: int, expected_fp: str):
     close_old_connections()
 
-    # cancelado?
     if cache.get(f'pdf:{run_id}:stop'):
         cache.incr(f'pdf:{run_id}:done', 1)
         _log(run_id, f"STOP {job_card_number}")
         return "stopped"
 
-    # fairness por usuário
     if not _acquire_user_slot(owner_id):
         _release_user_slot(owner_id)
         _log(run_id, f"THROTTLE {job_card_number}")
         raise Exception("USER_THROTTLE")
 
-    # lock por jobcard
     if not _acquire_jobcard_lock(job_card_number):
         cache.incr(f'pdf:{run_id}:done', 1)
         _release_user_slot(owner_id)
@@ -362,12 +365,16 @@ def render_jobcard_pdf_job(run_id: str, job_card_number: str, owner_id: int, exp
         return "skipped-locked"
 
     try:
-        # fingerprint atual (se mudou, atualiza o esperado só para persistir depois)
         current = compute_jobcard_fingerprint(job_card_number)
         if current != expected_fp:
             expected_fp = current
 
-        ok, err = _render_jobcard_pdf_to_disk(job_card_number)
+        # >>> AQUI: Regenerate em lote NUNCA muda status
+        ok, err = _render_jobcard_pdf_to_disk(
+            job_card_number,
+            status_override=None,
+            allow_auto_preliminary=False
+        )
 
         cache.incr(f'pdf:{run_id}:done', 1)
         if ok:
