@@ -716,7 +716,7 @@ def edit_jobcard(request, jobcard_id=None):
         # garante que campos image_* sejam persistidos
         job.save()
 
-        return redirect('generate_pdf', jobcard_id=job.job_card_number)
+        return redirect(f"{reverse('generate_pdf', args=[job.job_card_number])}?src=edit&apply_status=1")
 
     # --- GET ---
     disciplinas = JobCard.objects.values_list('discipline', flat=True).distinct().order_by('discipline')
@@ -837,16 +837,20 @@ from django.http import JsonResponse
 @permission_required('jobcards.change_jobcard', raise_exception=True)
 def generate_pdf(request, jobcard_id):
     """
-    Regras:
-      - src=edit   : força PRELIMINARY JOBCARD CHECKED (com carimbo na 1ª vez).
-      - src=modify : se vier ?status=..., SOBRESCREVE o status no banco antes de gerar.
-      - src ausente: mantém comportamento de edit (força PRELIMINARY).
+    Regras de status:
+      - Só altera status se vier ?apply_status=1
+        - src=edit   : força PRELIMINARY JOBCARD CHECKED (com carimbo na 1ª vez).
+        - src=modify : se vier ?status=..., sobrescreve o status no banco (e carimba se PRELIMINARY nunca carimbado).
+      - Sem apply_status: NÃO toca no status; apenas renderiza o PDF.
     """
+    from django.core.files.storage import default_storage  # garante import local se necessário
+
     job = get_object_or_404(JobCard, job_card_number=jobcard_id)
     area_info = Area.objects.filter(area_code=job.location).first() if job.location else None
 
-    src = (request.GET.get('src') or 'edit').lower().strip()
-    incoming_status = request.GET.get('status')  # usado quando src=modify
+    src            = (request.GET.get('src') or '').lower().strip()
+    apply_status   = (request.GET.get('apply_status') == '1')
+    incoming_status= request.GET.get('status')  # usado quando src=modify
 
     # -------- Código de barras --------
     barcode_folder = os.path.join(settings.BASE_DIR, 'static', 'barcodes')
@@ -860,37 +864,39 @@ def generate_pdf(request, jobcard_id):
             code128.write(bf, options={'write_text': False})
     barcode_url = f'file:///{barcode_path.replace("\\", "/")}'
 
-    # -------- Regras de status por origem --------
-    if src == 'edit' or not src:
-        if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
-            job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
-            if not job.checked_preliminary_by and not job.checked_preliminary_at:
-                job.checked_preliminary_by = request.user.username
-                job.checked_preliminary_at = timezone.now()
-                job.save(update_fields=['jobcard_status', 'checked_preliminary_by', 'checked_preliminary_at'])
-            else:
-                job.save(update_fields=['jobcard_status'])
-
-    elif src == 'modify':
-        # SE vier status nos chips, sobrescreve aqui também
-        if incoming_status:
-            incoming_status = incoming_status.strip()
-            if incoming_status and incoming_status != job.jobcard_status:
-                job.jobcard_status = incoming_status
-                job.last_modified_by = request.user.username
-                job.last_modified_at = timezone.now()
-                fields = ['jobcard_status', 'last_modified_by', 'last_modified_at']
-
-                # se virou PRELIMINARY e nunca carimbou, carimba agora
-                if (incoming_status == 'PRELIMINARY JOBCARD CHECKED'
-                        and not job.checked_preliminary_by
-                        and not job.checked_preliminary_at):
+    # -------- Regras de status (condicionais) --------
+    if apply_status:
+        if src == 'edit' or not src:
+            if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
+                job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
+                if not job.checked_preliminary_by and not job.checked_preliminary_at:
                     job.checked_preliminary_by = request.user.username
                     job.checked_preliminary_at = timezone.now()
-                    fields += ['checked_preliminary_by', 'checked_preliminary_at']
+                    job.save(update_fields=['jobcard_status', 'checked_preliminary_by', 'checked_preliminary_at'])
+                else:
+                    job.save(update_fields=['jobcard_status'])
 
-                job.save(update_fields=fields)
-        # se não vier status, usa o que já está salvo (Modify já salvou antes)
+        elif src == 'modify':
+            if incoming_status:
+                s = incoming_status.strip()
+                if s and s != job.jobcard_status:
+                    job.jobcard_status   = s
+                    job.last_modified_by = request.user.username
+                    job.last_modified_at = timezone.now()
+                    fields = ['jobcard_status', 'last_modified_by', 'last_modified_at']
+
+                    # se virou PRELIMINARY e nunca carimbou, carimba agora
+                    if (
+                        s == 'PRELIMINARY JOBCARD CHECKED'
+                        and not job.checked_preliminary_by
+                        and not job.checked_preliminary_at
+                    ):
+                        job.checked_preliminary_by = request.user.username
+                        job.checked_preliminary_at = timezone.now()
+                        fields += ['checked_preliminary_by', 'checked_preliminary_at']
+
+                    job.save(update_fields=fields)
+            # se não vier status, mantém o que já está salvo
 
     # -------- Query das alocações --------
     allocated_manpowers    = AllocatedManpower.objects.filter(jobcard_number=jobcard_id).order_by('task_order')
@@ -971,9 +977,9 @@ def generate_pdf(request, jobcard_id):
     }
 
     # -------- Render HTML --------
-    html_string = render_to_string('sistema/jobcard_pdf.html', context, request=request)
-    header_html_string = render_to_string('sistema/header.html', context, request=request)
-    footer_html_string = render_to_string('sistema/footer.html', context, request=request)
+    html_string         = render_to_string('sistema/jobcard_pdf.html', context, request=request)
+    header_html_string  = render_to_string('sistema/header.html', context, request=request)
+    footer_html_string  = render_to_string('sistema/footer.html', context, request=request)
     header_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
     footer_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
     header_temp.write(header_html_string.encode('utf-8'))
@@ -3678,7 +3684,7 @@ def modify_jobcard_edit(request, jobcard):
     """
     Tela de edição via 'Modify': usuário escolhe STATUS nos chips.
     - Salva no banco
-    - Redireciona para generate_pdf com src=modify & status=<escolhido>
+    - Redireciona para generate_pdf com src=modify & status=<escolhido> & apply_status=1
       para SOBRESCREVER o status também no generate_pdf.
     """
     obj = get_object_or_404(JobCard, job_card_number=jobcard)
@@ -3699,9 +3705,7 @@ def modify_jobcard_edit(request, jobcard):
             inst = form.save(commit=False)
 
             # aplica status escolhido
-            inst.jobcard_status = chosen_status
-
-            # metadados de alteração
+            inst.jobcard_status   = chosen_status
             inst.last_modified_by = request.user.username
             inst.last_modified_at = timezone.now()
 
@@ -3717,8 +3721,15 @@ def modify_jobcard_edit(request, jobcard):
             inst.save()
             form.save_m2m()
 
-            # monta querystring para sobrescrever no generate_pdf também
-            qs = urlencode({"src": "modify", "status": inst.jobcard_status})
+            # >>> redireciona pedindo que o generate_pdf APLIQUE o status escolhido
+            from urllib.parse import urlencode
+            from django.urls import reverse
+
+            qs = urlencode({
+                "src": "modify",
+                "status": inst.jobcard_status,
+                "apply_status": "1",
+            })
             return redirect(f"{reverse('generate_pdf', args=[inst.job_card_number])}?{qs}")
 
         messages.error(request, "Please correct the errors and try again.")
