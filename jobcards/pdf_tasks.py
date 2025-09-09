@@ -182,35 +182,22 @@ def _find_wkhtmltopdf() -> str | None:
 
 # ================= renderizador (usa seus templates) =================
 
+# jobcards/pdf_tasks.py
 def _render_jobcard_pdf_to_disk(
     job_card_number: str,
     *,
     status_override: str | None = None,
-    allow_auto_preliminary: bool = False
 ):
     job = JobCard.objects.get(job_card_number=job_card_number)
     area_info = Area.objects.filter(area_code=job.location).first() if job.location else None
 
-    # ---- NOVA REGRA DE STATUS ----
-    # 1) Se veio override explícito, aplica.
-    # 2) Se NÃO veio override, mas allow_auto_preliminary=True, aí coloca PRELIMINARY (caso queira esse comportamento).
-    # 3) Caso contrário, NÃO mexe no status.
-    if status_override is not None:
-        if job.jobcard_status != status_override:
-            job.jobcard_status = status_override
-            job.save(update_fields=['jobcard_status'])
-    elif allow_auto_preliminary:
-        if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
-            job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
-            if not job.checked_preliminary_by and not job.checked_preliminary_at:
-                job.checked_preliminary_by = "worker"
-                job.checked_preliminary_at = timezone.now()
-                job.save(update_fields=['jobcard_status','checked_preliminary_by','checked_preliminary_at'])
-            else:
-                job.save(update_fields=['jobcard_status'])
-    # ---- FIM REGRA DE STATUS ----
+    # === POLÍTICA DE STATUS ===
+    # NUNCA alterar status no render, a menos que receba override explícito.
+    if status_override is not None and job.jobcard_status != status_override:
+        job.jobcard_status = status_override
+        job.save(update_fields=['jobcard_status'])
 
-    # Barcode (gera 1x por jobcard)
+    # ---------- Barcode ----------
     barcode_folder = os.path.join(settings.BASE_DIR, 'static', 'barcodes')
     os.makedirs(barcode_folder, exist_ok=True)
     barcode_filename = f'{job.job_card_number}.png'
@@ -254,7 +241,6 @@ def _render_jobcard_pdf_to_disk(
                 computed = float(t.qty_direct_labor or 0) * dl_qty[dl_key]
             else:
                 computed = float(t.qty or 0)
-
             if computed > 0:
                 t.qty = computed
                 effective_tools.append(t)
@@ -344,6 +330,7 @@ def _render_jobcard_pdf_to_disk(
 
 # ================= RQ Job (executa no worker) =================
 
+# jobcards/pdf_tasks.py
 @job('pdf', timeout=60*60, result_ttl=24*60*60, failure_ttl=24*60*60)
 def render_jobcard_pdf_job(run_id: str, job_card_number: str, owner_id: int, expected_fp: str):
     close_old_connections()
@@ -369,11 +356,10 @@ def render_jobcard_pdf_job(run_id: str, job_card_number: str, owner_id: int, exp
         if current != expected_fp:
             expected_fp = current
 
-        # >>> AQUI: Regenerate em lote NUNCA muda status
+        # Lote NUNCA altera status
         ok, err = _render_jobcard_pdf_to_disk(
             job_card_number,
-            status_override=None,
-            allow_auto_preliminary=False
+            status_override=None
         )
 
         cache.incr(f'pdf:{run_id}:done', 1)
