@@ -16,6 +16,11 @@ SECRET_KEY = 'django-insecure-ek1fnjxzic4aol1_+hqh)bb2xbpduj*dhlp@%^=xcbgh#qs&$t
 DEBUG = True
 ALLOWED_HOSTS = ['*']
 
+# === Autodesk Platform Services (APS / Forge) ===
+APS_CLIENT_ID = os.getenv("APS_CLIENT_ID", "")         # preencha via variável de ambiente ou direto aqui (temporário)
+APS_CLIENT_SECRET = os.getenv("APS_CLIENT_SECRET", "") # idem
+APS_CALLBACK_URL = os.getenv("APS_CALLBACK_URL", "http://192.168.1.2:8080/api/aps/callback")
+
 # === Apps instalados ===
 INSTALLED_APPS = [
     'django.contrib.admin',
