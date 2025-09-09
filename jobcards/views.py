@@ -132,290 +132,271 @@ def login(request):
 
 # - PARTE DO DASHBOARD
 
+# ====== Constantes de status (cadeia) ======
+STATUS_NO     = 'NO CHECKED'
+STATUS_PRE    = 'PRELIMINARY JOBCARD CHECKED'
+STATUS_PLAN   = 'PLANNING JOBCARD CHECKED'
+STATUS_OFF    = 'OFFSHORE FIELD JOBCARD CHECKED'
+STATUS_DONE   = 'JOBCARD COMPLETED'
+
+# Conjuntos cumulativos
+STAGE_PRE_OR_MORE   = [STATUS_PRE, STATUS_PLAN, STATUS_OFF, STATUS_DONE]
+STAGE_PLAN_OR_MORE  = [STATUS_PLAN, STATUS_OFF, STATUS_DONE]
+STAGE_OFF_OR_MORE   = [STATUS_OFF, STATUS_DONE]
+STAGE_DONE_ONLY     = [STATUS_DONE]
+
 @login_required(login_url='login')
 def dashboard(request):
-    # Summary cards
-    total_jobcards = JobCard.objects.count()
-    checked_count = JobCard.objects.exclude(jobcard_status='NO CHECKED').count()
-    not_checked_count = total_jobcards - checked_count
-    
-    discipline_order = [
-        'LOGISTIC',
-        'SCAFFOLDING',
-        'STRUCTURAL',
-        'MECHANICAL',
-        'PIPING',
-        'TIE-IN',
-        'HVAC',
-        'INSTRUMENTATION & AUTOMATION',
-        'ELECTRICAL',
-        'TELECOM',
-        'PAINTING',
-    ]
+    # Excluir canceladas sempre
+    CANCEL_Q = Q(jobcard_status__icontains='CANCEL')
+    qs_active = JobCard.objects.exclude(CANCEL_Q)
 
-    # JobCards with Material (jobcards únicos presentes na base de material)
+    # Totais principais (somente ativos)
+    total_jobcards   = qs_active.count()
+    not_checked_count = qs_active.filter(jobcard_status=STATUS_NO).count()
+    checked_count     = total_jobcards - not_checked_count
+
+    # JobCards with Material: considere só as ativas
+    active_numbers = qs_active.values_list('job_card_number', flat=True)
     jobcards_with_material = (
         MaterialBase.objects
         .exclude(job_card_number__isnull=True)
         .exclude(job_card_number__exact='')
-        .values('job_card_number')
-        .distinct()
-        .count()
+        .filter(job_card_number__in=active_numbers)
+        .values('job_card_number').distinct().count()
     )
 
-    # Gráfico: JobCards por Disciplina (usando discipline_code)
-    # Pega todos os códigos de disciplina distintos e ordena
-    codigos = list(JobCard.objects.values_list('discipline_code', flat=True).distinct().order_by('discipline_code'))
+    # Disciplinas (por discipline_code) - só ativas
+    codigos = list(qs_active.values_list('discipline_code', flat=True).distinct().order_by('discipline_code'))
     labels_total = codigos
-    data_total = [
-        JobCard.objects.filter(discipline_code=cod).count()
-        for cod in codigos
-    ]
+    data_total   = [qs_active.filter(discipline_code=cod).count() for cod in codigos]
 
-    # Charts para não checkeds
+    # NÃO CHECKED por disciplina (só ativas)
     not_checked_qs = (
-        JobCard.objects
-        .filter(jobcard_status='NO CHECKED')
-        .values('discipline')
-        .annotate(count=Count('id'))
-        .order_by('discipline')
+        qs_active.filter(jobcard_status=STATUS_NO)
+                 .values('discipline').annotate(count=Count('id')).order_by('discipline')
     )
-    labels_not_checked = [entry['discipline'] for entry in not_checked_qs]
-    data_not_checked   = [entry['count']      for entry in not_checked_qs]
+    labels_not_checked = [r['discipline'] for r in not_checked_qs]
+    data_not_checked   = [r['count'] for r in not_checked_qs]
 
-    # AWP Monitor: System > WorkPack > JobCards
+    # AWP (só ativas)
+    from collections import defaultdict
     awp_data = defaultdict(lambda: defaultdict(list))
-    for jc in JobCard.objects.all().order_by('system', 'workpack_number', 'job_card_number'):
+    for jc in qs_active.order_by('system', 'workpack_number', 'job_card_number'):
         if jc.system and jc.workpack_number:
             awp_data[jc.system][jc.workpack_number].append(jc)
 
-    # ALERTA: JobCards com campos obrigatórios vazios/nulos
-    jobcards_incompletos = JobCard.objects.filter(
+    # Alertas de campos obrigatórios (só ativas)
+    jobcards_incompletos = qs_active.filter(
         Q(job_card_number__isnull=True) | Q(job_card_number__exact='') |
-        Q(prepared_by__isnull=True) | Q(prepared_by__exact='') |
-        Q(discipline__isnull=True) | Q(discipline__exact='') |
+        Q(prepared_by__isnull=True)     | Q(prepared_by__exact='')     |
+        Q(discipline__isnull=True)      | Q(discipline__exact='')      |
         Q(job_card_description__isnull=True) | Q(job_card_description__exact='') |
         Q(date_prepared__isnull=True)
     )
     alerta_count = jobcards_incompletos.count()
-    
-    # Gráfico JobCards por Área (location)
-    area_qs = (
-        JobCard.objects
-        .values('location')
-        .annotate(count=Count('id'))
-        .order_by('location')
-    )
-    labels_areas = [entry['location'] or '—' for entry in area_qs]
-    data_areas   = [entry['count'] for entry in area_qs]
 
-    level_xx_count = JobCard.objects.exclude(level__iexact='XX').count()
-    activity_to_be_verified_count = JobCard.objects.exclude(activity_id__iexact='to be verified').count()
-    start_1900_count = JobCard.objects.exclude(start=date(1900, 1, 1)).count()
-    finish_1900_count = JobCard.objects.exclude(finish=date(1900, 1, 1)).count()
-    system_to_be_verified_count = JobCard.objects.exclude(system__iexact='to be verified').count()
-    subsystem_to_be_verified_count = JobCard.objects.exclude(subsystem__iexact='to be verified').count()
-    preliminary_checked_count = JobCard.objects.filter(jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
-    planning_checked_count = JobCard.objects.filter(jobcard_status='PLANNING JOBCARD CHECKED').count()
-    offshore_checked_count = JobCard.objects.filter(jobcard_status='OFFSHORE FIELD JOBCARD CHECKED').count()
-    approved_to_execute_count = JobCard.objects.filter(jobcard_status='RELEASED FOR EXECUTION').count()
-    finalized_count = JobCard.objects.filter(jobcard_status='JOBCARD COMPLETED').count()
-    
-    # Pega todos os pares únicos (code, name)
-    discipline_legend = (
-        JobCard.objects
-        .values_list('discipline_code', 'discipline')
-        .distinct()
-        .order_by('discipline_code')
-    )
-    
-    # Encontra todos os documentos da EngineeringBase que também estão no DocumentoControle
+    # Áreas (só ativas)
+    area_qs = qs_active.values('location').annotate(count=Count('id')).order_by('location')
+    labels_areas = [x['location'] or '—' for x in area_qs]
+    data_areas   = [x['count'] for x in area_qs]
+
+    # Mini métricas (só ativas)
+    level_xx_count                = qs_active.exclude(level__iexact='XX').count()
+    activity_to_be_verified_count = qs_active.exclude(activity_id__iexact='to be verified').count()
+    start_1900_count              = qs_active.exclude(start=date(1900, 1, 1)).count()
+    finish_1900_count             = qs_active.exclude(finish=date(1900, 1, 1)).count()
+    system_to_be_verified_count   = qs_active.exclude(system__iexact='to be verified').count()
+    subsystem_to_be_verified_count= qs_active.exclude(subsystem__iexact='to be verified').count()
+
+    # ===== Contagens CUMULATIVAS por estágio =====
+    preliminary_checked_count = qs_active.filter(jobcard_status__in=STAGE_PRE_OR_MORE).count()
+    planning_checked_count    = qs_active.filter(jobcard_status__in=STAGE_PLAN_OR_MORE).count()
+    offshore_checked_count    = qs_active.filter(jobcard_status__in=STAGE_OFF_OR_MORE).count()
+    finalized_count           = qs_active.filter(jobcard_status__in=STAGE_DONE_ONLY).count()
+
+    # (opcional) outros status fora da cadeia podem continuar isolados
+    approved_to_execute_count = qs_active.filter(jobcard_status='RELEASED FOR EXECUTION').count()
+
+    # Legend de disciplinas (só ativas)
+    discipline_legend = qs_active.values_list('discipline_code', 'discipline').distinct().order_by('discipline_code')
+
+    # Eng. sincronizados
     engineering_synced_docs = EngineeringBase.objects.filter(
         document__in=DocumentoControle.objects.values_list('codigo', flat=True)
     )
-    
-    # PARA O AUTODESK Token Forge 2-legged
-    #import requests
-    #resp = requests.post(
-    #    "https://developer.api.autodesk.com/authentication/v2/token",
-    #    data={
-    #        "client_id": settings.APS_CLIENT_ID,
-    #        "client_secret": settings.APS_CLIENT_SECRET,
-    #        "grant_type": "client_credentials",
-    #        "scope": "data:read data:write data:create bucket:read account:read"
-    #    },
-    #)
-    #token = resp.json().get('access_token')
-    # Substitua o URN pelo seu modelo!
-    #urn = 'dXJuOmFkc2sud2lwcHJvZDpmcy5maWxlOnZmLkRRelY3XzV0UmRpTDNQRjNVWFNMVmc_dmVyc2lvbj0x'
-    
-    #######################
-    
+
+    # Ordem visual de disciplinas
+    discipline_order = [
+        'LOGISTIC','SCAFFOLDING','STRUCTURAL','MECHANICAL','PIPING','TIE-IN',
+        'HVAC','INSTRUMENTATION & AUTOMATION','ELECTRICAL','TELECOM','PAINTING',
+    ]
+
+    # ===== Discipline summary (cumulativo >= PRELIMINARY) =====
     discipline_summary = []
-    for d in JobCard.objects.values('discipline').distinct():
-        total = JobCard.objects.filter(discipline=d['discipline']).count()
-        checked = JobCard.objects.filter(discipline=d['discipline'], jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
+    for d in qs_active.values('discipline').distinct():
+        total   = qs_active.filter(discipline=d['discipline']).count()
+        checked = qs_active.filter(discipline=d['discipline'],
+                                   jobcard_status__in=STAGE_PRE_OR_MORE).count()
         percent = (checked / total * 100) if total else 0
         discipline_summary.append({
             'discipline': d['discipline'],
             'total_jobcard': total,
-            'total_checked': checked,
-            'percent_checked': percent
+            'total_checked': checked,     # cumulativo
+            'percent_checked': percent,
         })
 
-    # Ordena e completa a lista
+    # Ordena/”preenche” conforme ordem fixa
     disc_dict = {d['discipline']: d for d in discipline_summary}
     discipline_summary_sorted = []
     for name in discipline_order:
-        d = disc_dict.get(name)
-        if d:
-            discipline_summary_sorted.append(d)
-        else:
-            discipline_summary_sorted.append({
-                'discipline': name,
-                'total_jobcard': 0,
-                'total_checked': 0,
-                'percent_checked': 0.0,
-            })
+        discipline_summary_sorted.append(disc_dict.get(name, {
+            'discipline': name, 'total_jobcard': 0, 'total_checked': 0, 'percent_checked': 0.0
+        }))
 
-    # Agrupa todas as áreas por area_code
+    # ===== Area summary (cumulativo >= PRELIMINARY) =====
     area_groups = defaultdict(list)
     for a in Area.objects.all():
         area_groups[a.area_code].append(a)
 
     area_summary = []
-    for area_code in sorted(area_groups):  # <-- aqui garante a ordem alfabética dos códigos
-        areas = area_groups[area_code]
-        area_codes = [a.area_code for a in areas]
-
-        total = JobCard.objects.filter(location__in=area_codes).count()
-        checked = JobCard.objects.filter(location__in=area_codes, jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
+    for area_code in sorted(area_groups):
+        codes = [a.area_code for a in area_groups[area_code]]
+        total   = qs_active.filter(location__in=codes).count()
+        checked = qs_active.filter(location__in=codes,
+                                   jobcard_status__in=STAGE_PRE_OR_MORE).count()
         percent = (checked / total * 100) if total else 0
-
-        # Busca a descrição da área no banco Area
         area_obj = Area.objects.filter(area_code=area_code).order_by('pk').first()
-        area_description = area_obj.location if area_obj else ""
-
         area_summary.append({
             'area_code': area_code,
-            'area_description': area_description,
+            'area_description': area_obj.location if area_obj else '',
             'total_jobcard': total,
-            'total_checked': checked,
-            'percent_checked': percent
+            'total_checked': checked,     # cumulativo
+            'percent_checked': percent,
         })
 
-
+    # ===== Workpack summary (cumulativo >= PRELIMINARY) =====
     workpack_summary = []
-    for w in JobCard.objects.values('workpack_number').distinct():
-        total = JobCard.objects.filter(workpack_number=w['workpack_number']).count()
-        checked = JobCard.objects.filter(workpack_number=w['workpack_number'], jobcard_status='PRELIMINARY JOBCARD CHECKED').count()
+    for w in (qs_active.exclude(workpack_number__isnull=True)
+                     .exclude(workpack_number__exact='')
+                     .values('workpack_number').distinct()):
+        wp = w['workpack_number']
+        total   = qs_active.filter(workpack_number=wp).count()
+        checked = qs_active.filter(workpack_number=wp,
+                                   jobcard_status__in=STAGE_PRE_OR_MORE).count()
         percent = (checked / total * 100) if total else 0
         workpack_summary.append({
-            'workpack': w['workpack_number'],
+            'workpack': wp,
             'total_jobcard': total,
-            'total_checked': checked,
-            'percent_checked': percent
+            'total_checked': checked,     # cumulativo
+            'percent_checked': percent,
         })
 
-    # WORKPACK
+    # Totais/percentuais
     workpack_total_jobcard = sum(w['total_jobcard'] for w in workpack_summary)
     workpack_total_checked = sum(w['total_checked'] for w in workpack_summary)
-    workpack_percent_checked = (
-        (workpack_total_checked / workpack_total_jobcard * 100)
-        if workpack_total_jobcard else 0
-    )
-    
-    # Discipline
-    discipline_total_jobcard = sum(d['total_jobcard'] for d in discipline_summary)
-    discipline_total_checked = sum(d['total_checked'] for d in discipline_summary)
-    discipline_percent_checked = (
-        (discipline_total_checked / discipline_total_jobcard * 100) if discipline_total_jobcard else 0
-    )
+    workpack_percent_checked = (workpack_total_checked / workpack_total_jobcard * 100) if workpack_total_jobcard else 0
 
-    # Area
+    discipline_total_jobcard = sum(d['total_jobcard'] for d in discipline_summary_sorted)
+    discipline_total_checked = sum(d['total_checked'] for d in discipline_summary_sorted)
+    discipline_percent_checked = (discipline_total_checked / discipline_total_jobcard * 100) if discipline_total_jobcard else 0
+
     area_total_jobcard = sum(a['total_jobcard'] for a in area_summary)
     area_total_checked = sum(a['total_checked'] for a in area_summary)
-    area_percent_checked = (
-        (area_total_checked / area_total_jobcard * 100) if area_total_jobcard else 0
-    )
-    
-    # Gráfico: Quantidade de JobCards PRELIMINARY CHECKED por dia (últimos 30 dias)
-    checked_daily = (
-        JobCard.objects
-        .filter(jobcard_status='PRELIMINARY JOBCARD CHECKED')
-        .annotate(day=TruncDate('checked_preliminary_at'))  # use o campo correto de data
-        .values('day')
-        .annotate(count=Count('id'))
-        .order_by('day')
-    )
+    area_percent_checked = (area_total_checked / area_total_jobcard * 100) if area_total_jobcard else 0
 
-    # Monta listas para o Chart.js
-    checked_days = [d['day'].strftime('%d/%m') for d in checked_daily if d['day']]
+    # ===== Gráfico: PRELIMINARY per day (usar o carimbo, não o status atual) =====
+    checked_daily = (
+        qs_active.filter(checked_preliminary_at__isnull=False)
+                 .annotate(day=TruncDate('checked_preliminary_at'))
+                 .values('day').annotate(count=Count('id')).order_by('day')
+    )
+    checked_days   = [d['day'].strftime('%d/%m') for d in checked_daily if d['day']]
     checked_counts = [d['count'] for d in checked_daily if d['day']]
 
+    # “Recently Checked JobCards” pelo carimbo, independente do status atual
     recent_checked_jobcards = (
-        JobCard.objects
-        .filter(jobcard_status='PRELIMINARY JOBCARD CHECKED')
-        .order_by('-checked_preliminary_at')[:5]  # últimos 5, por exemplo
+        qs_active.filter(checked_preliminary_at__isnull=False)
+                 .order_by('-checked_preliminary_at')[:5]
     )
 
-    jobcards = JobCard.objects.all()[:20]  # Mostra só os 20 primeiros, ou ajuste como quiser
+    # Amostra
+    jobcards = qs_active.all()[:20]
 
+    # PDFs disponíveis
     backups_dir = os.path.join(settings.BASE_DIR, 'jobcard_backups')
     available_pdfs = {f for f in os.listdir(backups_dir) if f.endswith('.pdf')}
-    
+
+    # Percentuais (cada estágio sozinho e cumulativo)
+    preliminary_percent = f"{(preliminary_checked_count / total_jobcards * 100):.2f}" if total_jobcards else "0.00"
+    planning_percent    = f"{(planning_checked_count / total_jobcards * 100):.2f}" if total_jobcards else "0.00"
+    offshore_percent    = f"{(offshore_checked_count / total_jobcards * 100):.2f}" if total_jobcards else "0.00"
+    approved_percent    = f"{(approved_to_execute_count / total_jobcards * 100):.2f}" if total_jobcards else "0.00"
+
     context = {
         'total_jobcards': total_jobcards,
         'not_checked_count': not_checked_count,
         'checked_count': checked_count,
+
         'jobcards_with_material': jobcards_with_material,
+
         'labels_not_checked': labels_not_checked,
         'data_not_checked': data_not_checked,
-        'labels_total': labels_total,    # códigos das disciplinas
-        'data_total': data_total,        # valores por código
+
+        'labels_total': labels_total,
+        'data_total': data_total,
+
         'awp_data': awp_data,
         'jobcards_incompletos': jobcards_incompletos,
         'alerta_count': alerta_count,
+
         'labels_areas': labels_areas,
         'data_areas': data_areas,
+
         'level_xx_count': level_xx_count,
         'activity_to_be_verified_count': activity_to_be_verified_count,
         'start_1900_count': start_1900_count,
         'finish_1900_count': finish_1900_count,
         'system_to_be_verified_count': system_to_be_verified_count,
         'subsystem_to_be_verified_count': subsystem_to_be_verified_count,
+
+        # >>> CUMULATIVOS <<<
         'preliminary_checked_count': preliminary_checked_count,
         'planning_checked_count': planning_checked_count,
         'offshore_checked_count': offshore_checked_count,
-        'approved_to_execute_count': approved_to_execute_count,
+        'approved_to_execute_count': approved_to_execute_count,  # opcional
         'finalized_count': finalized_count,
+
         'discipline_legend': discipline_legend,
         'engineering_synced_docs': engineering_synced_docs,
-        'preliminary_percent': f"{((preliminary_checked_count + planning_checked_count) / total_jobcards * 100):.2f}" if total_jobcards else "0.00",
-        'planning_percent': f"{(planning_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
-        'offshore_percent': f"{(offshore_checked_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
-        'approved_percent': f"{(approved_to_execute_count/total_jobcards*100):.2f}" if total_jobcards else "0.00",
-        # 'token': token,
-        # 'urn': urn, 
+
+        'preliminary_percent': preliminary_percent,
+        'planning_percent': planning_percent,
+        'offshore_percent': offshore_percent,
+        'approved_percent': approved_percent,
+
         'discipline_summary': discipline_summary_sorted,
         'area_summary': area_summary,
-        'workpack_summary': workpack_summary,   
         'workpack_summary': workpack_summary,
+
         'workpack_total_jobcard': workpack_total_jobcard,
         'workpack_total_checked': workpack_total_checked,
         'workpack_percent_checked': workpack_percent_checked,
+
         'discipline_total_jobcard': discipline_total_jobcard,
         'discipline_total_checked': discipline_total_checked,
         'discipline_percent_checked': discipline_percent_checked,
+
         'area_total_jobcard': area_total_jobcard,
         'area_total_checked': area_total_checked,
         'area_percent_checked': area_percent_checked,
+
         'checked_days': checked_days,
         'checked_counts': checked_counts,
+
         'recent_checked_jobcards': recent_checked_jobcards,
         'available_pdfs': available_pdfs,
         'jobcards': jobcards,
-        
     }
     return render(request, 'sistema/dashboard.html', context)
 
