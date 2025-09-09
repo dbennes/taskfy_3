@@ -1,11 +1,13 @@
 {% extends 'sistema/base.html' %}
 {% load static %}
+{% load i18n %}
 
 {% block content %}
+{% language 'en' %}
 <style>
   /* ===== Base + largura FLUID (usa o máximo possível da tela) ===== */
   body, .container-fluid { background:#f7f8fa !important; }
-  .container-fluid { max-width: 1600px; } /* mais largo que padrão para “respirar” */
+  .container-fluid { max-width: 1600px; }
   .card-clean { background:#fff; border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); border:1px solid #eceff3; }
 
   /* ===== Tipografia compacta (13px) + tokens ===== */
@@ -31,7 +33,7 @@
   .status-dot { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:.4rem; vertical-align:middle; }
   .dot-danger { background:#ef4444; } .dot-warning { background:#f59e0b; } .dot-info { background:#3b82f6; } .dot-success { background:#10b981; }
 
-  /* ===== Grid de 12 colunas (organização previsível) ===== */
+  /* ===== Grid de 12 colunas ===== */
   .grid-12 { display:grid; grid-template-columns:repeat(12, minmax(0, 1fr)); gap:12px 14px; }
   .span-12 { grid-column: span 12; }
   .span-6  { grid-column: span 6; }
@@ -40,24 +42,20 @@
   .span-2  { grid-column: span 2; }
   .span-8  { grid-column: span 8; }
 
-  /* responsivo: em telas médias, aumentar as spans para caber melhor */
   @media (max-width: 1399.98px) {
-    .span-3 { grid-column: span 4; }  /* 3 col → 4 col */
+    .span-3 { grid-column: span 4; }
     .span-2 { grid-column: span 3; }
   }
   @media (max-width: 991.98px) {
     .grid-12 { grid-template-columns:repeat(6, minmax(0, 1fr)); }
-    .span-6 { grid-column: span 6; }
-    .span-4 { grid-column: span 6; }
-    .span-3 { grid-column: span 6; }
-    .span-2 { grid-column: span 3; }
+    .span-6, .span-4, .span-3, .span-2 { grid-column: span 6; }
   }
   @media (max-width: 575.98px) {
     .grid-12 { grid-template-columns:repeat(4, minmax(0, 1fr)); }
     .span-2, .span-3, .span-4, .span-6, .span-8, .span-12 { grid-column: 1 / -1; }
   }
 
-  /* ===== Field container padronizado ===== */
+  /* ===== Field container ===== */
   .field { display:flex; flex-direction:column; }
   .hint { margin-top:4px; font-size:11.5px; color:#9aa3af; }
 
@@ -79,14 +77,15 @@
   <div class="d-flex align-items-center justify-content-between topbar-black">
     <div class="d-flex align-items-center">
       <span class="dot red me-1"></span><span class="dot yellow me-1"></span><span class="dot green"></span>
-      <h6 class="topbar-title ms-3">JobCard — Edit</h6>
+      <h6 class="topbar-title ms-3">JobCard — Modify</h6>
     </div>
     <div class="d-flex gap-2">
       <a href="{% url 'jobcards_list' %}" class="btn btn-outline-light btn-sm btn-topbar">
         <i class="fa fa-arrow-left me-1"></i> Back to list
       </a>
       {% if jobcard and jobcard.job_card_number %}
-        <a href="{% url 'generate_pdf' jobcard_id=jobcard.job_card_number %}" class="btn btn-light btn-sm btn-topbar">
+        <!-- IMPORTANTE: gerar via JS (src=modify&status=...) -->
+        <a href="#" id="btnGenTop" class="btn btn-light btn-sm btn-topbar">
           <i class="fa fa-file-pdf me-1"></i> Generate PDF
         </a>
       {% else %}
@@ -97,11 +96,29 @@
     </div>
   </div>
 
+  {# Django messages #}
   {% if messages %}
     <div class="mb-2">
       {% for m in messages %}
         <div class="alert alert-{{ m.tags }} mb-2" style="font-size:13px;">{{ m }}</div>
       {% endfor %}
+    </div>
+  {% endif %}
+
+  {# Error summary (forced English) #}
+  {% if form.errors %}
+    <div class="alert alert-danger" style="font-size:13px;">
+      <strong>There are errors in the form.</strong>
+      <ul class="mb-0">
+        {% for field in form %}
+          {% if field.errors %}
+            <li><b>{{ field.label }}:</b> {{ field.errors|striptags }}</li>
+          {% endif %}
+        {% endfor %}
+        {% if form.non_field_errors %}
+          <li>{{ form.non_field_errors|striptags }}</li>
+        {% endif %}
+      </ul>
     </div>
   {% endif %}
 
@@ -122,8 +139,8 @@
                 <span class="chip js-status" data-value="PRELIMINARY JOBCARD CHECKED"><span class="status-dot dot-info"></span>PRELIMINARY</span>
                 <span class="chip js-status" data-value="PLANNING JOBCARD CHECKED"><span class="status-dot dot-warning"></span>PLANNING</span>
                 <span class="chip js-status" data-value="OFFSHORE FIELD JOBCARD CHECKED"><span class="status-dot dot-info"></span>OFFSHORE</span>
-                <span class="chip js-status" data-value="APPROVED TO EXECUTE"><span class="status-dot dot-success"></span>APPROVED</span>
-                <span class="chip js-status" data-value="JOBCARD FINALIZED"><span class="status-dot dot-success"></span>FINALIZED</span>
+                <span class="chip js-status" data-value="JOBCARD COMPLETED"><span class="status-dot dot-success"></span>COMPLETED</span>
+                <span class="chip js-status" data-value="CANCELED"><span class="status-dot dot-danger"></span>CANCELED</span>
               </div>
             </div>
             <div class="text-end">
@@ -133,7 +150,7 @@
           </div>
         </div>
 
-        <!-- ===== FORM PRINCIPAL: 12-col grid, seções limpas ===== -->
+        <!-- ===== FORM PRINCIPAL ===== -->
         <form method="post" class="p-3 pt-2" id="jobcardEditForm" novalidate>
           {% csrf_token %}
 
@@ -143,16 +160,29 @@
             {% if form.job_card_number_display %}
               <div class="field span-4">
                 {{ form.job_card_number_display.label_tag }}{{ form.job_card_number_display }}
+                {% if form.job_card_number_display.errors %}
+                  <div class="invalid-feedback d-block">{{ form.job_card_number_display.errors|striptags }}</div>
+                {% endif %}
                 <div class="hint">Read-only</div>
               </div>
             {% elif form.job_card_number %}
               <div class="field span-4">
                 {{ form.job_card_number.label_tag }}{{ form.job_card_number }}
+                {% if form.job_card_number.errors %}
+                  <div class="invalid-feedback d-block">{{ form.job_card_number.errors|striptags }}</div>
+                {% endif %}
                 <div class="hint">Read-only</div>
               </div>
             {% endif %}
-            <div class="field span-4">{{ form.activity_id.label_tag }}{{ form.activity_id }}</div>
-            <div class="field span-4">{{ form.workpack_number.label_tag }}{{ form.workpack_number }}</div>
+
+            <div class="field span-4">
+              {{ form.activity_id.label_tag }}{{ form.activity_id }}
+              {% if form.activity_id.errors %}<div class="invalid-feedback d-block">{{ form.activity_id.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="field span-4">
+              {{ form.workpack_number.label_tag }}{{ form.workpack_number }}
+              {% if form.workpack_number.errors %}<div class="invalid-feedback d-block">{{ form.workpack_number.errors|striptags }}</div>{% endif %}
+            </div>
           </div>
 
           <!-- SCHEDULE & STATUS -->
@@ -160,24 +190,31 @@
           <div class="grid-12">
             <div class="field span-3">
               {{ form.start.label_tag }}{{ form.start }}
+              {% if form.start.errors %}<div class="invalid-feedback d-block">{{ form.start.errors|striptags }}</div>{% endif %}
               <div class="hint">Start date</div>
             </div>
             <div class="field span-3">
               {{ form.finish.label_tag }}{{ form.finish }}
+              {% if form.finish.errors %}<div class="invalid-feedback d-block">{{ form.finish.errors|striptags }}</div>{% endif %}
               <div class="hint">Finish date</div>
             </div>
             <div class="field span-4">
               {{ form.jobcard_status.label_tag }}{{ form.jobcard_status }}
+              {% if form.jobcard_status.errors %}<div class="invalid-feedback d-block">{{ form.jobcard_status.errors|striptags }}</div>{% endif %}
               <div class="hint">Use the chips above</div>
             </div>
             <div class="field span-2">
               {{ form.completed.label_tag }}{{ form.completed }}
+              {% if form.completed.errors %}<div class="invalid-feedback d-block">{{ form.completed.errors|striptags }}</div>{% endif %}
             </div>
             <div class="field span-2">
               <label class="form-label">Revision</label>
               <div class="input-group">
                 {{ form.rev }}
-                <button type="button" class="btn btn-outline-primary" id="btnRevUp" title="Increment numeric revision"><i class="fas fa-plus"></i></button>
+                {% if form.rev.errors %}<div class="invalid-feedback d-block">{{ form.rev.errors|striptags }}</div>{% endif %}
+                <button type="button" class="btn btn-outline-primary" id="btnRevUp" title="Increment numeric revision">
+                  <i class="fas fa-plus"></i>
+                </button>
               </div>
             </div>
           </div>
@@ -185,25 +222,53 @@
           <!-- CODES & TAG -->
           <div class="section-title">Codes & Tag</div>
           <div class="grid-12">
-            <div class="field span-3">{{ form.system.label_tag }}{{ form.system }}</div>
-            <div class="field span-3">{{ form.subsystem.label_tag }}{{ form.subsystem }}</div>
-            <div class="field span-3">{{ form.working_code.label_tag }}{{ form.working_code }}</div>
-            <div class="field span-3">{{ form.tag.label_tag }}{{ form.tag }}</div>
+            <div class="field span-3">
+              {{ form.system.label_tag }}{{ form.system }}
+              {% if form.system.errors %}<div class="invalid-feedback d-block">{{ form.system.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="field span-3">
+              {{ form.subsystem.label_tag }}{{ form.subsystem }}
+              {% if form.subsystem.errors %}<div class="invalid-feedback d-block">{{ form.subsystem.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="field span-3">
+              {{ form.working_code.label_tag }}{{ form.working_code }}
+              {% if form.working_code.errors %}<div class="invalid-feedback d-block">{{ form.working_code.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="field span-3">
+              {{ form.tag.label_tag }}{{ form.tag }}
+              {% if form.tag.errors %}<div class="invalid-feedback d-block">{{ form.tag.errors|striptags }}</div>{% endif %}
+            </div>
           </div>
 
-          <!-- DESCRIPTIONS (textos grandes ocupam linhas inteiras) -->
+          <!-- DESCRIPTIONS -->
           <div class="section-title">Descriptions</div>
           <div class="grid-12">
-            <div class="field span-12">{{ form.working_code_description.label_tag }}{{ form.working_code_description }}</div>
-            <div class="field span-12">{{ form.job_card_description.label_tag }}{{ form.job_card_description }}</div>
-            <div class="field span-12">{{ form.comments.label_tag }}{{ form.comments }}</div>
+            <div class="field span-12">
+              {{ form.working_code_description.label_tag }}{{ form.working_code_description }}
+              {% if form.working_code_description.errors %}<div class="invalid-feedback d-block">{{ form.working_code_description.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="field span-12">
+              {{ form.job_card_description.label_tag }}{{ form.job_card_description }}
+              {% if form.job_card_description.errors %}<div class="invalid-feedback d-block">{{ form.job_card_description.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="field span-12">
+              {{ form.comments.label_tag }}{{ form.comments }}
+              {% if form.comments.errors %}<div class="invalid-feedback d-block">{{ form.comments.errors|striptags }}</div>{% endif %}
+            </div>
           </div>
 
           <!-- METRICS & SAFETY -->
           <div class="section-title">Metrics & Safety</div>
           <div class="grid-12">
-            <div class="field span-3">{{ form.total_weight.label_tag }}{{ form.total_weight }}</div>
-            <div class="field span-3">{{ form.unit.label_tag }}{{ form.unit }}</div>
+            <div class="field span-3">
+              {{ form.total_weight.label_tag }}{{ form.total_weight }}
+              {% if form.total_weight.errors %}<div class="invalid-feedback d-block">{{ form.total_weight.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="field span-3">
+              {{ form.unit.label_tag }}{{ form.unit }}
+              {% if form.unit.errors %}<div class="invalid-feedback d-block">{{ form.unit.errors|striptags }}</div>{% endif %}
+            </div>
+
             <div class="field span-6">
               <label class="form-label d-block">Hot Work</label>
               <div class="form-check form-switch">
@@ -211,16 +276,23 @@
                 <label class="form-check-label" for="hotWorkSwitch">Required?</label>
               </div>
               <div class="muted">Toggles YES/NO</div>
-              <div class="mt-2">{{ form.hot_work_required }}</div>
+              <div class="mt-2">
+                {{ form.hot_work_required }}
+                {% if form.hot_work_required.errors %}<div class="invalid-feedback d-block">{{ form.hot_work_required.errors|striptags }}</div>{% endif %}
+              </div>
             </div>
           </div>
 
           <!-- Ações -->
           <div class="sticky-save mt-2">
-            <div class="muted d-none d-md-block"><i class="fas fa-info-circle me-1"></i>Use chips to change status quickly. Press <b>Ctrl/Cmd + S</b> to save.</div>
+            <div class="muted d-none d-md-block">
+              <i class="fas fa-info-circle me-1"></i>Use chips to change status quickly. Press <b>Ctrl/Cmd + S</b> to save.
+            </div>
             <div class="d-flex gap-2">
               <a href="{% url 'jobcards_list' %}" class="btn btn-light">Cancel</a>
-              <button type="submit" class="btn btn-primary"><span class="me-1"><i class="fas fa-save"></i></span> Save changes</button>
+              <button type="submit" class="btn btn-primary">
+                <span class="me-1"><i class="fas fa-save"></i></span> Save changes
+              </button>
             </div>
           </div>
         </form>
@@ -245,7 +317,8 @@
               <i class="fas fa-copy me-1"></i> Copy JobCard number
             </button>
             {% if jobcard and jobcard.job_card_number %}
-              <a class="btn btn-outline-primary btn-sm" href="{% url 'generate_pdf' jobcard_id=jobcard.job_card_number %}">
+              <!-- IMPORTANTE: gerar via JS (src=modify&status=...) -->
+              <a class="btn btn-outline-primary btn-sm" href="#" id="btnGenSide">
                 <i class="fas fa-file-pdf me-1"></i> Generate PDF
               </a>
             {% else %}
@@ -276,42 +349,63 @@
   </div>
 </div>
 
+
 <script>
 (function(){
-  /* ===== Apenas comportamento no TEMPLATE (sem tocar as views) ===== */
-
-  // Tooltips Bootstrap
+  // Tooltips
   document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => { try { new bootstrap.Tooltip(el); } catch(e){} });
 
   const form = document.getElementById("jobcardEditForm");
   const overlay = document.getElementById("savingOverlay");
   let dirty = false;
 
-  // Marca alterações
+  // Garante que o overlay nunca fique preso ao entrar/voltar nessa página
+  function hideOverlay(){ if (overlay) overlay.style.display = "none"; }
+  document.addEventListener("DOMContentLoaded", hideOverlay, {once:true});
+  window.addEventListener("pageshow", hideOverlay); // bfcache / voltar
+
   form?.addEventListener("change", () => dirty = true);
 
-  // Warn on unload
-  window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
-
-  // Feedback de envio
-  form?.addEventListener("submit", () => {
-    dirty = false;
-    if (overlay) {
-      overlay.style.display = "flex";
-      setTimeout(() => { overlay.style.display = "none"; }, 30000);
-    }
+  window.addEventListener("beforeunload", (e) => {
+    if (dirty) { e.preventDefault(); e.returnValue = ""; }
   });
 
-  // Fallback: garantir classes Bootstrap
+  form?.addEventListener("submit", () => {
+    dirty = false;
+
+    if (!overlay) return;
+
+    // Mostra
+    overlay.style.display = "flex";
+
+    // 1) Se houver navegação tradicional, o "load" vai esconder
+    window.addEventListener("load", hideOverlay, {once:true});
+    window.addEventListener("pageshow", hideOverlay, {once:true}); // bfcache
+
+    // 2) Caso NÃO haja navegação (ex.: o POST gera download e a página não troca),
+    // feche em 4s se o URL não mudou:
+    const hrefBefore = location.href;
+    setTimeout(() => {
+      if (location.href === hrefBefore) hideOverlay();
+    }, 4000);
+
+    // 3) Failsafe absoluto (nunca ficar eternamente): 15s
+    setTimeout(hideOverlay, 15000);
+  });
+
+  // Força classes Bootstrap
   document.querySelectorAll("#jobcardEditForm input[type='text'],#jobcardEditForm input[type='number'],#jobcardEditForm input[type='date'],#jobcardEditForm textarea")
     .forEach(el=>{ if(!el.classList.contains("form-control")) el.classList.add("form-control"); });
   document.querySelectorAll("#jobcardEditForm select")
     .forEach(el=>{ if(!el.classList.contains("form-select")) el.classList.add("form-select"); });
 
-  // Datas como date nativo se possível
-  ["id_start","id_finish"].forEach(id=>{ const el=document.getElementById(id); if(el && !el.type.includes("date")) { try{ el.type="date"; }catch(e){} } });
+  // Datas nativas
+  ["id_start","id_finish"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && !el.type.includes("date")) { try{ el.type="date"; }catch(e){} }
+  });
 
-  // Chips de status -> select
+  // Chips -> select
   const statusSelect = document.getElementById("id_jobcard_status");
   const chips = document.querySelectorAll(".js-status");
   function highlightChip(v){ chips.forEach(c=>c.classList.toggle("active", c.dataset.value === v)); }
@@ -330,7 +424,7 @@
     else { rev.classList.add("is-invalid"); setTimeout(()=>rev.classList.remove("is-invalid"), 1200); }
   });
 
-  // Hot Work: switch <-> select YES/NO
+  // Hot Work switch <-> select
   const hotSwitch = document.getElementById("hotWorkSwitch");
   const hotSelect = document.getElementById("id_hot_work_required");
   if(hotSwitch && hotSelect){
@@ -339,7 +433,7 @@
     hotSelect.addEventListener("change", ()=>{ hotSwitch.checked = (String(hotSelect.value).toUpperCase() === "YES"); dirty = true; });
   }
 
-  // Copiar número
+  // Copy number
   const btnCopy = document.getElementById("btnCopyNumber");
   btnCopy?.addEventListener("click", async ()=>{
     const text = "{{ jobcard.job_card_number|default:'' }}";
@@ -347,10 +441,33 @@
     try { await navigator.clipboard.writeText(text); btnCopy.classList.add("btn-success"); setTimeout(()=>btnCopy.classList.remove("btn-success"), 1200); } catch(e){}
   });
 
-  // Ctrl/Cmd + S para salvar
+  // Ctrl/Cmd + S
   window.addEventListener("keydown", (e)=>{
     if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==="s"){ e.preventDefault(); form?.requestSubmit(); }
   });
+
+  // --- Generate PDF via src=modify + status atual do select/chip ---
+  const btnGenTop  = document.getElementById("btnGenTop");
+  const btnGenSide = document.getElementById("btnGenSide");
+  const baseGenURL = "{% if jobcard and jobcard.job_card_number %}{% url 'generate_pdf' jobcard_id=jobcard.job_card_number %}{% endif %}";
+
+  function goGeneratePdf(e){
+    e.preventDefault();
+    if(!baseGenURL) return;
+    const statusVal = statusSelect ? (statusSelect.value || "").trim() : "";
+    const url = baseGenURL + "?src=modify" + (statusVal ? "&status=" + encodeURIComponent(statusVal) : "");
+    if(dirty && !confirm("There are unsaved changes. Continue and generate PDF using only the selected status?")) return;
+    window.location.href = url;
+  }
+  btnGenTop?.addEventListener("click", goGeneratePdf);
+  btnGenSide?.addEventListener("click", goGeneratePdf);
+
 })();
 </script>
+
+
+
+
+
+{% endlanguage %}
 {% endblock %}

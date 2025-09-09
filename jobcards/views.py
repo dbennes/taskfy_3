@@ -855,10 +855,19 @@ from django.http import JsonResponse
 @login_required(login_url='login')
 @permission_required('jobcards.change_jobcard', raise_exception=True)
 def generate_pdf(request, jobcard_id):
+    """
+    Regras:
+      - src=edit   : força PRELIMINARY JOBCARD CHECKED (com carimbo na 1ª vez).
+      - src=modify : se vier ?status=..., SOBRESCREVE o status no banco antes de gerar.
+      - src ausente: mantém comportamento de edit (força PRELIMINARY).
+    """
     job = get_object_or_404(JobCard, job_card_number=jobcard_id)
     area_info = Area.objects.filter(area_code=job.location).first() if job.location else None
 
-    # Gerar código de barras
+    src = (request.GET.get('src') or 'edit').lower().strip()
+    incoming_status = request.GET.get('status')  # usado quando src=modify
+
+    # -------- Código de barras --------
     barcode_folder = os.path.join(settings.BASE_DIR, 'static', 'barcodes')
     os.makedirs(barcode_folder, exist_ok=True)
     barcode_filename = f'{job.job_card_number}.png'
@@ -866,28 +875,54 @@ def generate_pdf(request, jobcard_id):
     if not os.path.exists(barcode_path):
         CODE128 = barcode.get_barcode_class('code128')
         code128 = CODE128(job.job_card_number, writer=ImageWriter())
-        code128.write(open(barcode_path, 'wb'), options={'write_text': False})
+        with open(barcode_path, 'wb') as bf:
+            code128.write(bf, options={'write_text': False})
     barcode_url = f'file:///{barcode_path.replace("\\", "/")}'
 
-    if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
-        job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
-        if not job.checked_preliminary_by and not job.checked_preliminary_at:
-            job.checked_preliminary_by = request.user.username
-            job.checked_preliminary_at = timezone.now()
-            job.save(update_fields=['jobcard_status', 'checked_preliminary_by', 'checked_preliminary_at'])
-        else:
-            job.save(update_fields=['jobcard_status'])
+    # -------- Regras de status por origem --------
+    if src == 'edit' or not src:
+        if job.jobcard_status != 'PRELIMINARY JOBCARD CHECKED':
+            job.jobcard_status = 'PRELIMINARY JOBCARD CHECKED'
+            if not job.checked_preliminary_by and not job.checked_preliminary_at:
+                job.checked_preliminary_by = request.user.username
+                job.checked_preliminary_at = timezone.now()
+                job.save(update_fields=['jobcard_status', 'checked_preliminary_by', 'checked_preliminary_at'])
+            else:
+                job.save(update_fields=['jobcard_status'])
 
-    allocated_manpowers = AllocatedManpower.objects.filter(jobcard_number=jobcard_id).order_by('task_order')
-    allocated_materials = AllocatedMaterial.objects.filter(jobcard_number=job.job_card_number)
-    allocated_tools = AllocatedTool.objects.filter(jobcard_number=jobcard_id)
-    allocated_tasks = AllocatedTask.objects.filter(jobcard_number=jobcard_id).order_by('task_order')
+    elif src == 'modify':
+        # SE vier status nos chips, sobrescreve aqui também
+        if incoming_status:
+            incoming_status = incoming_status.strip()
+            if incoming_status and incoming_status != job.jobcard_status:
+                job.jobcard_status = incoming_status
+                job.last_modified_by = request.user.username
+                job.last_modified_at = timezone.now()
+                fields = ['jobcard_status', 'last_modified_by', 'last_modified_at']
+
+                # se virou PRELIMINARY e nunca carimbou, carimba agora
+                if (incoming_status == 'PRELIMINARY JOBCARD CHECKED'
+                        and not job.checked_preliminary_by
+                        and not job.checked_preliminary_at):
+                    job.checked_preliminary_by = request.user.username
+                    job.checked_preliminary_at = timezone.now()
+                    fields += ['checked_preliminary_by', 'checked_preliminary_at']
+
+                job.save(update_fields=fields)
+        # se não vier status, usa o que já está salvo (Modify já salvou antes)
+
+    # -------- Query das alocações --------
+    allocated_manpowers    = AllocatedManpower.objects.filter(jobcard_number=jobcard_id).order_by('task_order')
+    allocated_materials    = AllocatedMaterial.objects.filter(jobcard_number=job.job_card_number)
+    allocated_tools        = AllocatedTool.objects.filter(jobcard_number=jobcard_id)
+    allocated_tasks        = AllocatedTask.objects.filter(jobcard_number=jobcard_id).order_by('task_order')
     allocated_engineerings = AllocatedEngineering.objects.filter(jobcard_number=job.job_card_number)
 
+    # -------- Imagem de fundo --------
     image_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', '3.jpg')
-    image_url = f'file:///{image_path.replace("\\", "/")}'
+    image_url  = f'file:///{image_path.replace("\\", "/")}'
 
-    # Limpa campos image_* se arquivo não existe
+    # -------- Limpa image_* inexistentes --------
     updated_fields = []
     for i in range(1, 5):
         field = f'image_{i}'
@@ -907,7 +942,7 @@ def generate_pdf(request, jobcard_id):
     if updated_fields:
         job.save(update_fields=updated_fields)
 
-    # Monta image_files para template
+    # -------- Monta image_files para template --------
     image_files = {}
     for i in range(1, 5):
         field = f'image_{i}'
@@ -930,6 +965,7 @@ def generate_pdf(request, jobcard_id):
 
     half = len(allocated_tools) // 2 if allocated_tools else 0
 
+    # -------- Config wkhtmltopdf --------
     local_config = None
     try:
         if path_wkhtmltopdf and os.path.exists(path_wkhtmltopdf):
@@ -937,6 +973,7 @@ def generate_pdf(request, jobcard_id):
     except Exception:
         local_config = None
 
+    # -------- Contexto --------
     context = {
         'job': job,
         'allocated_manpowers': allocated_manpowers,
@@ -952,6 +989,7 @@ def generate_pdf(request, jobcard_id):
         'image_files': image_files,
     }
 
+    # -------- Render HTML --------
     html_string = render_to_string('sistema/jobcard_pdf.html', context, request=request)
     header_html_string = render_to_string('sistema/header.html', context, request=request)
     footer_html_string = render_to_string('sistema/footer.html', context, request=request)
@@ -962,6 +1000,7 @@ def generate_pdf(request, jobcard_id):
     header_temp.close()
     footer_temp.close()
 
+    # -------- Gera PDF --------
     try:
         pdf_file = pdfkit.from_string(
             html_string,
@@ -979,8 +1018,12 @@ def generate_pdf(request, jobcard_id):
             }
         )
     except Exception as e:
-        raise RuntimeError(f"wkhtmltopdf failed: {e}. Verifique se imagens referenciadas existem no storage e se os campos image_* do JobCard foram atualizados.")
+        raise RuntimeError(
+            f"wkhtmltopdf failed: {e}. "
+            f"Verifique se imagens referenciadas existem no storage e se os campos image_* do JobCard foram atualizados."
+        )
 
+    # -------- Backup --------
     backup_filename = f'JobCard_{jobcard_id}_Rev_{job.rev}.pdf'
     backups_dir = os.path.join(settings.BASE_DIR, 'jobcard_backups')
     os.makedirs(backups_dir, exist_ok=True)
@@ -988,12 +1031,14 @@ def generate_pdf(request, jobcard_id):
     with open(backup_path, 'wb') as f:
         f.write(pdf_file)
 
+    # -------- Limpa temporários --------
     try:
         os.unlink(header_temp.name)
         os.unlink(footer_temp.name)
     except Exception:
         pass
 
+    # -------- Resposta --------
     response = HttpResponse(pdf_file, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename=JobCard_{jobcard_id}_Rev_{job.rev}.pdf'
     return response
@@ -3582,6 +3627,7 @@ def upload_documents(request):
 
 
 # --------- AREA DE MODIFICAÇÃO DA JOBCARDS --------------- #
+
 from django.contrib import messages
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
@@ -3589,10 +3635,16 @@ from django.contrib.auth.decorators import login_required, permission_required
 
 from .forms import JobCardForm, EDITABLE_FIELDS
 from .models import JobCard
+from django.utils.translation import override
 
 from datetime import datetime
 import csv
 import io
+
+import logging
+from django.urls import reverse
+from django.utils import timezone
+from urllib.parse import urlencode
 
 def _parse_date_maybe(value):
     """
@@ -3636,31 +3688,67 @@ def modify_jobcard_entry(request):
     return render(request, "sistema/modify_jobcard/modify_jobcard_entry.html", {"recent_jobcards": recent})
 
 
+logger = logging.getLogger(__name__)
+
 @login_required(login_url="login")
 @permission_required("jobcards.change_jobcard", raise_exception=True)
+@transaction.atomic
 def modify_jobcard_edit(request, jobcard):
     """
-    Edição manual via formulário (com parâmetro na URL).
+    Tela de edição via 'Modify': usuário escolhe STATUS nos chips.
+    - Salva no banco
+    - Redireciona para generate_pdf com src=modify & status=<escolhido>
+      para SOBRESCREVER o status também no generate_pdf.
     """
-    jobcard_obj = get_object_or_404(JobCard, job_card_number=jobcard)
+    obj = get_object_or_404(JobCard, job_card_number=jobcard)
 
     if request.method == "POST":
-        form = JobCardForm(request.POST, instance=jobcard_obj)
+        form = JobCardForm(request.POST, request.FILES or None, instance=obj)
+
+        if 'prepared_by' in form.fields:
+            form.fields['prepared_by'].required = False
+
+        chosen_status = (
+            request.POST.get("jobcard_status")
+            or request.POST.get("JOBCARD_STATUS")
+            or obj.jobcard_status
+        )
+
         if form.is_valid():
-            job = form.save(commit=False)
-            job.last_modified_by = request.user.username  # auditoria
-            job.save()
-            messages.success(request, "JobCard updated successfully.")
-            # permanece na página desta JobCard
-            return redirect("modify_jobcard_edit", jobcard=job.job_card_number)
+            inst = form.save(commit=False)
+
+            # aplica status escolhido
+            inst.jobcard_status = chosen_status
+
+            # metadados de alteração
+            inst.last_modified_by = request.user.username
+            inst.last_modified_at = timezone.now()
+
+            # se virou PRELIMINARY e nunca carimbou, carimba agora
+            if (
+                inst.jobcard_status == "PRELIMINARY JOBCARD CHECKED"
+                and not inst.checked_preliminary_by
+                and not inst.checked_preliminary_at
+            ):
+                inst.checked_preliminary_by = request.user.username
+                inst.checked_preliminary_at = timezone.now()
+
+            inst.save()
+            form.save_m2m()
+
+            # monta querystring para sobrescrever no generate_pdf também
+            qs = urlencode({"src": "modify", "status": inst.jobcard_status})
+            return redirect(f"{reverse('generate_pdf', args=[inst.job_card_number])}?{qs}")
+
         messages.error(request, "Please correct the errors and try again.")
     else:
-        form = JobCardForm(instance=jobcard_obj)
+        form = JobCardForm(instance=obj)
 
-    return render(request, "sistema/modify_jobcard/modify_jobcard.html", {
-        "form": form,
-        "jobcard": jobcard_obj,
-    })
+    return render(
+        request,
+        "sistema/modify_jobcard/modify_jobcard.html",
+        {"form": form, "job": obj},
+    )
 
 
 @login_required(login_url="login")
@@ -3890,7 +3978,7 @@ def download_jobcard_modify_template(request):
 
 
 
-# === SUBSTITUA SUA FUNÇÃO import_jobcard POR ESTA VERSÃO ====================
+# === MODIFICAÇÃO DAS JOBCARDS  VIA EXCEL ====================
 
 @login_required(login_url='login')
 @permission_required('jobcards.change_jobcard', raise_exception=True)

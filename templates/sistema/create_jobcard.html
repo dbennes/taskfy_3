@@ -3,35 +3,32 @@
 {% load static %}
 {% block content %}
 
-
 <div class="container-fluid">
+
   <form method="post" enctype="multipart/form-data" id="stepForm" action="{% url 'edit_jobcard' job.job_card_number %}">
-  {% csrf_token %}
+    {% csrf_token %}
 
-  <div class="row">
-    
-    <!-- Botão download -->
-
-    <!-- Formulário principal -->
-    <div class="col-7">
-      <div class="card shadow mb-3" style="width: 100%; color:#7a8093">
-        <div class="card-header py-3" style="background:#f5f5f7; border-bottom: 1px solid #d0d0d0; border-top-left-radius: 8px; border-top-right-radius: 8px;">
-          <div class="d-flex align-items-center justify-content-between">
-            <h5 class="m-0 fw-bold fs-6 text-left w-100" style="margin-left: -60px;">Jobcard Creator</h5>
-            <div class="d-flex align-items-center gap-1">
-              <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
-              <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
-              <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+    <div class="row">
+      <!-- Formulário principal -->
+      <div class="col-7">
+        <div class="card shadow mb-3" style="width: 100%; color:#7a8093">
+          <div class="card-header py-3" style="background:#f5f5f7; border-bottom: 1px solid #d0d0d0; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+            <div class="d-flex align-items-center justify-content-between">
+              <h5 class="m-0 fw-bold fs-6 text-left w-100" style="margin-left: -60px;">Jobcard Editor</h5>
+              <div class="d-flex align-items-center gap-1">
+                <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+                <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+                <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="card-body">
-           {% include 'sistema/partials/jobcard_creator/step_1.html' %}
-           {% include 'sistema/partials/jobcard_creator/step_2.html' %}
-           {% include 'sistema/partials/jobcard_creator/step_3.html' %}
-           {% include 'sistema/partials/jobcard_creator/step_4.html' %}
-           {% include 'sistema/partials/jobcard_creator/step_5.html' %}
+          <div class="card-body">
+            {% include 'sistema/partials/jobcard_creator/step_1.html' %}
+            {% include 'sistema/partials/jobcard_creator/step_2.html' %}
+            {% include 'sistema/partials/jobcard_creator/step_3.html' %}
+            {% include 'sistema/partials/jobcard_creator/step_4.html' %}
+            {% include 'sistema/partials/jobcard_creator/step_5.html' %}
 
             <!-- Bolinhas -->
             <div class="text-center my-3">
@@ -43,136 +40,123 @@
             </div>
 
             <!-- CAMPOS HIDDEN DOS TOTAIS! -->
-                <input type="hidden" id="input-total-duration" name="total_duration_hs" value="{{ job.total_duration_hs|default:'0.00' }}">
-                <input type="hidden" id="input-total-manhours" name="total_man_hours" value="{{ job.total_man_hours|default:'0.00' }}">
+            <input type="hidden" id="input-total-duration" name="total_duration_hs" value="{{ job.total_duration_hs|default:'0.00' }}">
+            <input type="hidden" id="input-total-manhours" name="total_man_hours" value="{{ job.total_man_hours|default:'0.00' }}">
 
             <!-- Botões -->
             <div class="d-flex justify-content-between">
               <button type="button" class="btn btn-secondary" id="prevBtn">Back</button>
               <button type="button" class="btn btn-primary" id="nextBtn">Next</button>
+              <!-- manter name="generate_pdf" para o back-end identificar a ação -->
               <button type="submit" name="generate_pdf" class="btn btn-success d-none" id="submitBtn">Save & Finish</button>
             </div>
+          </div>
+        </div>
+      </div>
 
-            <!-- formulário principal encerra mais abaixo -->
-         </div>
-       </div>
-     </div>
+      <!-- Card lateral -->
+      <div class="col-5">
+        {% include 'sistema/partials/jobcard_creator/sidebar_image.html' %}
+      </div>
+    </div> <!-- /row -->
 
-    <!-- Card lateral -->
-    <div class="col-5">
-      {% include 'sistema/partials/jobcard_creator/sidebar_image.html' %}
-    </div>
+  </form> <!-- ✅ fecha o form aqui (antes dos modais) -->
 
-  </div>
-</div>
+</div> <!-- /container-fluid -->
 
+
+<!-- Modais (fora do form) -->
 
 <!-- Modal de Validação Minimalista -->
 <div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#21262b; border-bottom: 1px solid rgb(255, 255, 255); border-top-left-radius: 8px; border-top-right-radius: 8px;">
+        <h6 class="modal-title">
+          <i class="fa-solid fa-circle-exclamation me-2"></i>
+          Validation Required
+        </h6>
+        <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
+          <div class="d-flex align-items-center gap-1">
+            <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+            <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+            <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+          </div>
+        </button>
+      </div>
 
-            <!-- Header estilo Apple -->
-            <div class="modal-header" style="background:#21262b; border-bottom: 1px solid rgb(255, 255, 255); border-top-left-radius: 8px; border-top-right-radius: 8px;">
-                <h6 class="modal-title">
-                    <i class="fa-solid fa-circle-exclamation me-2"></i> 
-                    Validation Required
-                </h6>
-                <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
-                    <div class="d-flex align-items-center gap-1">
-                        <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
-                        <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
-                        <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
-                    </div>
-                </button>
-            </div>
+      <div class="modal-body" style="font-size: 14px;">
+        <p>There are tasks without allocated manpowers or not marked as Not Applicable.</p>
+        <p>Please review before finalizing.</p>
+      </div>
 
-            <div class="modal-body " style="font-size: 14px; color: #black;">
-                <p>There are tasks without allocated manpowers or not marked as Not Applicable.</p>
-                <p>Please review before finalizing.</p>
-            </div>
-
-            <div class="modal-footer d-flex justify-content-center">
-                <button type="button" class="btn btn-light border shadow-sm rounded-pill px-4 py-1" data-bs-dismiss="modal" style="font-size: 14px;">
-                    Close
-                </button>
-            </div>
-
-        </div>
+      <div class="modal-footer d-flex justify-content-center">
+        <button type="button" class="btn btn-light border shadow-sm rounded-pill px-4 py-1" data-bs-dismiss="modal" style="font-size: 14px;">
+          Close
+        </button>
+      </div>
     </div>
-  </form>
+  </div>
 </div>
 
 <!-- Modal de Validação para PDF Minimalista -->
 <div class="modal fade" id="confirmSaveModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#21262b; border-bottom: 1px solid white; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+        <h6 class="modal-title">
+          <i class="fa-regular fa-rectangle-xmark me-2"></i>
+          Save Confirmation
+        </h6>
+        <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
+          <div class="d-flex align-items-center gap-1">
+            <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+            <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+            <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+          </div>
+        </button>
+      </div>
 
-            <!-- Cabeçalho estilo Apple -->
-            <div class="modal-header" style="background:#21262b; border-bottom: 1px solid white; border-top-left-radius: 8px; border-top-right-radius: 8px;">
-                <h6 class="modal-title">
-                    <i class="fa-regular fa-rectangle-xmark me-2"></i>
-                    Save Confirmation
-                </h6>
-                <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
-                    <div class="d-flex align-items-center gap-1">
-                        <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
-                        <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
-                        <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
-                    </div>
-                </button>
-            </div>
+      <div class="modal-body text-center" style="font-size: 14px;">
+        Are you sure you want to save the changes and generate the PDF?
+      </div>
 
-            <!-- Corpo da mensagem -->
-            <div class="modal-body text-center" style="font-size: 14px;">
-                Are you sure you want to save the changes and generate the PDF?
-            </div>
-
-            <!-- Botões -->
-            <div class="modal-footer justify-content-center">
-                <button type="button" class="btn btn-success px-4" id="confirmSaveBtn">Yes</button>
-                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">No</button>
-            </div>
-
-        </div>
+      <div class="modal-footer justify-content-center">
+        <button type="button" class="btn btn-success px-4" id="confirmSaveBtn">Yes</button>
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">No</button>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Modal de Sucesso -->
 <div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#21262b; border-bottom: 1px solid white; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+        <h6 class="modal-title">
+          <i class="fa-regular fa-circle-check me-2"></i>
+          Completed
+        </h6>
+        <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
+          <div class="d-flex align-items-center gap-1">
+            <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
+            <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
+            <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
+          </div>
+        </button>
+      </div>
 
-            <!-- Cabeçalho estilo Apple -->
-            <div class="modal-header" style="background:#21262b; border-bottom: 1px solid white; border-top-left-radius: 8px; border-top-right-radius: 8px;">
-                <h6 class="modal-title">
-                    <i class="fa-regular fa-circle-check me-2"></i>
-                    Completed
-                </h6>
-                <button type="button" class="btn border-0 bg-transparent p-0" data-bs-dismiss="modal" aria-label="Close">
-                    <div class="d-flex align-items-center gap-1">
-                        <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
-                        <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
-                        <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
-                    </div>
-                </button>
-            </div>
+      <div class="modal-body text-center" style="font-size: 14px;">
+        <p>PDF generated successfully!</p>
+      </div>
 
-            <div class="modal-body text-center" style="font-size: 14px;">
-                <p>PDF generated successfully!</p>
-            </div>
-
-            <div class="modal-footer justify-content-center">
-                <button type="button" class="btn btn-success px-4" id="successModalBtn">OK</button>
-            </div>
-
-        </div>
+      <div class="modal-footer justify-content-center">
+        <button type="button" class="btn btn-success px-4" id="successModalBtn">OK</button>
+      </div>
     </div>
+  </div>
 </div>
-
-
-
-
 
 
 <!-- Estilo dos indicadores -->
@@ -185,7 +169,6 @@
     border-radius: 50%;
     display: inline-block;
   }
-
   .step-indicator.active {
     background-color: #0d6efd;
   }
@@ -199,15 +182,15 @@
   function updateWizard() {
     for (let i = 1; i <= totalSteps; i++) {
       document.getElementById(`step-${i}`)
-              .classList.toggle('d-none', i !== currentStep);
+        .classList.toggle('d-none', i !== currentStep);
       document.querySelector(`.step-indicator[data-step="${i}"]`)
-              .classList.toggle('active', i === currentStep);
+        .classList.toggle('active', i === currentStep);
     }
     document.getElementById('prevBtn').disabled = currentStep === 1;
     document.getElementById('nextBtn')
-            .classList.toggle('d-none', currentStep === totalSteps);
+      .classList.toggle('d-none', currentStep === totalSteps);
     document.getElementById('submitBtn')
-            .classList.toggle('d-none', currentStep !== totalSteps);
+      .classList.toggle('d-none', currentStep !== totalSteps);
   }
 
   document.getElementById('nextBtn').addEventListener('click', () => {
@@ -225,13 +208,11 @@
   });
 
   document.getElementById('stepForm').addEventListener('submit', function(e) {
+    // mantém seus cálculos antes de enviar
+    if (typeof updatePercentage === 'function') updatePercentage();
+    if (typeof updateSummaryFields === 'function') updateSummaryFields();
 
-    // --- ADICIONE ESSAS DUAS LINHAS ---
-    updatePercentage();
-    updateSummaryFields();
-    // ----------------------------------
-
-    console.log(document.getElementById('input-hh-max-1').value); // teste!
+    console.log(document.getElementById('input-hh-max-1') ? document.getElementById('input-hh-max-1').value : '');
 
     if (currentStep !== totalSteps) {
       e.preventDefault();
@@ -242,7 +223,6 @@
 
     // 🔒 Validação ANTES de finalizar no último passo
     let invalid = false;
-
     const taskRows = document.querySelectorAll('input[id^="task-not-applicable-"]');
 
     taskRows.forEach(row => {
@@ -260,35 +240,33 @@
       var validationModal = new bootstrap.Modal(document.getElementById('validationModal'));
       validationModal.show();
     }
-    // Se tudo estiver ok, o form será submetido normalmente
+    // se tudo ok, deixa submeter normalmente
   });
 
   // Inicializa o passo 1
   updateWizard();
 
-
-document.getElementById('submitBtn').addEventListener('click', function (e) {
+  document.getElementById('submitBtn').addEventListener('click', function (e) {
     e.preventDefault();
 
     // 🔒 Validação ANTES de abrir o modal
     let invalid = false;
-
     const taskRows = document.querySelectorAll('input[id^="task-not-applicable-"]');
 
     taskRows.forEach(row => {
-        const index = row.id.replace('task-not-applicable-', '');
-        const totalManpower = document.getElementById(`hh-total-${index}`);
-        const isNotApplicable = row.checked;
+      const index = row.id.replace('task-not-applicable-', '');
+      const totalManpower = document.getElementById(`hh-total-${index}`);
+      const isNotApplicable = row.checked;
 
-        if (!isNotApplicable && totalManpower && parseFloat(totalManpower.textContent) === 0) {
-            invalid = true;
-        }
+      if (!isNotApplicable && totalManpower && parseFloat(totalManpower.textContent) === 0) {
+        invalid = true;
+      }
     });
 
     if (invalid) {
-        var validationModal = new bootstrap.Modal(document.getElementById('validationModal'));
-        validationModal.show();
-        return;
+      var validationModal = new bootstrap.Modal(document.getElementById('validationModal'));
+      validationModal.show();
+      return;
     }
 
     // Se passou na validação, abre o modal de confirmação
@@ -298,33 +276,33 @@ document.getElementById('submitBtn').addEventListener('click', function (e) {
 
     const confirmSaveBtn = document.getElementById('confirmSaveBtn');
     confirmSaveBtn.onclick = function () {
+      // mantém seus cálculos antes de enviar
+      if (typeof updatePercentage === 'function') updatePercentage();
+      if (typeof updateSummaryFields === 'function') updateSummaryFields();
 
-        // --- ADICIONE ESSAS DUAS LINHAS ---
-        updatePercentage();
-        updateSummaryFields();
-        // ----------------------------------
+      confirmModal.hide();
 
-        confirmModal.hide();
+      // 👉 Envia o form incluindo o submitter (name="generate_pdf")
+      const form = document.getElementById('stepForm');
+      const submitBtn = document.getElementById('submitBtn');
 
-        // Gera o PDF imediatamente (o submit envia o POST que baixa o PDF)
-        document.getElementById('stepForm').submit();
+      if (form.requestSubmit) {
+        form.requestSubmit(submitBtn);
+      } else {
+        // fallback antigo
+        submitBtn.click();
+      }
 
-        // Abre o modal de sucesso
-        const successModalElement = document.getElementById('successModal');
-        const successModal = new bootstrap.Modal(successModalElement);
-        successModal.show();
+      // Modal de sucesso (opcional; download do PDF já começa)
+      const successModalElement = document.getElementById('successModal');
+      const successModal = new bootstrap.Modal(successModalElement);
+      successModal.show();
 
-        // Quando clicar em OK no modal de sucesso, fecha o modal e recarrega a página
-        document.getElementById('successModalBtn').addEventListener('click', function () {
-            successModal.hide();
-            
-        });
+      document.getElementById('successModalBtn').addEventListener('click', function () {
+        successModal.hide();
+      });
     };
-});
-
-
-
+  });
 </script>
-
 
 {% endblock %}
