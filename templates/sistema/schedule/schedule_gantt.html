@@ -317,7 +317,7 @@ gantt.config.columns = [
       : `<span class="pill pill-act">${t.text||""}</span>`
   },
   { name:"name2",     label:"Name / Description", width:340, template:t => t._name || "", resize:true },
-  { name:"orig",      label:"Orig. Dur. (h)", align:"right",  width:110, template:t => t._od_str ?? "" },
+  { name:"orig",      label:"Hh. (h)", align:"right",  width:110, template:t => t._od_str ?? "" },
   { name:"pts",       label:"Pts",            align:"right",  width:90,  template:t => t._pts_str ?? "" },
   { name:"progress",  label:"%",              align:"right",  width:60,  template:t => `${((t.progress||0)*100).toFixed(2)}%` },
   { name:"start_date",label:"Start",          align:"center", width:96,  template:t => t._start_str || "" },
