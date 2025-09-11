@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views_pdf_api
-
+from . import views_schedule 
 
 # IMPORTANTE: use apenas UMA definição para cada rota de API
 urlpatterns = [
@@ -169,6 +169,17 @@ urlpatterns = [
     path('api/pdf/run/progress', views_pdf_api.api_pdf_run_progress, name='api_pdf_run_progress'),
     path('api/pdf/run/stop',     views_pdf_api.api_pdf_run_stop,     name='api_pdf_run_stop'),
     path("api/pdf/run/log",      views_pdf_api.api_pdf_run_log,      name="api_pdf_run_log"),
+
+
+    # --- CRONOGRAMA / P6 ---
+
+    path('schedule/gantt/',     views_schedule.schedule_gantt,   name='schedule_gantt'),
+    path('schedule/upload/',    views_schedule.schedule_upload,  name='schedule_upload'),
+    path('schedule/api/',       views_schedule.schedule_api,     name='schedule_api'),
+    path('schedule/template/',  views_schedule.schedule_template, name='schedule_template'),  # NOVA
+
+
+
 
 
 ]

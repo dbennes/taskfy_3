@@ -188,3 +188,15 @@ class JobCardForm(forms.ModelForm):
         # Preenche o campo somente-leitura com o número da JobCard
         if instance:
             self.fields["job_card_number_display"].initial = instance.job_card_number
+
+
+class ScheduleImportForm(forms.Form):
+    file = forms.FileField(label="Template (CSV / XLSX / XML)")
+    mode = forms.ChoiceField(
+        choices=[("auto", "Auto-detect"), ("csv", "CSV"), ("xml", "Primavera XML"), ("excel", "Excel (.xlsx/.xlsm)")],
+        initial="auto"
+    )
+    update_jobcards = forms.BooleanField(
+        required=False, initial=True,
+        label="Atualizar start/finish dos JobCards com mesmo Activity ID"
+    )

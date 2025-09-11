@@ -13,6 +13,7 @@ urlpatterns = [
     path('django-rq/', include('django_rq.urls')),
     
     
+    
 
     # Se quiser, inclua outros apps com suas próprias rotas API aqui
     # path('api/outro_app/', include(outro_router.urls)),

@@ -1,0 +1,804 @@
+{% extends 'sistema/base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dhtmlx-gantt@9.0.14/codebase/dhtmlxgantt.css">
+<script src="https://cdn.jsdelivr.net/npm/dhtmlx-gantt@9.0.14/codebase/dhtmlxgantt.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- FA6 para ícones -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+
+<style>
+  :root{
+    --bg:#f7f8fa; --muted:#6b7280; --ink:#696969;
+    --chip:#eef2ff; --chip-text:#4338ca;
+    --dz:#f3f4f6; --dz-border:#d1d5db; --dz-hover:#e0f2fe;
+  }
+  body,.container-fluid{ background:var(--bg); }
+  .page{ max-width:100%; padding:6px 10px; }
+
+  /* Topbar */
+  .topbar2{
+    background:#ededed; color:var(--ink);
+    border-radius:14px; padding:8px 12px; margin:6px 0 8px; border:1px solid #ededed;
+  }
+  .topbar2 .title{ font-weight:700; letter-spacing:.2px; font-size:12px; }
+  .toolbar .btn{ font-size:11px; border-radius:10px; padding:.28rem .44rem; }
+
+  /* Gantt */
+  #gantt_here{
+    height: 70vh;
+    background:#fff; border:1px solid #e7eaf0; border-radius:14px;
+    box-shadow:0 6px 18px rgba(0,0,0,.06);
+  }
+
+  /* Grid pequeno (esquerda) */
+  .gantt_grid, .gantt_grid_scale{ font-size:10px !important; line-height:1.2; }
+  .gantt_grid_data .gantt_cell, .gantt_tree_content{ font-size:10px !important; line-height:1.2; }
+  .gantt_grid_data .gantt_cell{ padding:1px 6px; }
+
+  /* Timeline pequeno (direita) */
+  .gantt_scale_line, .gantt_scale_cell{ font-size:10px !important; }
+  .gantt_task_content, .gantt_task_text{ font-size:10px !important; line-height:1.2 !important; }
+
+  .gantt_row.gantt_selected{ background:#fff7ed !important; }
+
+  /* Barras JC (direita) */
+  .is-jc .gantt_task_progress{ background:#3b82f6 !important; }
+  .is-jc .gantt_task_line{ background:#60a5fa !important; border-color:#3b82f6 !important; }
+
+  .today-marker .gantt_marker_content{ color:#ef4444; font-weight:700; }
+
+  /* JC colorida apenas no GRID (esquerda) */
+  .gantt_grid_data .gantt_grid_row.is-jc-row{
+    background:#eef6ff !important;
+    border-left:3px solid #60a5fa !important;
+  }
+
+  /* Pills */
+  .pill{ display:inline-block; border-radius:999px; padding:1px 6px; font-size:9px; font-weight:700; }
+  .pill-act{ background:#ffffff; color:#464646; }
+  .pill-jc { background:#dbeafe; color:#1e40af; }
+
+  /* ===== Redesigned Import Modal ===== */
+  .modal-modern .modal-content{ border:0; border-radius:16px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.25); }
+  .modal-modern .modal-header{
+    background:linear-gradient(180deg,#0f172a,#111827);
+    color:#fff; border:0; padding:16px 18px;
+  }
+  .modal-modern .modal-title{
+    font-weight:700; letter-spacing:.3px; display:flex; align-items:center; gap:10px;
+  }
+  .modal-modern .modal-subtitle{ font-size:12px; opacity:.85; margin-top:2px; }
+  .modal-modern .modal-title .icon{
+    width:30px; height:30px; display:inline-grid; place-items:center;
+    border-radius:8px; background:#111; color:#fff; font-size:14px;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .modal-modern .modal-body{ background:#fff; }
+  .modal-modern .modal-footer{ background:#f9fafb; border-top:1px solid #eef2f7; }
+
+  /* Sections do body */
+  .import-section{
+    background:#fff; border:1px solid #eef2f7; border-radius:12px; padding:12px 14px;
+  }
+  .import-section + .import-section{ margin-top:10px; }
+  .section-title{ font-weight:700; font-size:12px; letter-spacing:.2px; color:#111827; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+  .formats{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .chip{ background:var(--chip); color:var(--chip-text); font-weight:700; font-size:10px; padding:4px 8px; border-radius:999px; }
+
+  /* Dropzone */
+  .dropzone{
+    border:2px dashed var(--dz-border);
+    background:linear-gradient(180deg,#fbfbfb,#f9fafb);
+    border-radius:12px; padding:18px; text-align:center; transition:.18s ease-in-out;
+  }
+  .dropzone.dragover{ background:var(--dz-hover); border-color:#60a5fa; }
+  .dropzone .dz-icon{ font-size:22px; margin-bottom:6px; color:#111827; }
+  .dropzone .dz-title{ font-weight:700; margin:2px 0 0; }
+  .dropzone small{ color:var(--muted); }
+  .dz-btn{ margin-top:10px; }
+
+  /* Picked file */
+  .file-picked{
+    display:none; margin-top:10px; font-size:12px; text-align:left;
+    padding:10px; background:#f9fafb; border:1px solid #eef2f7; border-radius:10px;
+  }
+  .file-picked .name{ font-weight:700; }
+  .file-picked .meta{ color:var(--muted); font-size:11px; }
+
+  /* In-modal progress */
+  .imp-progress{ display:none; margin-top:12px; }
+  .progress{ height:8px; border-radius:999px; }
+  .progress-bar{ background:#111827; }
+  .imp-status{ font-size:12px; margin-top:6px; color:#374151; }
+  .imp-summary{ display:none; margin-top:10px; font-size:12px; background:#f1f5f9; border:1px solid #e5e7eb; border-radius:10px; padding:8px 10px; }
+
+  /* Overlay */
+  .import-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:1080; }
+  .import-card{ background:#fff; padding:16px 18px; border-radius:12px; width:340px; box-shadow:0 10px 30px rgba(0,0,0,.25); text-align:center; }
+
+  /* Apple window dots */
+  .window-dots{ display:flex; gap:6px; align-items:center; margin-right:8px; }
+  .window-dots .dot{
+    width:10px; height:10px; border-radius:50%; display:inline-block;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+  }
+  .window-dots .dot.red{ background:#ff5f56; }
+  .window-dots .dot.yellow{ background:#ffbd2e; }
+  .window-dots .dot.green{ background:#27c93f; }
+
+</style>
+
+<div class="container-fluid page">
+  <div class="topbar2 d-flex align-items-center">
+  <!-- ESQUERDA: dots + título -->
+  <div class="d-flex align-items-center gap-2">
+    <div class="window-dots d-flex align-items-center" style="gap:6px;">
+      <span class="dot red"></span>
+      <span class="dot yellow"></span>
+      <span class="dot green"></span>
+    </div>
+    <div class="title">Schedule — Grid + Gantt (Primavera-like)</div>
+  </div>
+
+  <!-- DIREITA: ações -->
+  <div class="d-flex gap-2 toolbar ms-auto">
+    <a href="{% url 'schedule_template' %}" class="btn btn-light btn-sm btn-outline-secondary">
+      <i class="fa-solid fa-file-csv me-1"></i> Download template (CSV)
+    </a>
+    <button class="btn btn-light" id="btn-import" title="Import schedule">
+      <i class="fa-solid fa-file-arrow-up me-1"></i> Import
+    </button>
+    <button class="btn btn-dark" id="btn-export-excel" title="Export table to Excel">
+      <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+    </button>
+  </div>
+</div>
+
+
+  <div class="card p-3 mb-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-3">
+        <label class="form-label" style="font-size:11px">Discipline</label>
+        <select class="form-select form-select-sm" id="f-discipline">
+          <option value="">All</option>
+          {% for d in disciplines %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label" style="font-size:11px">Start</label>
+        <input type="date" id="f-start" class="form-control form-control-sm">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label" style="font-size:11px">Finish</label>
+        <input type="date" id="f-finish" class="form-control form-control-sm">
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label" style="font-size:11px">Search (ID / Name / JobCard)</label>
+        <input type="text" id="f-q" class="form-control form-control-sm" placeholder="A1000, JC-0001, SEAD...">
+      </div>
+      <div class="col-12 col-md-2 d-grid">
+        <button class="btn btn-dark btn-sm" id="btn-apply">Apply</button>
+      </div>
+
+      <div class="col-12 d-flex align-items-center gap-2 mt-2">
+        <label class="form-label m-0" style="font-size:11px">Scale</label>
+        <select id="scale" class="form-select form-select-sm" style="width:150px;">
+          <option>Day</option><option>Week</option><option selected>Month</option><option>Quarter</option>
+        </select>
+        <button class="btn btn-light btn-sm" id="btn-today">Today</button>
+        <small class="ms-auto" style="color:var(--muted);font-size:11px">Ctrl+Scroll = zoom</small>
+      </div>
+    </div>
+  </div>
+
+  <div id="gantt_here"></div>
+</div>
+
+<!-- ===================== Redesigned Import Modal ===================== -->
+<div class="modal fade modal-modern" id="modalImport" tabindex="-1" aria-labelledby="modalImportLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <form id="formImport" class="modal-content" method="post" action="{% url 'schedule_upload' %}" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="mode" id="import-mode" value="auto">
+
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="modalImportLabel">
+            <span class="icon"><i class="fa-solid fa-file-arrow-up"></i></span> Import schedule
+          </h5>
+          <div class="modal-subtitle">Upload a CSV/XLSX/XML/XER file. The current schedule will be fully rebuilt.</div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="row g-3">
+          <!-- Coluna esquerda: Upload -->
+          <div class="col-12 col-lg-7">
+            <div class="import-section">
+              <div class="section-title"><i class="fa-solid fa-cloud-arrow-up"></i> Upload</div>
+              <div class="formats">
+                <span class="chip">CSV</span><span class="chip">XLSX</span><span class="chip">XML</span><span class="chip">XER</span>
+              </div>
+
+              <div class="dropzone" id="dropzone">
+                <input class="d-none" type="file" id="import-file" name="file" accept=".csv,.xlsx,.xlsm,.xml,.xer" required>
+                <div class="dz-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                <div class="dz-title">Drag & drop your file here</div>
+                <small>or</small>
+                <div class="dz-btn">
+                  <button type="button" class="btn btn-sm btn-outline-dark" id="btnPick">Browse files</button>
+                </div>
+              </div>
+
+              <div class="file-picked" id="filePicked">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div class="name" id="pickedName">No file selected</div>
+                    <div class="meta" id="pickedMeta"></div>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-link text-danger" id="btnClearFile">Remove</button>
+                </div>
+                <div id="fileError" class="text-danger small d-none">Invalid file type. Allowed: .csv, .xlsx, .xlsm, .xml, .xer</div>
+              </div>
+
+              <div class="imp-progress" id="impProgressWrap">
+                <div class="progress">
+                  <div class="progress-bar progress-bar-striped progress-bar-animated" id="impProgress" role="progressbar" style="width:35%"></div>
+                </div>
+                <div class="imp-status" id="impStatus">Uploading file…</div>
+                <div class="imp-summary" id="impSummary"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Coluna direita: Options -->
+          <div class="col-12 col-lg-5">
+            <div class="import-section">
+              <div class="section-title"><i class="fa-solid fa-sliders"></i> Options</div>
+
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" value="on" id="chkUpdateJC" name="update_jobcards">
+                <label class="form-check-label" for="chkUpdateJC">
+                  Update JobCards dates (Start/Finish) according to P6
+                </label>
+              </div>
+
+              <div class="small text-muted">
+                Activities with the same <strong>Activity ID</strong> will propagate Start/Finish to related JobCards.
+              </div>
+
+              <div class="d-flex align-items-center gap-2 mt-3">
+                <a href="{% url 'schedule_template' %}" class="btn btn-sm btn-outline-secondary">
+                  <i class="fa-solid fa-file-csv me-1"></i> Download template (CSV)
+                </a>
+              </div>
+            </div>
+          </div>
+        </div> <!-- /row -->
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-dark" type="submit" id="btnDoImport">
+          <span class="me-1" id="impSpin" style="display:none"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></span>
+          Import
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Overlay (fallback/global) -->
+<div class="import-overlay" id="importOverlay" role="status" aria-live="polite">
+  <div class="import-card">
+    <div class="spinner-border text-dark" role="status" aria-hidden="true"></div>
+    <div class="mt-2 fw-bold" id="importMsg">Importing…</div>
+    <div class="small text-muted" id="importSub">Please wait</div>
+  </div>
+</div>
+
+<script>
+/* ================== CONFIG BÁSICA ================== */
+const API_URL = "{% url 'schedule_api' %}";
+gantt.plugins({ export_api:true, drag_timeline:true, multiselect:true, keyboard_navigation:true, fullscreen:true, marker:true });
+gantt.config.readonly = true;
+gantt.config.date_format = "%Y-%m-%d %H:%i";
+gantt.config.duration_unit = "day";
+gantt.config.row_height = 22;
+gantt.config.min_column_width = 50;
+
+/* Grid – colunas */
+gantt.config.columns = [
+  {
+    name:"text", label:"Activity / JobCard", tree:true, width:250, resize:true,
+    template: t => t._is_jc
+      ? `<span class="pill pill-jc">${t.text||""}</span>`
+      : `<span class="pill pill-act">${t.text||""}</span>`
+  },
+  { name:"name2",     label:"Name / Description", width:340, template:t => t._name || "", resize:true },
+  { name:"orig",      label:"Orig. Dur. (h)", align:"right",  width:110, template:t => t._od_str ?? "" },
+  { name:"pts",       label:"Pts",            align:"right",  width:90,  template:t => t._pts_str ?? "" },
+  { name:"progress",  label:"%",              align:"right",  width:60,  template:t => `${((t.progress||0)*100).toFixed(2)}%` },
+  { name:"start_date",label:"Start",          align:"center", width:96,  template:t => t._start_str || "" },
+  { name:"end_date",  label:"Finish",         align:"center", width:96,  template:t => t._end_str || "" }
+];
+
+/* Barras e linhas JC */
+gantt.templates.task_class = (s,e,t)=> t._is_jc ? "is-jc" : "";
+gantt.templates.grid_row_class = (s,e,t) => t._is_jc ? "is-jc-row" : "";
+
+/* ---- Escalas ---- */
+function isoWeek(date){
+  const dt = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+  return Math.ceil((((dt - yearStart) / 86400000) + 1)/7);
+}
+function setScale(mode){
+  if(mode==="Day"){
+    gantt.config.scales = [{ unit:"day", step:1, format: d => gantt.date.date_to_str("%d %M '%y")(d) }];
+    gantt.config.min_column_width = 46;
+  }else if(mode==="Week"){
+    gantt.config.scales = [{ unit:"week", step:1, format: d => "W"+isoWeek(d)+" '"+String(d.getFullYear()).slice(-2) }];
+    gantt.config.min_column_width = 66;
+  }else if(mode==="Month"){
+    gantt.config.scales = [{ unit:"month", step:1, format: d => gantt.date.date_to_str("%M '%y")(d) }];
+    gantt.config.min_column_width = 66;
+  }else{
+    gantt.config.scales = [{ unit:"quarter", step:1, format: d => "Q"+(Math.floor(d.getMonth()/3)+1)+" '"+String(d.getFullYear()).slice(-2) }];
+    gantt.config.min_column_width = 66;
+  }
+  gantt.render();
+}
+setScale(document.getElementById('scale').value);
+
+/* Marcador Hoje */
+const fmtDay = gantt.date.date_to_str("%d/%m/%Y");
+const todayId = gantt.addMarker({ start_date:new Date(), css:"today-marker", text:"Today", title:"Today: "+fmtDay(new Date()) });
+
+/* ================== HELPERS ================== */
+const $ = s => document.querySelector(s);
+const fmtBR = iso => { if(!iso) return ""; const [y,m,d]=iso.split("-"); return `${d}/${m}/${y.slice(2)}`; };
+function toISODate(input){
+  if(!input && input!==0) return "";
+  if(typeof input==="number"){ const base=new Date(Date.UTC(1899,11,30)); const dt=new Date(base.getTime()+Math.round(input*86400000)); return dt.toISOString().slice(0,10); }
+  let s=String(input).trim();
+  s=s.replace(/[T ]\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+\-]\d{2}:?\d{2})?$/,'');
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  let m=s.match(/^(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})$/);
+  if(m){ const dt=new Date(Date.UTC(+m[1],+m[2]-1,+m[3])); if(!isNaN(dt)) return dt.toISOString().slice(0,10); }
+  m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
+  if(m){ let a=+m[1],b=+m[2],y=+m[3]; if(y<100) y+=2000; const d=(a>12)?a:b, mo=(a>12)?b:a; const dt=new Date(Date.UTC(y,mo-1,d)); if(!isNaN(dt)) return dt.toISOString().slice(0,10); }
+  const t=Date.parse(s); if(!isNaN(t)) return new Date(t).toISOString().slice(0,10);
+  return "";
+}
+function isoToGanttDate(iso){ return iso ? (iso+" 00:00") : ""; }
+
+/* util */
+function firstNonEmpty(...vals){
+  for(const v of vals){
+    if(v==null) continue;
+    const s = String(v);
+    if(s.trim() === "") continue;
+    return v;
+  }
+  return "";
+}
+
+/* números */
+function toNum(val){
+  if(val==null) return null;
+  let s = String(val).trim();
+  if(!s) return null;
+  const m = s.match(/[-+]?\d[\d.,]*/);
+  if(!m) return null;
+  s = m[0];
+  if(s.includes('.') && s.includes(',')) s = s.replace(/\./g,'').replace(',', '.');
+  else if(!s.includes('.') && s.includes(',')) s = s.replace(',', '.');
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+function formatNumberDots(n, decimals=null){
+  if(n==null) return "";
+  const useDec = (decimals==null) ? (!Number.isInteger(n) ? 1 : 0) : decimals;
+  const parts = n.toFixed(useDec).split('.');
+  const int  = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return useDec ? (int + ',' + parts[1]) : int;
+}
+function formatHours(n){ if(n==null) return ""; return formatNumberDots(n, Number.isInteger(n)?0:1) + " h"; }
+
+/* horas/pontos */
+function chooseHoursNumber(t){
+  if(t._is_jc){ return toNum(firstNonEmpty(t.total_man_hours, t.total_duration_hs, t.orig_duration)); }
+  return toNum(firstNonEmpty(t.hh, t.orig_duration));
+}
+function choosePointsNumber(t){
+  if (t._is_jc) return toNum(t.points_calc);
+  return toNum(firstNonEmpty(t.points, t.indice_kpi));
+}
+
+/* ================== MAP + ÁRVORE ================== */
+function buildTreeFromFlat(flat){
+  const data = [], stack = [];
+  for(let i=0;i<flat.length;i++){
+    const t = flat[i];
+    const level = Math.max(0, parseInt(t.level||0));
+    const id = t.id || ("row-"+i);
+
+    while(stack.length && stack[stack.length-1].level >= level) stack.pop();
+    const parent = stack.length ? stack[stack.length-1].id : 0;
+
+    // datas (JC herda da activity se vier vazio)
+    let sISO = toISODate(t.start);
+    let eISO = toISODate(t.finish || t.end);
+    if(t._is_jc && (!sISO || !eISO) && t._parent_dates){
+      sISO = sISO || toISODate(t._parent_dates.start);
+      eISO = eISO || toISODate(t._parent_dates.finish);
+    }
+
+    const hoursVal  = chooseHoursNumber(t);
+    const pointsVal = choosePointsNumber(t);
+
+    const task = {
+      id, parent,
+      text: t.id || t.name || "",
+      start_date: isoToGanttDate(sISO || toISODate(new Date())),
+      end_date:   isoToGanttDate(eISO || toISODate(new Date(Date.now()+86400000))),
+      progress: (t.progress || 0) / 100,
+      open: true,
+
+      _name: firstNonEmpty(t.job_card_description, t.name, t.working_code_description, ""),
+      _od_str: formatHours(hoursVal),
+      _pts_str: formatNumberDots(pointsVal),
+
+      _start_str: sISO ? fmtBR(sISO) : "",
+      _end_str:   eISO ? fmtBR(eISO) : "",
+      _is_jc: !!t._is_jc
+    };
+    data.push(task);
+    stack.push({level, id});
+  }
+  return { data, links: [] };
+}
+
+/* ================== FLATTEN API → FLAT ================== */
+function flattenFromAPI(raw){
+  const out = [];
+  const tasks = Array.isArray(raw.tasks) ? raw.tasks : [];
+
+  for(const t of tasks){
+    const level = parseInt(t.level||0) || 0;
+    const tid = (t.id || t.activity_id || "").toString().trim();
+
+    const aStart = firstNonEmpty(t.start, "");
+    const aFinish = firstNonEmpty(t.end, "");
+
+    // Activity
+    out.push({
+      id: tid || ("A-"+out.length),
+      name: t.name || "",
+      level,
+      start: aStart,
+      finish: aFinish,
+      progress: t.progress || 0,
+      points: t.points ?? null,
+      hh: t.hh ?? null,
+      orig_duration: t.orig_duration ?? "",
+      _is_jc: false,
+      activity_id: tid
+    });
+
+    // JobCards
+    const jcs = Array.isArray(t.jobcards) ? t.jobcards : [];
+    const getHH = (jc) => toNum(firstNonEmpty(jc.total_man_hours, jc.total_duration_hs, jc.orig_duration));
+    const hhArray = jcs.map(jc => getHH(jc) || 0).filter(n => Number.isFinite(n));
+    const hhSum = hhArray.reduce((a,b)=>a+b, 0);
+    const actPoints = toNum(t.points);
+
+    for(const jc of jcs){
+      const jc_hh = getHH(jc) || 0;
+      const share = (hhSum > 0) ? (jc_hh / hhSum) : 0;
+      const pts_calc = (actPoints != null) ? (actPoints * share) : null;
+
+      out.push({
+        id: (jc.job_card_number || jc.id || ("JC-"+out.length)).toString(),
+        job_card_number: jc.job_card_number,
+        job_card_description: jc.job_card_description,
+        working_code_description: jc.working_code_description,
+        discipline: jc.discipline,
+        activity_id: jc.activity_id || tid,
+
+        level: level + 1,
+        start: firstNonEmpty(jc.start, aStart),
+        finish: firstNonEmpty(jc.finish, aFinish),
+
+        total_man_hours: jc.total_man_hours,
+        total_duration_hs: jc.total_duration_hs,
+        orig_duration: jc.orig_duration ?? "",
+        indice_kpi: jc.indice_kpi ?? "",
+
+        points_calc: pts_calc,
+        progress: firstNonEmpty(jc.progress, jc.percent, 0),
+        _is_jc: true,
+        _parent_dates: {start:aStart, finish:aFinish}
+      });
+    }
+  }
+  return out;
+}
+
+/* ================== FILTER (contexto + sobreposição) ================== */
+function clientFilter(flat, {d,s,f,q}){
+  const sISO = toISODate(s) || null;
+  const fISO = toISODate(f) || null;
+  const Q = (q||"").trim().toLowerCase();
+
+  const actIndexById = {};
+  const childrenByAid = {};
+  for (let i = 0; i < flat.length; i++) {
+    const t = flat[i];
+    if (!t._is_jc) { const aid = t.id; if (aid) actIndexById[aid] = i; }
+    else { const aid = t.activity_id || ""; if (aid) (childrenByAid[aid] = childrenByAid[aid] || []).push(i); }
+  }
+
+  function overlaps(ts, te, sISO, fISO){
+    const start = toISODate(ts);
+    const end   = toISODate(te || ts);
+    if(!sISO && !fISO) return true;
+    if(!start && !end) return false;
+    if(sISO && fISO){ if(!start || !end) return false; return !(end < sISO || start > fISO); }
+    if(sISO){ return end && (end >= sISO); }
+    if(fISO){ return start && (start <= fISO); }
+    return true;
+  }
+
+  function matchesItem(t){
+    if (d && t._is_jc) {
+      if (String(t.discipline||"").toLowerCase() !== String(d).toLowerCase()) return false;
+    }
+    if (!overlaps(t.start, (t.finish||t.end), sISO, fISO)) return false;
+
+    if (Q){
+      const hay = [
+        t.id, t.name, t.job_card_number, t.job_card_description,
+        t.working_code_description, t.activity_id, t.discipline, t.tag
+      ].map(x => (x==null ? "" : String(x).toLowerCase()));
+      if (!hay.some(h => h.includes(Q))) return false;
+    }
+    return true;
+  }
+
+  const directInclude = new Set();
+  for (let i = 0; i < flat.length; i++) {
+    if (matchesItem(flat[i])) directInclude.add(i);
+  }
+  if (directInclude.size === 0) return [];
+
+  const include = new Set(directInclude);
+  for (const i of Array.from(directInclude)) {
+    const t = flat[i];
+    if (t._is_jc) {
+      const pIdx = actIndexById[t.activity_id || t.id];
+      if (pIdx != null) include.add(pIdx);
+    }
+  }
+  for (const i of Array.from(include)) {
+    const t = flat[i];
+    if (!t._is_jc) {
+      const kids = childrenByAid[t.id] || [];
+      for (const k of kids) include.add(k);
+    }
+  }
+
+  const out = [];
+  for (let i = 0; i < flat.length; i++) if (include.has(i)) out.push(flat[i]);
+  return out;
+}
+
+/* ================== LOAD BACKEND ================== */
+async function loadFromAPI(){
+  const p = new URLSearchParams();
+  const d = $('#f-discipline')?.value || "";
+  const s = $('#f-start')?.value || "";
+  const f = $('#f-finish')?.value || "";
+  const q = $('#f-q')?.value || "";
+
+  if (d) p.append('discipline', d);
+  if (s) p.append('start', s);
+  if (f) p.append('finish', f);
+  if (q) p.append('q', q);
+
+  let resp; let json;
+  try{
+    resp = await fetch(API_URL + (p.toString()?('?'+p.toString()):''), {cache:'no-store', credentials:'same-origin'});
+    if(!resp.ok) throw new Error("HTTP "+resp.status);
+    json = await resp.json();
+  }catch(e){
+    console.error("[schedule] API error:", e);
+    gantt.clearAll(); return;
+  }
+
+  let flat = flattenFromAPI(json);
+  flat = clientFilter(flat, {d,s,f,q});
+
+  const dataset = buildTreeFromFlat(flat);
+  gantt.clearAll();
+  gantt.parse(dataset);
+  autoHeight();
+}
+
+/* ================== EXPORT (com indentação) ================== */
+function taskLevelById(id){
+  let lvl = 0, cur = id;
+  while(cur && cur != 0){
+    cur = gantt.getParent(cur);
+    if(!cur) break; lvl++;
+  }
+  return lvl;
+}
+function exportTable(){
+  const rows = [["Activity/JobCard","Name/Description","Orig. Dur. (h)","Pts","%","Start","Finish"]];
+  gantt.eachTask(function(t){
+    const lvl = taskLevelById(t.id);
+    const indent = "  ".repeat(Math.max(0, lvl));
+    rows.push([
+      indent + (t.text || ""),
+      t._name || "",
+      t._od_str ?? "",
+      t._pts_str ?? "",
+      `${((t.progress||0)*100).toFixed(2)}%`,
+      t._start_str || "",
+      t._end_str || ""
+    ]);
+  });
+
+  if (window.XLSX) {
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Schedule");
+    XLSX.writeFile(wb, "taskfy_schedule.xlsx");
+  } else {
+    const csv = rows.map(r => r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = "taskfy_schedule.csv";
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+}
+
+/* ================== UI BINDS ================== */
+$('#btn-apply')?.addEventListener('click', loadFromAPI);
+$('#scale')?.addEventListener('change', e => { setScale(e.target.value); autoHeight(); });
+$('#btn-today')?.addEventListener('click', ()=>{ const m=gantt.getMarker(todayId); if(m){ gantt.showDate(m.start_date); } });
+$('#btn-export-excel')?.addEventListener('click', exportTable);
+
+/* ===== Modal Import ===== */
+const modalEl = document.getElementById('modalImport');
+let importModal = null;
+if (window.bootstrap && modalEl) importModal = new bootstrap.Modal(modalEl);
+document.getElementById('btn-import')?.addEventListener('click', ()=>{
+  if(importModal) importModal.show(); else modalEl.classList.add('show');
+});
+
+/* ===== Dropzone/validação ===== */
+const allowedExt = ['.csv','.xlsx','.xlsm','.xml','.xer'];
+const dz = document.getElementById('dropzone');
+const fileInput = document.getElementById('import-file');
+const btnPick = document.getElementById('btnPick');
+const pickedBox = document.getElementById('filePicked');
+const pickedName = document.getElementById('pickedName');
+const pickedMeta = document.getElementById('pickedMeta');
+const btnClear = document.getElementById('btnClearFile');
+const fileErr = document.getElementById('fileError');
+const modeField = document.getElementById('import-mode');
+
+function getExt(name){ const m = /\.[^.]+$/.exec(name||''); return m ? m[0].toLowerCase() : ''; }
+function bytesToHuman(n){ if(!n&&n!==0) return ''; const u=['B','KB','MB','GB']; let i=0,x=n; while(x>=1024&&i<u.length-1){x/=1024;i++;} return `${x.toFixed(x<10?1:0)} ${u[i]}`; }
+
+btnPick?.addEventListener('click', ()=> fileInput.click());
+
+['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); dz.classList.add('dragover'); }));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); dz.classList.remove('dragover'); }));
+dz.addEventListener('drop', e=>{ const f = e.dataTransfer?.files?.[0]; if(!f) return; setPicked(f); });
+fileInput?.addEventListener('change', e=>{ const f = e.target.files?.[0]; if(!f) return; setPicked(f); });
+btnClear?.addEventListener('click', ()=>{ fileInput.value=''; pickedName.textContent='No file selected'; pickedMeta.textContent=''; fileErr.classList.add('d-none'); modeField.value='auto'; pickedBox.style.display='none'; });
+
+function setPicked(file){
+  const ext = getExt(file.name);
+  fileErr.classList.add('d-none');
+  pickedBox.style.display = 'block';
+  pickedName.textContent = file.name;
+  pickedMeta.textContent = `${ext.toUpperCase()} • ${bytesToHuman(file.size)}`;
+
+  if(!allowedExt.includes(ext)){
+    fileErr.classList.remove('d-none'); fileInput.value=''; modeField.value='auto'; return;
+  }
+  if(fileInput.files?.length !== 1 || fileInput.files[0] !== file){
+    const dt = new DataTransfer(); dt.items.add(file); fileInput.files = dt.files;
+  }
+  if(ext === '.csv') modeField.value = 'csv';
+  else if(ext === '.xlsx' || ext === '.xlsm') modeField.value = 'excel';
+  else modeField.value = 'auto';
+}
+
+/* ===== Import via fetch (progresso no modal) ===== */
+const btnDoImport = document.getElementById('btnDoImport');
+const impSpin = document.getElementById('impSpin');
+const impWrap = document.getElementById('impProgressWrap');
+const impBar  = document.getElementById('impProgress');
+const impStatus = document.getElementById('impStatus');
+const impSummary= document.getElementById('impSummary');
+
+document.getElementById('formImport')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(!fileInput.files || fileInput.files.length===0){ fileErr.classList.remove('d-none'); return; }
+
+  const form = e.currentTarget;
+  const fd = new FormData(form);
+  if(!form.querySelector('#chkUpdateJC').checked){ fd.delete('update_jobcards'); }
+
+  btnDoImport.disabled = true; impSpin.style.display = 'inline-block';
+  impWrap.style.display = 'block'; impSummary.style.display = 'none';
+  impBar.style.width = '35%'; impStatus.textContent = 'Uploading file…';
+
+  try{
+    const resp = await fetch(form.action + '?ajax=1', {
+      method:'POST', body: fd,
+      headers: { 'X-Requested-With':'fetch', 'Accept':'application/json' },
+      credentials:'same-origin'
+    });
+
+    impBar.style.width = '70%'; impStatus.textContent = 'Processing…';
+
+    const ctype = resp.headers.get('content-type') || '';
+    if(resp.ok && ctype.includes('application/json')){
+      const data = await resp.json();
+      impBar.style.width = '100%';
+      impStatus.textContent = 'Done!';
+      const created = (data.created!=null? data.created : '—');
+      const updated = (data.updated!=null? data.updated : '—');
+      const jcupd   = (data.jobcards_updated!=null? data.jobcards_updated : '—');
+      impSummary.textContent = `Created: ${created} • Updated: ${updated} • JobCards updated: ${jcupd}`;
+      impSummary.style.display = 'block';
+    }else{
+      impBar.classList.remove('progress-bar-animated');
+      impBar.style.background = '#ef4444';
+      impStatus.textContent = resp.ok ? 'Finished (no JSON)' : `Import failed (HTTP ${resp.status})`;
+    }
+  }catch(err){
+    console.error('[import] error:', err);
+    impBar.classList.remove('progress-bar-animated');
+    impBar.style.background = '#ef4444';
+    impStatus.textContent = 'Network error';
+  }
+
+  setTimeout(()=>{
+    btnDoImport.disabled = false; impSpin.style.display = 'none';
+    if(importModal) importModal.hide();
+    loadFromAPI();
+  }, 900);
+});
+
+/* ================== ALTURA AUTO ================== */
+function autoHeight(){
+  const el = document.getElementById('gantt_here');
+  if(!el) return;
+  const rect = el.getBoundingClientRect();
+  const available = Math.max(300, window.innerHeight - rect.top - 12);
+  el.style.height = available + "px";
+  gantt.setSizes();
+}
+window.addEventListener('resize', autoHeight);
+
+/* ================== INIT ================== */
+gantt.init("gantt_here");
+setScale(document.getElementById('scale').value);
+loadFromAPI();
+autoHeight();
+</script>
+{% endblock %}

@@ -1,0 +1,560 @@
+import csv
+import io
+import os
+import re
+import hashlib
+import math
+from datetime import datetime, date
+from typing import Dict, List, Optional, Tuple
+from xml.etree import ElementTree as ET
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, permission_required
+from django.db import transaction
+from django.db.models import Q
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.utils.text import slugify
+
+from .forms import ScheduleImportForm
+from .models import JobCard, ScheduleActivity, ScheduleWBS
+
+try:
+    from .models import ScheduleLink  # opcional
+except Exception:
+    ScheduleLink = None
+
+
+def _reset_schedule() -> None:
+    """
+    Zera o cronograma (links -> atividades -> WBS), em ordem segura.
+    Deve ser chamado DENTRO de uma transação (atomic).
+    """
+    if ScheduleLink:
+        ScheduleLink.objects.all().delete()
+    ScheduleActivity.objects.all().delete()
+    ScheduleWBS.objects.all().delete()
+
+
+# ==================== Config ====================
+
+DATE_FORMATS = (
+    "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y",
+    "%d-%b-%y", "%d-%b-%Y"  # ex: 31-May-24 A
+)
+_WBS_CODE_MAX = 760  # (model usa 768; deixo folga p/ sufixo hash)
+
+# ==================== Utils ====================
+
+def _clean(s: str) -> str:
+    return re.sub(r"\s+", " ", (s or "")).strip()
+
+def _expand_tabs(s: str) -> str:
+    # normaliza TAB e NBSP para espaço
+    return (s or "").replace("\t", "    ").replace("\xa0", " ")
+
+def _parse_date(val) -> Optional[datetime.date]:
+    """Aceita date/datetime reais (openpyxl), ISO strings e formatos comuns."""
+    if val is None:
+        return None
+    if isinstance(val, date):
+        return val if not isinstance(val, datetime) else val.date()
+    txt = str(val).strip()
+    if not txt:
+        return None
+    txt = re.sub(r"\s+", " ", txt)
+    # corta timezone e sufixos " A"/" P", e normaliza "T"
+    txt = txt.replace("T", " ")
+    txt = txt.split(" A")[0].split(" P")[0].strip()
+    # tenta YYYY-MM-DD HH:MM:SS e YYYY-MM-DD
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(txt, fmt).date()
+        except ValueError:
+            pass
+    # tenta os demais formatos
+    for fmt in ("%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%d-%b-%y", "%d-%b-%Y"):
+        try:
+            return datetime.strptime(txt, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+def _to_float(x) -> Optional[float]:
+    if x is None:
+        return None
+    s = str(x).strip().replace(",", "")
+    if not s:
+        return None
+    m = re.search(r"[-+]?\d*\.?\d+", s)
+    return float(m.group(0)) if m else None
+
+def _to_percent(x) -> float:
+    v = _to_float(x)
+    return float(v) if v is not None else 0.0
+
+def _is_activity_id(text: str) -> bool:
+    """Regra segura: ID não tem espaços e tem hífen/underscore + dígito, ou letras+2+ dígitos."""
+    if not text:
+        return False
+    t = text.strip()
+    if re.search(r"\s", t):
+        return False
+    if re.search(r"[-_]", t) and re.search(r"\d", t):
+        return True
+    if re.match(r"^[A-Za-z]+[0-9]{2,}$", t):
+        return True
+    return False
+
+def _wbs_code_from_path(path_names: List[str]) -> str:
+    slugs = [slugify(_clean(p)) or "node" for p in path_names if _clean(p)]
+    code = "/".join(slugs) or "root"
+    if len(code) > _WBS_CODE_MAX:
+        h = hashlib.sha1(code.encode("utf-8")).hexdigest()[:10]
+        code = f"{code[:_WBS_CODE_MAX-11]}-{h}"
+    return code
+
+def _ensure_wbs_by_path(path_names: List[str]) -> ScheduleWBS:
+    parent = None
+    built: List[str] = []
+    obj = None
+    for name in path_names:
+        name = _clean(name)
+        if not name:
+            continue
+        built.append(name)
+        code = _wbs_code_from_path(built)
+        obj, created = ScheduleWBS.objects.get_or_create(
+            code=code, defaults={"name": name, "parent": parent}
+        )
+        if not created and obj.name != name:
+            obj.name = name
+            obj.save(update_fields=["name"])
+        parent = obj
+    return obj
+
+def _link_jobcard_number(activity_id: str) -> str:
+    if not activity_id:
+        return ""
+    jc = JobCard.objects.filter(activity_id=activity_id).only("job_card_number").first()
+    return jc.job_card_number if jc else ""
+
+def _update_jobcard_dates(activity_id: str, start, finish, do_update: bool) -> int:
+    """
+    Atualiza TODAS as JobCards com o activity_id informado para as datas vindas do P6.
+    Match robusto: ignora diferenças de caixa e espaços à esquerda/direita.
+    Retorna a quantidade de JobCards efetivamente atualizadas.
+    """
+    if not do_update:
+        return 0
+    aid = (activity_id or "").strip()
+    if not aid:
+        return 0
+
+    qs = JobCard.objects.filter(
+        Q(activity_id__iexact=aid) |
+        Q(activity_id__iregex=rf'^\s*{re.escape(aid)}\s*$')
+    )
+
+    updated = 0
+    for jc in qs:
+        fields = []
+        if start and jc.start != start:
+            jc.start = start
+            fields.append("start")
+        if finish and jc.finish != finish:
+            jc.finish = finish
+            fields.append("finish")
+        if fields:
+            jc.save(update_fields=fields)
+            updated += 1
+    return updated
+
+def _norm(h: str) -> str:
+    return _clean(h).lower()
+
+
+# ==================== Parser por LEVEL (autoridade) ====================
+
+def _normalize_level(raw_level: str, base: int) -> int:
+    """
+    Converte o Level do arquivo (pode começar em 0,1,2...) em um nível interno 1-based.
+    Ex.: base=0 -> 0,1,2 vira 1,2,3; base=1 -> 1,2,3 vira 1,2,3.
+    """
+    try:
+        L = int(float(str(raw_level).strip()))
+    except Exception:
+        L = 0
+    return max(1, L - base + 1)
+
+def parse_with_levels(rows: List[Dict[str, str]], update_jobcards: bool) -> Tuple[int, int, int]:
+    """
+    Espera colunas:
+      Level | Activity ID | Activity Name | Original Duration | Activity % Complete | Start | Finish | Pontos | HH
+    - NÃO cria WBS; apenas lê o Level e armazena em ScheduleActivity.level.
+    - Mantém a ordem do arquivo em ScheduleActivity.sort_index.
+    Retorna (created, updated, jobcards_updated).
+    """
+    if not rows:
+        return (0, 0, 0)
+
+    headers = list(rows[0].keys())
+    H = { _norm(h): h for h in headers }
+
+    H_LVL = H.get("level") or H.get("nivel")
+    H_AID = H.get("activity id") or H.get("id")
+    H_ANM = H.get("activity name") or H.get("name")
+    H_OD  = H.get("original duration") or H.get("orig duration")
+    H_PC  = H.get("activity % complete") or H.get("% complete") or H.get("percent complete")
+    H_ST  = H.get("start")
+    H_FN  = H.get("finish")
+    H_PTS = H.get("pontos") or H.get("points")
+    H_HH  = H.get("hh") or H.get("manhours") or H.get("man hours")
+
+    if not H_LVL or not H_AID:
+        raise RuntimeError("Template inválido: colunas 'Level' e 'Activity ID' são obrigatórias.")
+
+    created, updated, jc_updates = 0, 0, 0
+    order_counter = 0
+
+    with transaction.atomic():
+        for row in rows:
+            order_counter += 1
+
+            raw_level = str(row.get(H_LVL, "")).strip()
+            try:
+                level = int(float(raw_level))
+            except Exception:
+                level = 0
+
+            aid = _clean(_expand_tabs(str(row.get(H_AID, "") or "")))
+            if not aid:
+                continue  # linha inválida
+
+            name  = _clean(str(row.get(H_ANM, "") or "")) if H_ANM else ""
+            start = _parse_date(row.get(H_ST)) if H_ST else None
+            fin   = _parse_date(row.get(H_FN)) if H_FN else None
+            od    = int(_to_float(row.get(H_OD)) or 0) if H_OD else None
+            pc    = _to_percent(row.get(H_PC)) if H_PC else 0.0
+            pts   = _to_float(row.get(H_PTS)) if H_PTS else None
+            hh    = _to_float(row.get(H_HH)) if H_HH else None
+
+            duration_days = (fin - start).days if (start and fin) else None
+            jobcard_number = _link_jobcard_number(aid)
+
+            defaults = dict(
+                name=name or aid,
+                start=start,
+                finish=fin,
+                duration_days=duration_days,
+                original_duration_days=od,
+                percent_complete=pc,
+                points=pts,
+                hh=hh,
+                wbs=None,              # ignoramos WBS
+                level=level,           # << guarda level do arquivo
+                sort_index=order_counter,
+                jobcard_number=jobcard_number,
+            )
+            _, is_created = ScheduleActivity.objects.update_or_create(activity_id=aid, defaults=defaults)
+            created += 1 if is_created else 0
+            updated += 0 if is_created else 1
+
+            jc_updates += _update_jobcard_dates(aid, start, fin, update_jobcards)
+
+    return created, updated, jc_updates
+
+
+# ==================== Parsers de arquivo ====================
+
+def parse_csv(file, update_jobcards: bool) -> Tuple[int, int, int]:
+    raw = file.read().decode("utf-8-sig", errors="ignore")
+    if not raw.strip():
+        return (0, 0, 0)
+    # Excel pt-BR costuma usar ';'
+    try:
+        sample = "\n".join(raw.splitlines()[:5])
+        dialect = csv.Sniffer().sniff(sample, delimiters=";,\t|")
+    except Exception:
+        class _D: delimiter = ';'
+        dialect = _D()
+    reader = csv.DictReader(io.StringIO(raw), dialect=dialect)
+    rows = list(reader)
+    return parse_with_levels(rows, update_jobcards)
+
+def parse_xlsx(file, update_jobcards: bool) -> Tuple[int, int, int]:
+    try:
+        import openpyxl
+    except Exception as e:
+        raise RuntimeError("Para importar .xlsx/.xlsm instale openpyxl: pip install openpyxl") from e
+
+    wb = openpyxl.load_workbook(file, data_only=True)
+    ws = wb.active
+    headers = [str(c.value or "").strip() for c in next(ws.iter_rows(min_row=1, max_row=1))]
+    rows: List[Dict[str, str]] = []
+    for r in ws.iter_rows(min_row=2, max_row=ws.max_row):
+        row = {}
+        for i, cell in enumerate(r[:len(headers)]):
+            row[headers[i]] = cell.value if cell.value is not None else ""
+        rows.append(row)
+    return parse_with_levels(rows, update_jobcards)
+
+def _find_tag(el, *names):
+    for n in names:
+        node = el.find(f".//{n}")
+        if node is not None and node.text:
+            return node.text
+        for child in el.iter():
+            if child.tag.split('}')[-1].lower() == n.lower() and child.text:
+                return child.text
+    return ""
+
+def parse_xml(file, update_jobcards: bool) -> Tuple[int, int, int]:
+    # Importa atividades "flat" (XML geralmente não traz Level)
+    tree = ET.parse(file)
+    root = tree.getroot()
+    created, updated, jc_updates = 0, 0, 0
+    acts = root.findall(".//Activity") or [el for el in root.iter() if el.tag.split('}')[-1].lower() == "activity"]
+    with transaction.atomic():
+        for a in acts:
+            aid   = _clean(_find_tag(a, "ActivityID", "Id"))
+            if not aid:
+                continue
+            name  = _clean(_find_tag(a, "ActivityName", "Name"))
+            start = _parse_date(_find_tag(a, "StartDate", "EarlyStartDate", "PlannedStartDate"))
+            fin   = _parse_date(_find_tag(a, "FinishDate", "EarlyFinishDate", "PlannedFinishDate"))
+            pc    = _to_percent(_find_tag(a, "PercentComplete", "CompletePercent") or "0")
+            duration_days = (fin - start).days if (start and fin) else None
+            jobcard_number = _link_jobcard_number(aid)
+            defaults = dict(
+                name=name, start=start, finish=fin, duration_days=duration_days,
+                percent_complete=pc, wbs=None, jobcard_number=jobcard_number,
+                sort_index=0,
+            )
+            _, is_created = ScheduleActivity.objects.update_or_create(activity_id=aid, defaults=defaults)
+            created += 1 if is_created else 0
+            updated += 0 if is_created else 1
+            jc_updates += _update_jobcard_dates(aid, start, fin, update_jobcards)
+    return created, updated, jc_updates
+
+# ==================== Views ====================
+
+@login_required(login_url="login")
+def schedule_template(request):
+    """
+    Template CSV com separador ';' (Excel pt-BR abre em colunas).
+    Cabeçalho:
+    Level;Activity ID;Activity Name;Original Duration;Activity % Complete;Start;Finish;Pontos;HH
+    """
+    headers = [
+        "Level", "Activity ID", "Activity Name", "Original Duration",
+        "Activity % Complete", "Start", "Finish", "Pontos", "HH"
+    ]
+    buf = io.StringIO()
+    writer = csv.writer(buf, delimiter=';')  # ponto-e-vírgula
+    writer.writerow(headers)
+    resp = HttpResponse(buf.getvalue(), content_type="text/csv; charset=utf-8")
+    resp["Content-Disposition"] = 'attachment; filename="schedule_template_br.csv"'
+    return resp
+
+
+@login_required(login_url="login")
+@permission_required("jobcards.change_jobcard", raise_exception=True)
+def schedule_upload(request):
+    """
+    Full refresh das atividades. Opcionalmente, propaga Start/Finish do P6
+    para TODAS as JobCards com o mesmo Activity ID.
+    Suporta AJAX (?ajax=1) retornando JSON {created, updated, jobcards_updated}.
+    """
+    if request.method != "POST":
+        return redirect(f"{reverse('schedule_gantt')}?open_import=1")
+
+    form = ScheduleImportForm(request.POST, request.FILES)
+    if not form.is_valid():
+        if request.GET.get("ajax"):
+            return JsonResponse({"ok": False, "error": "invalid form"}, status=400)
+        messages.error(request, "Formulário inválido. Verifique os campos e tente novamente.")
+        return redirect(f"{reverse('schedule_gantt')}?import_error=1")
+
+    mode = form.cleaned_data["mode"]
+    update_jobcards = form.cleaned_data["update_jobcards"]
+    f = request.FILES["file"]
+
+    try:
+        fname = (f.name or "").lower()
+        _, ext = os.path.splitext(fname)
+        data = f.read()  # guarda os bytes para reuso
+
+        with transaction.atomic():
+            # 1) zera o cronograma atual
+            _reset_schedule()
+
+            # 2) importa tudo de novo
+            if mode == "csv" or (mode == "auto" and ext in (".csv",)):
+                created, updated, jc_upd = parse_csv(io.BytesIO(data), update_jobcards)
+            elif mode == "excel" or (mode == "auto" and ext in (".xlsx", ".xlsm")):
+                created, updated, jc_upd = parse_xlsx(io.BytesIO(data), update_jobcards)
+            elif mode == "auto" and ext == ".xls":
+                raise RuntimeError("Arquivo .xls (Excel antigo) não suportado. Salve como .xlsx/.xlsm.")
+            else:
+                created, updated, jc_upd = parse_xml(io.BytesIO(data), update_jobcards)
+
+            # Se nada veio, aborta (rollback automático)
+            if (created + updated) == 0:
+                raise RuntimeError("Template vazio/inesperado — nada importado.")
+
+        if request.GET.get("ajax"):
+            return JsonResponse({"ok": True, "created": created, "updated": updated, "jobcards_updated": jc_upd})
+
+        messages.success(request, f"Importação concluída. Criados: {created} | Atualizados: {updated} | JobCards atualizadas: {jc_upd}.")
+        return redirect(f"{reverse('schedule_gantt')}?imported=1")
+
+    except Exception as e:
+        if request.GET.get("ajax"):
+            return JsonResponse({"ok": False, "error": str(e)}, status=500)
+        messages.error(request, f"Falha ao importar: {e}")
+        return redirect(f"{reverse('schedule_gantt')}?import_error=1")
+
+
+@login_required(login_url="login")
+def schedule_gantt(request):
+    disciplines = list(
+        JobCard.objects.exclude(discipline__isnull=True).exclude(discipline__exact="")
+        .values_list("discipline", flat=True).distinct()
+    )
+    return render(request, "sistema/schedule/schedule_gantt.html", {"disciplines": disciplines})
+
+
+@login_required(login_url="login")
+def schedule_api(request):
+    """
+    Retorna atividades na ordem importada com level e TODAS as JobCards ligadas,
+    incluindo campos necessários para cálculo de pontos ponderados por JC.
+    """
+    q = request.GET.get("q", "").strip()
+    discipline = request.GET.get("discipline", "").strip()
+    start_f = request.GET.get("start")
+    finish_f = request.GET.get("finish")
+
+    acts = ScheduleActivity.objects.all()
+
+    if q:
+        acts = acts.filter(
+            Q(activity_id__icontains=q) |
+            Q(name__icontains=q) |
+            Q(jobcard_number__icontains=q)
+        )
+
+    if start_f:
+        try:
+            sdate = datetime.strptime(start_f, "%Y-%m-%d").date()
+            acts = acts.filter(Q(finish__gte=sdate) | Q(finish__isnull=True))
+        except Exception:
+            pass
+
+    if finish_f:
+        try:
+            fdate = datetime.strptime(finish_f, "%Y-%m-%d").date()
+            acts = acts.filter(Q(start__lte=fdate) | Q(start__isnull=True))
+        except Exception:
+            pass
+
+    if discipline:
+        ids = list(
+            JobCard.objects.filter(discipline__iexact=discipline)
+            .values_list("activity_id", flat=True)
+        )
+        acts = acts.filter(activity_id__in=ids)
+
+    acts = acts.order_by("sort_index", "pk")
+
+    # ============== JobCards por activity_id (com campos completos) ==============
+    act_ids = list(acts.values_list("activity_id", flat=True))
+    jmap = {}
+    if act_ids:
+        jc_qs = JobCard.objects.filter(activity_id__in=act_ids).values(
+            "activity_id",
+            "job_card_number",
+            "job_card_description",
+            "working_code_description",
+            "discipline",
+            "start", "finish",
+            "total_man_hours", "total_duration_hs", "indice_kpi",
+            "status",
+        )
+        for jc in jc_qs:
+            aid = jc.get("activity_id") or ""
+            lst = jmap.setdefault(aid, [])
+            s = jc["start"].isoformat() if jc.get("start") else ""
+            f = jc["finish"].isoformat() if jc.get("finish") else ""
+            lst.append({
+                "job_card_number": jc.get("job_card_number") or "",
+                "job_card_description": (jc.get("job_card_description") or "").strip(),
+                "working_code_description": (jc.get("working_code_description") or "").strip(),
+                "discipline": jc.get("discipline") or "",
+                "start": s,
+                "finish": f,
+                "total_man_hours": jc.get("total_man_hours") or "",
+                "total_duration_hs": jc.get("total_duration_hs") or "",
+                "indice_kpi": jc.get("indice_kpi") or "",
+                "status": jc.get("status") or "",
+            })
+
+    def _safe_int(v, default=0):
+        try:
+            if v is None:
+                return default
+            x = float(v)
+            if not math.isfinite(x):
+                return default
+            return int(round(x))
+        except Exception:
+            return default
+
+    def _safe_num(v):
+        try:
+            if v is None:
+                return None
+            x = float(v)
+            if not math.isfinite(x):
+                return None
+            return x
+        except Exception:
+            return None
+
+    data = []
+    for a in acts:
+        start = a.start.isoformat() if a.start else ""
+        end   = a.finish.isoformat() if a.finish else ""
+
+        prog = _safe_int(getattr(a, "percent_complete", 0), 0)
+        prog = max(0, min(100, prog))
+
+        od = a.original_duration_days
+        try:
+            orig_duration = int(od) if od is not None else ""
+        except Exception:
+            orig_duration = ""
+
+        data.append({
+            "id": a.activity_id or "",
+            "name": (a.name or a.activity_id or ""),
+            "level": int(a.level or 0),
+            "start": start,
+            "end": end,
+            "progress": prog,
+
+            "orig_duration": orig_duration,
+            "points": _safe_num(getattr(a, "points", None)),
+            "hh": _safe_num(getattr(a, "hh", None)),
+
+            "jobcards": jmap.get(a.activity_id, []),
+        })
+
+    resp = JsonResponse(
+        {"tasks": data},
+        json_dumps_params={"ensure_ascii": False, "allow_nan": False}
+    )
+    resp["Cache-Control"] = "no-store"
+    return resp

@@ -493,3 +493,81 @@ class DailyFieldReport(models.Model):
             except Exception:
                 seq = 1
         return f"DFR-{seq:06d}"
+    
+
+    # ===== CRONOGRAMA / P6 =====
+
+class ScheduleWBS(models.Model):
+    # slug do caminho completo (root/epc-01/management/...)
+    code = models.CharField(max_length=768, unique=True, db_index=True)
+    name = models.CharField(max_length=255)
+    parent = models.ForeignKey('self', null=True, blank=True,
+                               on_delete=models.CASCADE, related_name='children')
+    # ordem visual dentro do pai (preenchido no import por template)
+    order = models.PositiveIntegerField(default=0)
+    # opcional, se quiser salvar um código do P6
+    p6_code = models.CharField(max_length=120, blank=True, db_index=True)
+
+    class Meta:
+        ordering = ["code"]
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+    @property
+    def level(self) -> int:
+        return (self.code or "").count("/")
+
+
+class ScheduleActivity(models.Model):
+    activity_id = models.CharField(max_length=512, unique=True)
+    name = models.CharField(max_length=512, blank=True, default="")
+    start = models.DateField(null=True, blank=True)
+    finish = models.DateField(null=True, blank=True)
+
+    duration_days = models.IntegerField(null=True, blank=True)
+    original_duration_days = models.IntegerField(null=True, blank=True)
+    percent_complete = models.FloatField(default=0.0)
+
+    points = models.FloatField(null=True, blank=True)
+    hh = models.FloatField(null=True, blank=True)
+
+    # se já tem wbs, mantenha como opcional – não vamos usar aqui
+    wbs = models.ForeignKey(
+        "ScheduleWBS", null=True, blank=True, on_delete=models.SET_NULL, related_name="activities"
+    )
+
+    # novo: Level vindo do arquivo (0,1,2,3…)
+    level = models.PositiveSmallIntegerField(default=0)
+
+    # já tínhamos ou adicione:
+    sort_index = models.PositiveIntegerField(default=0, db_index=True)
+
+    jobcard_number = models.CharField(max_length=64, blank=True, default="")
+    status = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["sort_index"]),
+            models.Index(fields=["activity_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.activity_id} - {self.name}"
+
+
+class ScheduleLink(models.Model):
+    FS = "FS"; SS = "SS"; FF = "FF"; SF = "SF"
+    LINK_TYPES = [(FS, "Finish-Start"), (SS, "Start-Start"), (FF, "Finish-Finish"), (SF, "Start-Finish")]
+
+    predecessor = models.ForeignKey(ScheduleActivity, on_delete=models.CASCADE, related_name="as_predecessor")
+    successor   = models.ForeignKey(ScheduleActivity, on_delete=models.CASCADE, related_name="as_successor")
+    link_type   = models.CharField(max_length=2, choices=LINK_TYPES, default=FS)
+    lag_days    = models.FloatField(default=0.0)
+
+    class Meta:
+        unique_together = ("predecessor", "successor", "link_type")
+        indexes = [models.Index(fields=["predecessor"]), models.Index(fields=["successor"])]
+
+    def __str__(self):
+        return f"{self.predecessor_id} -> {self.successor_id} ({self.link_type}, {self.lag_days}d)"
