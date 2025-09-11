@@ -132,30 +132,29 @@
 
 <div class="container-fluid page">
   <div class="topbar2 d-flex align-items-center">
-  <!-- ESQUERDA: dots + título -->
-  <div class="d-flex align-items-center gap-2">
-    <div class="window-dots d-flex align-items-center" style="gap:6px;">
-      <span class="dot red"></span>
-      <span class="dot yellow"></span>
-      <span class="dot green"></span>
+    <!-- ESQUERDA: dots + título -->
+    <div class="d-flex align-items-center gap-2">
+      <div class="window-dots d-flex align-items-center" style="gap:6px;">
+        <span class="dot red"></span>
+        <span class="dot yellow"></span>
+        <span class="dot green"></span>
+      </div>
+      <div class="title">Schedule — Grid + Gantt (Primavera-like)</div>
     </div>
-    <div class="title">Schedule — Grid + Gantt (Primavera-like)</div>
-  </div>
 
-  <!-- DIREITA: ações -->
-  <div class="d-flex gap-2 toolbar ms-auto">
-    <a href="{% url 'schedule_template' %}" class="btn btn-light btn-sm btn-outline-secondary">
-      <i class="fa-solid fa-file-csv me-1"></i> Download template (CSV)
-    </a>
-    <button class="btn btn-light" id="btn-import" title="Import schedule">
-      <i class="fa-solid fa-file-arrow-up me-1"></i> Import
-    </button>
-    <button class="btn btn-dark" id="btn-export-excel" title="Export table to Excel">
-      <i class="fa-solid fa-file-excel me-1"></i> Export Excel
-    </button>
+    <!-- DIREITA: ações -->
+    <div class="d-flex gap-2 toolbar ms-auto">
+      <a href="{% url 'schedule_template' %}" class="btn btn-light btn-sm btn-outline-secondary">
+        <i class="fa-solid fa-file-csv me-1"></i> Download template (CSV)
+      </a>
+      <button class="btn btn-light" id="btn-import" title="Import schedule">
+        <i class="fa-solid fa-file-arrow-up me-1"></i> Import
+      </button>
+      <button class="btn btn-dark" id="btn-export-excel" title="Export table to Excel">
+        <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+      </button>
+    </div>
   </div>
-</div>
-
 
   <div class="card p-3 mb-2">
     <div class="row g-2 align-items-end">
@@ -310,7 +309,7 @@ gantt.config.duration_unit = "day";
 gantt.config.row_height = 22;
 gantt.config.min_column_width = 50;
 
-/* Grid – colunas */
+/* Grid – colunas (agora HH oficial) */
 gantt.config.columns = [
   {
     name:"text", label:"Activity / JobCard", tree:true, width:250, resize:true,
@@ -319,11 +318,11 @@ gantt.config.columns = [
       : `<span class="pill pill-act">${t.text||""}</span>`
   },
   { name:"name2",     label:"Name / Description", width:340, template:t => t._name || "", resize:true },
-  { name:"orig",      label:"Orig. Dur. (h)", align:"right",  width:110, template:t => t._od_str ?? "" },
-  { name:"pts",       label:"Pts",            align:"right",  width:90,  template:t => t._pts_str ?? "" },
-  { name:"progress",  label:"%",              align:"right",  width:60,  template:t => `${((t.progress||0)*100).toFixed(2)}%` },
-  { name:"start_date",label:"Start",          align:"center", width:96,  template:t => t._start_str || "" },
-  { name:"end_date",  label:"Finish",         align:"center", width:96,  template:t => t._end_str || "" }
+  { name:"hh",        label:"HH (h)", align:"right",  width:110, template:t => t._hh_str ?? "" },
+  { name:"pts",       label:"Pts",    align:"right",  width:90,  template:t => t._pts_str ?? "" },
+  { name:"progress",  label:"%",      align:"right",  width:60,  template:t => `${((t.progress||0)*100).toFixed(2)}%` },
+  { name:"start_date",label:"Start",  align:"center", width:96,  template:t => t._start_str || "" },
+  { name:"end_date",  label:"Finish", align:"center", width:96,  template:t => t._end_str || "" }
 ];
 
 /* Barras e linhas JC */
@@ -413,8 +412,10 @@ function formatHours(n){ if(n==null) return ""; return formatNumberDots(n, Numbe
 
 /* horas/pontos */
 function chooseHoursNumber(t){
-  if(t._is_jc){ return toNum(firstNonEmpty(t.total_man_hours, t.total_duration_hs, t.orig_duration)); }
-  return toNum(firstNonEmpty(t.hh, t.orig_duration));
+  // Atividade: HH oficial do ScheduleActivity
+  if(!t._is_jc){ return toNum(firstNonEmpty(t.hh)); }
+  // JC: usa HH de JC, com fallbacks legados
+  return toNum(firstNonEmpty(t.total_man_hours, t.total_duration_hs, t.orig_duration));
 }
 function choosePointsNumber(t){
   if (t._is_jc) return toNum(t.points_calc);
@@ -452,7 +453,7 @@ function buildTreeFromFlat(flat){
       open: true,
 
       _name: firstNonEmpty(t.job_card_description, t.name, t.working_code_description, ""),
-      _od_str: formatHours(hoursVal),
+      _hh_str:  formatHours(hoursVal),
       _pts_str: formatNumberDots(pointsVal),
 
       _start_str: sISO ? fmtBR(sISO) : "",
@@ -486,8 +487,7 @@ function flattenFromAPI(raw){
       finish: aFinish,
       progress: t.progress || 0,
       points: t.points ?? null,
-      hh: t.hh ?? null,
-      orig_duration: t.orig_duration ?? "",
+      hh: t.hh ?? null,           // <<=== HH da atividade (oficial)
       _is_jc: false,
       activity_id: tid
     });
@@ -518,9 +518,9 @@ function flattenFromAPI(raw){
 
         total_man_hours: jc.total_man_hours,
         total_duration_hs: jc.total_duration_hs,
-        orig_duration: jc.orig_duration ?? "",
-        indice_kpi: jc.indice_kpi ?? "",
+        orig_duration: jc.orig_duration ?? "",   // fallback legado apenas para JC
 
+        indice_kpi: jc.indice_kpi ?? "",
         points_calc: pts_calc,
         progress: firstNonEmpty(jc.progress, jc.percent, 0),
         _is_jc: true,
@@ -641,14 +641,14 @@ function taskLevelById(id){
   return lvl;
 }
 function exportTable(){
-  const rows = [["Activity/JobCard","Name/Description","Orig. Dur. (h)","Pts","%","Start","Finish"]];
+  const rows = [["Activity/JobCard","Name/Description","HH (h)","Pts","%","Start","Finish"]];
   gantt.eachTask(function(t){
     const lvl = taskLevelById(t.id);
     const indent = "  ".repeat(Math.max(0, lvl));
     rows.push([
       indent + (t.text || ""),
       t._name || "",
-      t._od_str ?? "",
+      t._hh_str ?? "",
       t._pts_str ?? "",
       `${((t.progress||0)*100).toFixed(2)}%`,
       t._start_str || "",

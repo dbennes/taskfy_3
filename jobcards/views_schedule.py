@@ -191,9 +191,10 @@ def _normalize_level(raw_level: str, base: int) -> int:
 def parse_with_levels(rows: List[Dict[str, str]], update_jobcards: bool) -> Tuple[int, int, int]:
     """
     Espera colunas:
-      Level | Activity ID | Activity Name | Original Duration | Activity % Complete | Start | Finish | Pontos | HH
+      Level | Activity ID | Activity Name | HH | Activity % Complete | Start | Finish | Pontos | (Original Duration opcional)
     - NÃO cria WBS; apenas lê o Level e armazena em ScheduleActivity.level.
     - Mantém a ordem do arquivo em ScheduleActivity.sort_index.
+    - **HH é a métrica oficial**. Se 'HH' não existir, tentamos usar 'Original Duration' como fallback para HH.
     Retorna (created, updated, jobcards_updated).
     """
     if not rows:
@@ -235,10 +236,15 @@ def parse_with_levels(rows: List[Dict[str, str]], update_jobcards: bool) -> Tupl
             name  = _clean(str(row.get(H_ANM, "") or "")) if H_ANM else ""
             start = _parse_date(row.get(H_ST)) if H_ST else None
             fin   = _parse_date(row.get(H_FN)) if H_FN else None
-            od    = int(_to_float(row.get(H_OD)) or 0) if H_OD else None
+
+            # ========= HH (oficial) =========
+            hh_val = _to_float(row.get(H_HH)) if H_HH else None
+            if hh_val is None and H_OD:
+                # fallback: se vier só "Original Duration", usamos como HH
+                hh_val = _to_float(row.get(H_OD))
+
             pc    = _to_percent(row.get(H_PC)) if H_PC else 0.0
             pts   = _to_float(row.get(H_PTS)) if H_PTS else None
-            hh    = _to_float(row.get(H_HH)) if H_HH else None
 
             duration_days = (fin - start).days if (start and fin) else None
             jobcard_number = _link_jobcard_number(aid)
@@ -248,12 +254,12 @@ def parse_with_levels(rows: List[Dict[str, str]], update_jobcards: bool) -> Tupl
                 start=start,
                 finish=fin,
                 duration_days=duration_days,
-                original_duration_days=od,
+                original_duration_days=None,   # não usamos mais OD para lógica
                 percent_complete=pc,
                 points=pts,
-                hh=hh,
-                wbs=None,              # ignoramos WBS
-                level=level,           # << guarda level do arquivo
+                hh=hh_val,                     # <<=== HH oficial
+                wbs=None,                      # ignoramos WBS
+                level=level,                   # guarda level do arquivo
                 sort_index=order_counter,
                 jobcard_number=jobcard_number,
             )
@@ -331,6 +337,8 @@ def parse_xml(file, update_jobcards: bool) -> Tuple[int, int, int]:
                 name=name, start=start, finish=fin, duration_days=duration_days,
                 percent_complete=pc, wbs=None, jobcard_number=jobcard_number,
                 sort_index=0,
+                hh=None,                        # XML normalmente não traz HH
+                original_duration_days=None,    # não usamos OD
             )
             _, is_created = ScheduleActivity.objects.update_or_create(activity_id=aid, defaults=defaults)
             created += 1 if is_created else 0
@@ -345,11 +353,14 @@ def schedule_template(request):
     """
     Template CSV com separador ';' (Excel pt-BR abre em colunas).
     Cabeçalho:
-    Level;Activity ID;Activity Name;Original Duration;Activity % Complete;Start;Finish;Pontos;HH
+    Level;Activity ID;Activity Name;HH;Activity % Complete;Start;Finish;Pontos;Original Duration
+    Nota: O sistema usa **HH** como oficial. Se 'HH' vier vazio, 'Original Duration'
+    será usado como fallback para HH.
     """
     headers = [
-        "Level", "Activity ID", "Activity Name", "Original Duration",
-        "Activity % Complete", "Start", "Finish", "Pontos", "HH"
+        "Level", "Activity ID", "Activity Name", "HH",
+        "Activity % Complete", "Start", "Finish", "Pontos",
+        "Original Duration"  # opcional (fallback)
     ]
     buf = io.StringIO()
     writer = csv.writer(buf, delimiter=';')  # ponto-e-vírgula
@@ -499,6 +510,8 @@ def schedule_api(request):
                 "total_duration_hs": jc.get("total_duration_hs") or "",
                 "indice_kpi": jc.get("indice_kpi") or "",
                 "status": jc.get("status") or "",
+                # Mantemos 'orig_duration' APENAS para fallback de JC (se existir no banco)
+                "orig_duration": "",  # não usamos, mas deixamos a chave para compat.
             })
 
     def _safe_int(v, default=0):
@@ -531,11 +544,8 @@ def schedule_api(request):
         prog = _safe_int(getattr(a, "percent_complete", 0), 0)
         prog = max(0, min(100, prog))
 
-        od = a.original_duration_days
-        try:
-            orig_duration = int(od) if od is not None else ""
-        except Exception:
-            orig_duration = ""
+        # HH oficial
+        hh_val = _safe_num(getattr(a, "hh", None))
 
         data.append({
             "id": a.activity_id or "",
@@ -545,9 +555,11 @@ def schedule_api(request):
             "end": end,
             "progress": prog,
 
-            "orig_duration": orig_duration,
+            "hh": hh_val,                      # <<=== usado no frontend
             "points": _safe_num(getattr(a, "points", None)),
-            "hh": _safe_num(getattr(a, "hh", None)),
+
+            # Mantemos para compatibilidade do cliente (não é mais usado para atividade)
+            "orig_duration": "",
 
             "jobcards": jmap.get(a.activity_id, []),
         })
