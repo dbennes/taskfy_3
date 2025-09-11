@@ -5,7 +5,6 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dhtmlx-gantt@9.0.14/codebase/dhtmlxgantt.css">
 <script src="https://cdn.jsdelivr.net/npm/dhtmlx-gantt@9.0.14/codebase/dhtmlxgantt.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<!-- FA6 para ícones -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
 
 <style>
@@ -24,6 +23,19 @@
   }
   .topbar2 .title{ font-weight:700; letter-spacing:.2px; font-size:12px; }
   .toolbar .btn{ font-size:11px; border-radius:10px; padding:.28rem .44rem; }
+
+  /* Apple-like window controls */
+  .topbar2 .dots{display:flex;gap:6px;align-items:center;margin-right:8px}
+  .topbar2 .dot{
+    width:12px;height:12px;border-radius:50%;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);
+    cursor:pointer; display:inline-block; border:0;
+  }
+  .topbar2 .dot.red{background:#ff5f57}
+  .topbar2 .dot.yellow{background:#ffbd2e}
+  .topbar2 .dot.green{background:#28c840}
+  .topbar2 .dot:focus{outline:2px solid rgba(0,0,0,.15); outline-offset:2px}
+  .topbar2 .dot:hover{filter:brightness(.95)}
 
   /* Gantt */
   #gantt_here{
@@ -117,33 +129,20 @@
   /* Overlay */
   .import-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:1080; }
   .import-card{ background:#fff; padding:16px 18px; border-radius:12px; width:340px; box-shadow:0 10px 30px rgba(0,0,0,.25); text-align:center; }
-
-  /* Apple window dots */
-  .window-dots{ display:flex; gap:6px; align-items:center; margin-right:8px; }
-  .window-dots .dot{
-    width:10px; height:10px; border-radius:50%; display:inline-block;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
-  }
-  .window-dots .dot.red{ background:#ff5f56; }
-  .window-dots .dot.yellow{ background:#ffbd2e; }
-  .window-dots .dot.green{ background:#27c93f; }
-
 </style>
 
 <div class="container-fluid page">
-  <div class="topbar2 d-flex align-items-center">
-    <!-- ESQUERDA: dots + título -->
+  <div class="topbar2 d-flex align-items-center justify-content-between">
     <div class="d-flex align-items-center gap-2">
-      <div class="window-dots d-flex align-items-center" style="gap:6px;">
-        <span class="dot red"></span>
-        <span class="dot yellow"></span>
-        <span class="dot green"></span>
+      <!-- 3 bolinhas -->
+      <div class="dots" role="group" aria-label="Window controls">
+        <button type="button" class="dot red"    id="win-close" title="Reset filters"></button>
+        <button type="button" class="dot yellow" id="win-min"   title="Minimize (hide filters)"></button>
+        <button type="button" class="dot green"  id="win-max"   title="Fullscreen"></button>
       </div>
       <div class="title">Schedule — Grid + Gantt (Primavera-like)</div>
     </div>
-
-    <!-- DIREITA: ações -->
-    <div class="d-flex gap-2 toolbar ms-auto">
+    <div class="d-flex gap-2 toolbar">
       <a href="{% url 'schedule_template' %}" class="btn btn-light btn-sm btn-outline-secondary">
         <i class="fa-solid fa-file-csv me-1"></i> Download template (CSV)
       </a>
@@ -156,7 +155,7 @@
     </div>
   </div>
 
-  <div class="card p-3 mb-2">
+  <div class="card p-3 mb-2" id="filtersCard">
     <div class="row g-2 align-items-end">
       <div class="col-12 col-md-3">
         <label class="form-label" style="font-size:11px">Discipline</label>
@@ -290,7 +289,7 @@
   </div>
 </div>
 
-<!-- Overlay (fallback/global) -->
+<!-- Overlay -->
 <div class="import-overlay" id="importOverlay" role="status" aria-live="polite">
   <div class="import-card">
     <div class="spinner-border text-dark" role="status" aria-hidden="true"></div>
@@ -309,7 +308,7 @@ gantt.config.duration_unit = "day";
 gantt.config.row_height = 22;
 gantt.config.min_column_width = 50;
 
-/* Grid – colunas (agora HH oficial) */
+/* Grid – colunas */
 gantt.config.columns = [
   {
     name:"text", label:"Activity / JobCard", tree:true, width:250, resize:true,
@@ -318,11 +317,11 @@ gantt.config.columns = [
       : `<span class="pill pill-act">${t.text||""}</span>`
   },
   { name:"name2",     label:"Name / Description", width:340, template:t => t._name || "", resize:true },
-  { name:"hh",        label:"HH (h)", align:"right",  width:110, template:t => t._hh_str ?? "" },
-  { name:"pts",       label:"Pts",    align:"right",  width:90,  template:t => t._pts_str ?? "" },
-  { name:"progress",  label:"%",      align:"right",  width:60,  template:t => `${((t.progress||0)*100).toFixed(2)}%` },
-  { name:"start_date",label:"Start",  align:"center", width:96,  template:t => t._start_str || "" },
-  { name:"end_date",  label:"Finish", align:"center", width:96,  template:t => t._end_str || "" }
+  { name:"orig",      label:"Orig. Dur. (h)", align:"right",  width:110, template:t => t._od_str ?? "" },
+  { name:"pts",       label:"Pts",            align:"right",  width:90,  template:t => t._pts_str ?? "" },
+  { name:"progress",  label:"%",              align:"right",  width:60,  template:t => `${((t.progress||0)*100).toFixed(2)}%` },
+  { name:"start_date",label:"Start",          align:"center", width:96,  template:t => t._start_str || "" },
+  { name:"end_date",  label:"Finish",         align:"center", width:96,  template:t => t._end_str || "" }
 ];
 
 /* Barras e linhas JC */
@@ -376,8 +375,6 @@ function toISODate(input){
   return "";
 }
 function isoToGanttDate(iso){ return iso ? (iso+" 00:00") : ""; }
-
-/* util */
 function firstNonEmpty(...vals){
   for(const v of vals){
     if(v==null) continue;
@@ -387,7 +384,6 @@ function firstNonEmpty(...vals){
   }
   return "";
 }
-
 /* números */
 function toNum(val){
   if(val==null) return null;
@@ -412,14 +408,101 @@ function formatHours(n){ if(n==null) return ""; return formatNumberDots(n, Numbe
 
 /* horas/pontos */
 function chooseHoursNumber(t){
-  // Atividade: HH oficial do ScheduleActivity
-  if(!t._is_jc){ return toNum(firstNonEmpty(t.hh)); }
-  // JC: usa HH de JC, com fallbacks legados
-  return toNum(firstNonEmpty(t.total_man_hours, t.total_duration_hs, t.orig_duration));
+  if(t._is_jc){ return toNum(firstNonEmpty(t.total_man_hours, t.total_duration_hs, t.orig_duration)); }
+  return toNum(firstNonEmpty(t.hh, t.orig_duration));
 }
 function choosePointsNumber(t){
   if (t._is_jc) return toNum(t.points_calc);
   return toNum(firstNonEmpty(t.points, t.indice_kpi));
+}
+
+/* ===== Detecta se a JobCard está cancelada (PT/EN) ===== */
+function isCanceled(obj){
+  if(!obj || typeof obj !== 'object') return false;
+
+  // flags booleanas
+  const boolKeys = ['is_canceled','is_cancelled','canceled','cancelled','void','is_void'];
+  for(const k of boolKeys){
+    const v = obj[k];
+    if(v === true || v === 1 || String(v).trim().toLowerCase() === 'true') return true;
+  }
+  // status textual
+  const textKeys = ['status','state','situacao','situation','status_code','jobcard_status'];
+  for(const k of textKeys){
+    const v = obj[k];
+    if(!v) continue;
+    const s = String(v).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase();
+    if(/cancelad[oa]|cancel+ed|void(ed)?|anulad[oa]|aborted?/.test(s)) return true;
+  }
+  return false;
+}
+
+/* ================== FLATTEN API → FLAT ================== */
+function flattenFromAPI(raw){
+  const out = [];
+  const tasks = Array.isArray(raw.tasks) ? raw.tasks : [];
+
+  for(const t of tasks){
+    const level = parseInt(t.level||0) || 0;
+    const tid = (t.id || t.activity_id || "").toString().trim();
+
+    const aStart = firstNonEmpty(t.start, "");
+    const aFinish = firstNonEmpty(t.end, "");
+
+    // Activity
+    out.push({
+      id: tid || ("A-"+out.length),
+      name: t.name || "",
+      level,
+      start: aStart,
+      finish: aFinish,
+      progress: t.progress || 0,
+      points: t.points ?? null,
+      hh: t.hh ?? null,
+      orig_duration: t.orig_duration ?? "",
+      _is_jc: false,
+      activity_id: tid
+    });
+
+    // JobCards (filtra canceladas)
+    const rawJCs = Array.isArray(t.jobcards) ? t.jobcards : [];
+    const jcs = rawJCs.filter(jc => !isCanceled(jc));
+
+    const getHH = (jc) => toNum(firstNonEmpty(jc.total_man_hours, jc.total_duration_hs, jc.orig_duration));
+    const hhArray = jcs.map(jc => getHH(jc) || 0).filter(n => Number.isFinite(n));
+    const hhSum = hhArray.reduce((a,b)=>a+b, 0);
+    const actPoints = toNum(t.points);
+
+    for(const jc of jcs){
+      const jc_hh = getHH(jc) || 0;
+      const share = (hhSum > 0) ? (jc_hh / hhSum) : 0;
+      const pts_calc = (actPoints != null) ? (actPoints * share) : null;
+
+      out.push({
+        id: (jc.job_card_number || jc.id || ("JC-"+out.length)).toString(),
+        job_card_number: jc.job_card_number,
+        job_card_description: jc.job_card_description,
+        working_code_description: jc.working_code_description,
+        discipline: jc.discipline,
+        activity_id: jc.activity_id || tid,
+
+        level: level + 1,
+        start: firstNonEmpty(jc.start, aStart),
+        finish: firstNonEmpty(jc.finish, aFinish),
+
+        total_man_hours: jc.total_man_hours,
+        total_duration_hs: jc.total_duration_hs,
+        orig_duration: jc.orig_duration ?? "",
+        indice_kpi: jc.indice_kpi ?? "",
+
+        points_calc: pts_calc,
+        progress: firstNonEmpty(jc.progress, jc.percent, 0),
+        _is_jc: true,
+        _parent_dates: {start:aStart, finish:aFinish}
+      });
+    }
+  }
+  return out;
 }
 
 /* ================== MAP + ÁRVORE ================== */
@@ -453,7 +536,7 @@ function buildTreeFromFlat(flat){
       open: true,
 
       _name: firstNonEmpty(t.job_card_description, t.name, t.working_code_description, ""),
-      _hh_str:  formatHours(hoursVal),
+      _od_str: formatHours(hoursVal),
       _pts_str: formatNumberDots(pointsVal),
 
       _start_str: sISO ? fmtBR(sISO) : "",
@@ -464,71 +547,6 @@ function buildTreeFromFlat(flat){
     stack.push({level, id});
   }
   return { data, links: [] };
-}
-
-/* ================== FLATTEN API → FLAT ================== */
-function flattenFromAPI(raw){
-  const out = [];
-  const tasks = Array.isArray(raw.tasks) ? raw.tasks : [];
-
-  for(const t of tasks){
-    const level = parseInt(t.level||0) || 0;
-    const tid = (t.id || t.activity_id || "").toString().trim();
-
-    const aStart = firstNonEmpty(t.start, "");
-    const aFinish = firstNonEmpty(t.end, "");
-
-    // Activity
-    out.push({
-      id: tid || ("A-"+out.length),
-      name: t.name || "",
-      level,
-      start: aStart,
-      finish: aFinish,
-      progress: t.progress || 0,
-      points: t.points ?? null,
-      hh: t.hh ?? null,           // <<=== HH da atividade (oficial)
-      _is_jc: false,
-      activity_id: tid
-    });
-
-    // JobCards
-    const jcs = Array.isArray(t.jobcards) ? t.jobcards : [];
-    const getHH = (jc) => toNum(firstNonEmpty(jc.total_man_hours, jc.total_duration_hs, jc.orig_duration));
-    const hhArray = jcs.map(jc => getHH(jc) || 0).filter(n => Number.isFinite(n));
-    const hhSum = hhArray.reduce((a,b)=>a+b, 0);
-    const actPoints = toNum(t.points);
-
-    for(const jc of jcs){
-      const jc_hh = getHH(jc) || 0;
-      const share = (hhSum > 0) ? (jc_hh / hhSum) : 0;
-      const pts_calc = (actPoints != null) ? (actPoints * share) : null;
-
-      out.push({
-        id: (jc.job_card_number || jc.id || ("JC-"+out.length)).toString(),
-        job_card_number: jc.job_card_number,
-        job_card_description: jc.job_card_description,
-        working_code_description: jc.working_code_description,
-        discipline: jc.discipline,
-        activity_id: jc.activity_id || tid,
-
-        level: level + 1,
-        start: firstNonEmpty(jc.start, aStart),
-        finish: firstNonEmpty(jc.finish, aFinish),
-
-        total_man_hours: jc.total_man_hours,
-        total_duration_hs: jc.total_duration_hs,
-        orig_duration: jc.orig_duration ?? "",   // fallback legado apenas para JC
-
-        indice_kpi: jc.indice_kpi ?? "",
-        points_calc: pts_calc,
-        progress: firstNonEmpty(jc.progress, jc.percent, 0),
-        _is_jc: true,
-        _parent_dates: {start:aStart, finish:aFinish}
-      });
-    }
-  }
-  return out;
 }
 
 /* ================== FILTER (contexto + sobreposição) ================== */
@@ -641,14 +659,14 @@ function taskLevelById(id){
   return lvl;
 }
 function exportTable(){
-  const rows = [["Activity/JobCard","Name/Description","HH (h)","Pts","%","Start","Finish"]];
+  const rows = [["Activity/JobCard","Name/Description","Orig. Dur. (h)","Pts","%","Start","Finish"]];
   gantt.eachTask(function(t){
     const lvl = taskLevelById(t.id);
     const indent = "  ".repeat(Math.max(0, lvl));
     rows.push([
       indent + (t.text || ""),
       t._name || "",
-      t._hh_str ?? "",
+      t._od_str ?? "",
       t._pts_str ?? "",
       `${((t.progress||0)*100).toFixed(2)}%`,
       t._start_str || "",
@@ -676,6 +694,47 @@ $('#btn-apply')?.addEventListener('click', loadFromAPI);
 $('#scale')?.addEventListener('change', e => { setScale(e.target.value); autoHeight(); });
 $('#btn-today')?.addEventListener('click', ()=>{ const m=gantt.getMarker(todayId); if(m){ gantt.showDate(m.start_date); } });
 $('#btn-export-excel')?.addEventListener('click', exportTable);
+
+/* ===== Mac dots actions ===== */
+const btnClose = document.getElementById('win-close');
+const btnMin   = document.getElementById('win-min');
+const btnMax   = document.getElementById('win-max');
+
+btnClose?.addEventListener('click', () => {
+  // Reset filtros + escala + “Today”
+  const d = document.getElementById('f-discipline');
+  const s = document.getElementById('f-start');
+  const f = document.getElementById('f-finish');
+  const q = document.getElementById('f-q');
+  const sc = document.getElementById('scale');
+
+  if(d) d.value = "";
+  if(s) s.value = "";
+  if(f) f.value = "";
+  if(q) q.value = "";
+  if(sc) { sc.value = "Month"; setScale("Month"); }
+
+  loadFromAPI();
+  const m = gantt.getMarker?.(todayId);
+  if(m) gantt.showDate(m.start_date);
+});
+
+btnMin?.addEventListener('click', () => {
+  // Minimiza: esconde/mostra o card de filtros
+  const card = document.getElementById('filtersCard');
+  if(!card) return;
+  card.classList.toggle('d-none');
+  autoHeight();
+});
+
+btnMax?.addEventListener('click', () => {
+  // Fullscreen no Gantt
+  if(gantt.ext?.fullscreen){
+    gantt.ext.fullscreen.toggle(document.getElementById('gantt_here'));
+  }else{
+    document.getElementById('gantt_here')?.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+});
 
 /* ===== Modal Import ===== */
 const modalEl = document.getElementById('modalImport');
@@ -726,7 +785,7 @@ function setPicked(file){
   else modeField.value = 'auto';
 }
 
-/* ===== Import via fetch (progresso no modal) ===== */
+/* ===== Import via fetch ===== */
 const btnDoImport = document.getElementById('btnDoImport');
 const impSpin = document.getElementById('impSpin');
 const impWrap = document.getElementById('impProgressWrap');
