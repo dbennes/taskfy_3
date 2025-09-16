@@ -185,7 +185,7 @@ urlpatterns = [
     path("engineering/docs/revisions/", views_documents.docs_revision_review, name="docs_revision_review"),
     path("engineering/docs/revisions/accept/<int:eng_id>/", views_documents.accept_doc_revision, name="accept_doc_revision"),
     path("engineering/docs/revisions/accept-bulk/", views_documents.accept_doc_revision_bulk, name="accept_doc_revision_bulk"),
-
+    path('api/docs/to-accept-count/', views_documents.api_docs_to_accept_count, name='api_docs_to_accept_count'),
 
 
 

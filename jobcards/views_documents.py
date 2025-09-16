@@ -281,3 +281,59 @@ def accept_doc_revision_bulk(request):
 
     messages.success(request, f"{updated} document(s) updated successfully.")
     return HttpResponseRedirect(request.META.get("HTTP_REFERER", "/"))
+
+# views.py (substitua a view do contador por esta)
+from django.http import JsonResponse
+
+@login_required(login_url="login")
+def api_docs_to_accept_count(request):
+    """
+    Conta quantos documentos aparecem na tela docs_revision_review:
+    - Compara EngineeringBase.rev vs DocumentoControle.revisao
+    - Mesmos filtros: search (em document/jobcard_number/discipline) e project (em DocumentoControle.nome_projeto)
+    - Só conta quando há documento correspondente no controle e revisao no controle
+    """
+    search = (request.GET.get("search") or "").strip()
+    project = (request.GET.get("project") or "").strip()
+
+    # Base Engineering (filtragem idêntica)
+    eng_qs = EngineeringBase.objects.all().only("document", "rev", "jobcard_number", "discipline")
+    if search:
+        eng_qs = eng_qs.filter(
+            Q(document__icontains=search) |
+            Q(jobcard_number__icontains=search) |
+            Q(discipline__icontains=search)
+        )
+
+    # Base Document Control (opcionalmente filtrada por projeto)
+    ctrl_qs = DocumentoControle.objects.all().only("codigo", "revisao", "nome_projeto")
+    if project:
+        ctrl_qs = ctrl_qs.filter(nome_projeto__icontains=project)
+
+    # Mapa código normalizado -> revisão do controle (UPPER)
+    ctrl_map = {}
+    for dc in ctrl_qs.values("codigo", "revisao"):
+        cod = (dc.get("codigo") or "")
+        rev = (dc.get("revisao") or "").strip().upper()
+        if not rev:
+            continue
+        key = normalize_code(cod)
+        if key:
+            # manter a mais recente não é crítico aqui pois docs_revision_review já usa último por atualizado_em;
+            # se precisar, troque por .order_by("-atualizado_em") e preencha só a primeira ocorrência.
+            ctrl_map[key] = rev
+
+    # Conta mismatches (mesma regra da tela)
+    count = 0
+    for eng in eng_qs.values("document", "rev").iterator():
+        key = normalize_code(eng.get("document") or "")
+        if not key:
+            continue
+        dc_rev = ctrl_map.get(key)
+        if not dc_rev:
+            continue  # sem correspondente no controle ou sem revisão válida
+        eng_rev = (eng.get("rev") or "").strip().upper()
+        if eng_rev != dc_rev:
+            count += 1
+
+    return JsonResponse({"count": count})
