@@ -518,7 +518,6 @@ class ScheduleWBS(models.Model):
     def level(self) -> int:
         return (self.code or "").count("/")
 
-
 class ScheduleActivity(models.Model):
     activity_id = models.CharField(max_length=512, unique=True)
     name = models.CharField(max_length=512, blank=True, default="")

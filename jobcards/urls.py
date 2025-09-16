@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views_pdf_api
-from . import views_schedule 
+from . import views_schedule, views_documents
 
 # IMPORTANTE: use apenas UMA definição para cada rota de API
 urlpatterns = [
@@ -177,6 +177,14 @@ urlpatterns = [
     path('schedule/upload/',    views_schedule.schedule_upload,  name='schedule_upload'),
     path('schedule/api/',       views_schedule.schedule_api,     name='schedule_api'),
     path('schedule/template/',  views_schedule.schedule_template, name='schedule_template'),  # NOVA
+    path("schedule/export-excel/", views_schedule.schedule_export_excel, name="schedule_export_excel"),
+
+
+
+
+    path("engineering/docs/revisions/", views_documents.docs_revision_review, name="docs_revision_review"),
+    path("engineering/docs/revisions/accept/<int:eng_id>/", views_documents.accept_doc_revision, name="accept_doc_revision"),
+    path("engineering/docs/revisions/accept-bulk/", views_documents.accept_doc_revision_bulk, name="accept_doc_revision_bulk"),
 
 
 

@@ -1,0 +1,328 @@
+{% extends 'sistema/base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+
+<style>
+  /* ========= Design tokens ========= */
+  :root{
+    --bg:#f7f8fa; --ink:#2b2b2b; --muted:#6b7280;
+    --line:#e7eaf0; --shadow:0 10px 24px rgba(0,0,0,.06);
+    --chip-bg:#eef2ff; --chip-text:#4338ca;
+
+    /* espaçamentos (ajuste fácil) */
+    --gap-1:8px; --gap-2:12px; --gap-3:16px; --gap-4:20px;
+  }
+ 
+  /* ========= Topbar (Apple-like) ========= */
+  .topbar2{
+    background:#ededed; color:var(--ink);
+    border:1px solid #ededed; border-radius:16px;
+    padding:10px 14px; margin:6px 0 22px;   /* mais respiro embaixo */
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .topbar2 .title{ font-weight:700; letter-spacing:.2px; font-size:12px; }
+  .topbar2 .toolbar .btn{ font-size:11px; border-radius:10px; padding:.38rem .62rem; }
+
+  .dots{ display:flex; gap:10px; align-items:center; margin-right:10px; }
+  .dot{ width:12px; height:12px; border-radius:50%; border:0; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); cursor:pointer; }
+  .dot.red{background:#ff5f57}.dot.yellow{background:#ffbd2e}.dot.green{background:#28c840}
+  .dot:hover{ filter:brightness(.95) }
+
+  /* ========= Filters card ========= */
+  .card-filters{
+    background:#fff; border:1px solid var(--line); border-radius:16px;
+    padding:12px 14px; margin-bottom:14px; box-shadow:var(--shadow);
+  }
+  .card-filters .form-label{ font-size:11px; font-weight:600; color:#111; }
+
+  /* ========= Table card ========= */
+  .table-wrap{
+    background:#fff; border:1px solid var(--line); border-radius:16px;
+    padding: 10px 14px; box-shadow:var(--shadow);
+  }
+  .bulk-bar{ padding:6px 4px 8px; margin-bottom:6px; }
+
+  /* ========= Table ========= */
+  .taskfy-table{ border-radius:14px; overflow:hidden; margin-bottom:0; }
+  .taskfy-table th{
+    font-size:11px; padding:11px 16px !important;
+    background:#fff; color:#23272e; text-align:left;
+    border-top:none; border-bottom:1px solid var(--line); font-weight:700; letter-spacing:.04em;
+  }
+  .taskfy-table td{
+    font-size:11px; padding:11px 16px !important; background:#fff;
+    vertical-align:middle; border-bottom:1px solid #f0f0f0;
+  }
+  .taskfy-table tr:hover{ background:#f6faff !important; transition:.14s; }
+
+  .badge-rev{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:5px 12px; border-radius:18px; font-size:11px; font-weight:700;
+    border:1px solid #e7e7e7; background:#fff;
+  }
+  .badge-chip{ background:var(--chip-bg); color:var(--chip-text); }
+
+  .btn-taskfy{
+    font-size:12px !important; border-radius:18px !important; padding:8px 16px !important;
+    border:none; box-shadow:0 2px 8px #ebebeb4f; font-weight:600;
+  }
+  .btn-accept{ background:#d0fbd2; color:#055509; }
+  .btn-ghost{ background:#fff; color:#333; border:1px solid var(--line); }
+
+  .counter{ font-weight:700; color:#111; }
+
+  /* mobile tweaks */
+  @media (max-width: 768px){
+    .table-wrap{ padding: 8px 10px; }
+    .taskfy-table th, .taskfy-table td{ padding:10px 12px !important; }
+  }
+</style>
+
+<div class="container-fluid page">
+  <!-- ===== Topbar ===== -->
+  <div class="topbar2">
+    <div class="d-flex align-items-center">
+      <div class="dots" role="group" aria-label="Window controls">
+        <button type="button" class="dot red"    id="win-close" title="Reset filters"></button>
+        <button type="button" class="dot yellow" id="win-min"   title="Hide/Show filters"></button>
+        <button type="button" class="dot green"  id="win-max"   title="Fullscreen (table)"></button>
+      </div>
+      <div class="title">Documents — Revision Review</div>
+    </div>
+    <div class="d-flex align-items-center gap-2 toolbar">
+      <small class="text-muted">Mismatches:</small>
+      <span class="counter me-2">{{ total_mismatch }}</span>
+      <button class="btn btn-dark btn-sm" id="btn-export-csv" title="Export current table to CSV">
+        <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== Filters ===== -->
+  <form id="filtersForm" method="get" class="row g-2 align-items-end card-filters" style="font-size:13px">
+    <div class="col-md-4 col-lg-3">
+      <label class="form-label">Search</label>
+      <input type="text" name="search" value="{{ search }}" class="form-control form-control-sm" placeholder="Jobcard, document, discipline...">
+    </div>
+    <div class="col-md-4 col-lg-3">
+      <label class="form-label">Project (optional)</label>
+      <input type="text" name="project" value="{{ project }}" class="form-control form-control-sm" placeholder="DocumentControl project name">
+    </div>
+    <div class="col-md-3 col-lg-2">
+      <label class="form-label">Items per page</label>
+      <select name="items_per_page" class="form-select form-select-sm">
+        {% for n in page_size_options %}
+          <option value="{{ n }}" {% if items_per_page == n %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3 col-lg-2 d-grid">
+      <button class="btn btn-dark btn-sm" style="height:40px;">Apply</button>
+    </div>
+  </form>
+
+  <!-- ===== Django messages ===== -->
+  {% if messages %}
+    <div class="mb-3">
+      {% for m in messages %}
+        <div class="alert alert-{{ m.tags }} py-2 px-3 mb-2" style="font-size:13px">{{ m }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- ===== Table + Bulk form ===== -->
+  <div id="tableWrap" class="table-wrap">
+    <form id="bulkForm" method="post" action="{% url 'accept_doc_revision_bulk' %}">
+      {% csrf_token %}
+
+      <div class="d-flex justify-content-between align-items-center bulk-bar">
+        <div class="small fw-semibold" style="color:#333">Select items to accept</div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-success btn-taskfy">Accept selected</button>
+          <button type="button" class="btn btn-ghost btn-taskfy" id="selectAllBtn">Select all</button>
+          <button type="button" class="btn btn-ghost btn-taskfy" id="clearAllBtn">Clear</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table id="revTable" class="table taskfy-table table-hover align-middle">
+          <thead>
+            <tr>
+              <th style="width:40px;"><input type="checkbox" id="checkMaster" aria-label="Select all"/></th>
+              <th>JOBCARD</th>
+              <th>DISCIPLINE</th>
+              <th>DOCUMENT</th>
+              <th>REV (BASE)</th>
+              <th>REV (DOC-CONTROL)</th>
+              <th>TARGET STATUS</th>
+              <th>DOC STATUS</th>
+              <th class="text-center" style="width:140px;">ACTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+            <tr>
+              <td><input type="checkbox" class="chkRow" name="eng_ids" value="{{ row.eng.id }}" aria-label="Select row {{ forloop.counter }}"/></td>
+              <td><span class="fw-semibold">{{ row.jobcard_number }}</span></td>
+              <td>{{ row.eng.discipline }}</td>
+              <td><span class="badge-rev badge-chip" title="Normalized match by code">{{ row.document }}</span></td>
+
+              <td>
+                <span class="badge-rev">
+                  <i class="fa-regular fa-file-lines"></i> {{ row.eng_rev }}
+                </span>
+              </td>
+
+              <td>
+                <span class="badge-rev">
+                  <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:{{ row.dc_color }};"></span>
+                  <span style="color:#111">{{ row.dc_rev }}</span>
+                </span>
+              </td>
+
+              <td>
+                {# mapeia a revisão do controle para o status-alvo em inglês #}
+                {% with first=row.dc_rev|default:""|upper|slice:":1" %}
+                  {% if first == "C" %}
+                    <span class="badge-rev" style="background:#e7f9ed;border-color:#d6f3e0;color:#055509;">AFC</span>
+                  {% elif first == "A" %}
+                    <span class="badge-rev" style="background:#fff7e6;border-color:#fff1da;color:#8a5a00;">IN APPROVAL</span>
+                  {% elif first == "R" %}
+                    <span class="badge-rev" style="background:#ecebfa;border-color:#e1dcfb;color:#4a3fc3;">IN REVIEW</span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                {% endwith %}
+              </td>
+
+              <td>
+                {% if row.dc_status %}
+                  <span class="badge-rev badge-chip">{{ row.dc_status }}</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+
+              <td class="text-center">
+                <!-- Aceite individual sem forms aninhados -->
+                <button
+                  type="submit"
+                  class="btn btn-accept btn-taskfy"
+                  title="Accept this revision"
+                  formaction="{% url 'accept_doc_revision' row.eng.id %}"
+                  formmethod="post"
+                >
+                  <i class="fa-solid fa-circle-check"></i> Accept
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="text-center text-muted py-4">No revision mismatches found with current filters.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </form>
+  </div>
+
+  {% if rows.paginator.num_pages > 1 %}
+  <nav aria-label="Page navigation" class="mt-3">
+    <ul class="pagination justify-content-end">
+      {% if rows.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?search={{ search }}&project={{ project }}&items_per_page={{ items_per_page }}&page={{ rows.previous_page_number }}" aria-label="Previous">&laquo;</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+      {% endif %}
+
+      {% for num in rows.paginator.page_range %}
+        {% if rows.number == num %}
+          <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+        {% elif num > rows.number|add:"-3" and num < rows.number|add:"3" %}
+          <li class="page-item"><a class="page-link" href="?search={{ search }}&project={{ project }}&items_per_page={{ items_per_page }}&page={{ num }}">{{ num }}</a></li>
+        {% endif %}
+      {% endfor %}
+
+      {% if rows.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?search={{ search }}&project={{ project }}&items_per_page={{ items_per_page }}&page={{ rows.next_page_number }}" aria-label="Next">&raquo;</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+</div>
+
+<script>
+  /* ===== Seleção em massa ===== */
+  const master = document.getElementById('checkMaster');
+  const chkRows = document.querySelectorAll('.chkRow');
+  document.getElementById('selectAllBtn')?.addEventListener('click', () => { chkRows.forEach(c => c.checked = true); if(master) master.checked = true; });
+  document.getElementById('clearAllBtn')?.addEventListener('click', () => { chkRows.forEach(c => c.checked = false); if(master) master.checked = false; });
+  master?.addEventListener('change', () => { chkRows.forEach(c => c.checked = master.checked); });
+
+  /* ===== Dots actions ===== */
+  const filtersForm = document.getElementById('filtersForm');
+  const tableWrap = document.getElementById('tableWrap');
+
+  // Red: reset de filtros
+  document.getElementById('win-close')?.addEventListener('click', () => {
+    const inputs = filtersForm.querySelectorAll('input[type="text"], select');
+    inputs.forEach(el => {
+      if(el.tagName === 'SELECT'){
+        const opt10 = Array.from(el.options).find(o => o.value === '10');
+        el.value = opt10 ? '10' : (el.options[0]?.value || '');
+      }else{
+        el.value = '';
+      }
+    });
+    filtersForm.submit();
+  });
+
+  // Yellow: show/hide filtros
+  document.getElementById('win-min')?.addEventListener('click', () => {
+    filtersForm.classList.toggle('d-none');
+    if(filtersForm.classList.contains('d-none')) tableWrap?.scrollIntoView({behavior:'smooth'});
+  });
+
+  // Green: fullscreen tabela
+  document.getElementById('win-max')?.addEventListener('click', async () => {
+    try{
+      if(!document.fullscreenElement) await tableWrap.requestFullscreen();
+      else await document.exitFullscreen();
+    }catch(e){ console.warn('Fullscreen not available:', e); }
+  });
+
+  /* ===== Export CSV do que está na tabela ===== */
+  document.getElementById('btn-export-csv')?.addEventListener('click', () => {
+    const table = document.getElementById('revTable');
+    if(!table) return;
+
+    const headCells = Array.from(table.tHead?.rows?.[0]?.cells || []);
+    const headers = headCells.map(td => `"${td.innerText.replace(/"/g,'""')}"`);
+    const lines = [headers.join(',')];
+
+    const rows = Array.from(table.tBodies[0]?.rows || []);
+    rows.forEach(tr => {
+      const cells = Array.from(tr.cells);
+      const useful = cells.slice(1, cells.length - 1); // ignora checkbox e ação
+      const values = useful.map(td => `"${td.innerText.trim().replace(/"/g,'""')}"`);
+      lines.push(values.join(','));
+    });
+
+    const csv = lines.join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    a.href = url; a.download = `doc-revisions-${ts}.csv`;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 300);
+  });
+</script>
+{% endblock %}

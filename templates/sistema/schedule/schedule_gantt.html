@@ -659,34 +659,21 @@ function taskLevelById(id){
   return lvl;
 }
 function exportTable(){
-  const rows = [["Activity/JobCard","Name/Description","Orig. Dur. (h)","Pts","%","Start","Finish"]];
-  gantt.eachTask(function(t){
-    const lvl = taskLevelById(t.id);
-    const indent = "  ".repeat(Math.max(0, lvl));
-    rows.push([
-      indent + (t.text || ""),
-      t._name || "",
-      t._od_str ?? "",
-      t._pts_str ?? "",
-      `${((t.progress||0)*100).toFixed(2)}%`,
-      t._start_str || "",
-      t._end_str || ""
-    ]);
-  });
+  // monta os mesmos filtros da tela na query string
+  const p = new URLSearchParams();
+  const d = document.getElementById('f-discipline')?.value || "";
+  const s = document.getElementById('f-start')?.value || "";
+  const f = document.getElementById('f-finish')?.value || "";
+  const q = document.getElementById('f-q')?.value || "";
+  if (d) p.append('discipline', d);
+  if (s) p.append('start', s);
+  if (f) p.append('finish', f);
+  if (q) p.append('q', q);
 
-  if (window.XLSX) {
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Schedule");
-    XLSX.writeFile(wb, "taskfy_schedule.xlsx");
-  } else {
-    const csv = rows.map(r => r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = "taskfy_schedule.csv";
-    document.body.appendChild(a); a.click(); a.remove();
-  }
+  // navega para a rota server-side que gera o XLSX estilizado
+  const base = "{% url 'schedule_export_excel' %}";
+  const url = base + (p.toString() ? ("?"+p.toString()) : "");
+  window.location.href = url;
 }
 
 /* ================== UI BINDS ================== */

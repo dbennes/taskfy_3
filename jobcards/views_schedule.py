@@ -570,3 +570,343 @@ def schedule_api(request):
     )
     resp["Cache-Control"] = "no-store"
     return resp
+
+
+# --- EXPORT: Excel SEM outline e SEM indent visual — apenas ESPAÇOS reais,
+# ---         SEM linhas de grade e com borda pontilhada cinza por linha ---
+from io import BytesIO
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+from openpyxl.utils import get_column_letter
+from datetime import date as _date
+import math
+import re
+
+# ===== Config: somente espaços reais =====
+INDENT_UNIT = "    "   # 4 espaços por nível (ajuste para "  " se preferir)
+INDENT_MAX_LEVEL = 200 # teto de segurança
+
+# ===== Borda base (pontilhada cinza médio) =====
+ROW_BORDER_COLOR = "A6A6A6"  # cinza médio
+ROW_BORDER_STYLE = "dotted"  # pontilhado
+
+def _excel_date(v):
+    """Converte valor em date real para o Excel."""
+    if v is None:
+        return None
+    if isinstance(v, _date):
+        return v
+    try:
+        d = _parse_date(v)  # usa seu helper do arquivo
+        return d
+    except Exception:
+        return None
+
+def _num_or_none(v):
+    try:
+        if v is None:
+            return None
+        x = float(v)
+        return x if math.isfinite(x) else None
+    except Exception:
+        return None
+
+def _is_canceled_py(obj: dict) -> bool:
+    """Detecção de JC cancelada (PT/EN), igual à tela."""
+    if not obj:
+        return False
+    # flags booleanas
+    for k in ("is_canceled", "is_cancelled", "canceled", "cancelled", "void", "is_void"):
+        v = obj.get(k)
+        if v in (True, 1) or str(v).strip().lower() == "true":
+            return True
+    # status textual
+    for k in ("status", "jobcard_status", "situacao", "status_code"):
+        v = obj.get(k)
+        if not v:
+            continue
+        s = str(v)
+        try:
+            s = s.strip().lower().encode("ascii", "ignore").decode("ascii")
+        except Exception:
+            s = s.strip().lower()
+        if re.search(r"cancelad|cancel+ed|void(ed)?|anulad|aborted?", s):
+            return True
+    return False
+
+@login_required(login_url="login")
+def schedule_export_excel(request):
+    """
+    XLSX com:
+      - Hierarquia por ESPAÇOS na coluna A (sem outline e sem indent visual).
+      - Sem linhas de grade (view e impressão).
+      - Borda pontilhada cinza médio por linha.
+      - 'ID Level' e 'Raw ID' ocultos para auditoria.
+      - HH da atividade = ScheduleActivity.hh; HH da JC = total_man_hours/total_duration_hs/orig_duration.
+      - Filtra JC canceladas.
+      - Datas como date real.
+    """
+    # ===== filtros iguais ao schedule_api =====
+    q = request.GET.get("q", "").strip()
+    discipline = request.GET.get("discipline", "").strip()
+    start_f = request.GET.get("start")
+    finish_f = request.GET.get("finish")
+
+    acts = ScheduleActivity.objects.all()
+
+    if q:
+        acts = acts.filter(
+            Q(activity_id__icontains=q) |
+            Q(name__icontains=q) |
+            Q(jobcard_number__icontains=q)
+        )
+
+    if start_f:
+        try:
+            sdate = datetime.strptime(start_f, "%Y-%m-%d").date()
+            acts = acts.filter(Q(finish__gte=sdate) | Q(finish__isnull=True))
+        except Exception:
+            pass
+
+    if finish_f:
+        try:
+            fdate = datetime.strptime(finish_f, "%Y-%m-%d").date()
+            acts = acts.filter(Q(start__lte=fdate) | Q(start__isnull=True))
+        except Exception:
+            pass
+
+    if discipline:
+        ids = list(
+            JobCard.objects.filter(discipline__iexact=discipline)
+            .values_list("activity_id", flat=True)
+        )
+        acts = acts.filter(activity_id__in=ids)
+
+    acts = acts.order_by("sort_index", "pk")
+
+    # ===== JobCards por activity_id (filtrando canceladas) =====
+    act_ids = list(acts.values_list("activity_id", flat=True))
+    jmap = {}
+    if act_ids:
+        jc_qs = JobCard.objects.filter(activity_id__in=act_ids).values(
+            "activity_id",
+            "job_card_number",
+            "job_card_description",
+            "working_code_description",
+            "discipline",
+            "start", "finish",
+            "total_man_hours", "total_duration_hs", "indice_kpi",
+            "status", "jobcard_status",
+        )
+        for jc in jc_qs:
+            if _is_canceled_py(jc):
+                continue
+            jmap.setdefault(jc.get("activity_id") or "", []).append(jc)
+
+    def _jc_hh(j):
+        return _num_or_none(j.get("total_man_hours")) \
+               or _num_or_none(j.get("total_duration_hs")) \
+               or _num_or_none(j.get("orig_duration"))
+
+    # ===== Linhas flat com nível =====
+    rows = []
+    for a in acts:
+        lvl = int(a.level or 0)
+
+        rows.append({
+            "lvl": lvl,
+            "is_jc": False,
+            "id": a.activity_id or "",
+            "name": a.name or "",
+            "hh": _num_or_none(getattr(a, "hh", None)),     # HH oficial
+            "pts": _num_or_none(getattr(a, "points", None)),
+            "pct": max(0, min(100, int(_num_or_none(getattr(a, "percent_complete", 0)) or 0))) / 100.0,
+            "start": a.start,
+            "finish": a.finish,
+            "wk_desc": "",
+        })
+
+        jcs = jmap.get(a.activity_id or "", [])
+        hh_array = [(_jc_hh(j) or 0) for j in jcs]
+        hh_sum = sum(hh_array) if hh_array else 0.0
+        act_pts = _num_or_none(getattr(a, "points", None))
+
+        for j in jcs:
+            j_h = _jc_hh(j) or 0.0
+            share = (j_h / hh_sum) if hh_sum > 0 else 0.0
+            pts_calc = (act_pts * share) if (act_pts is not None) else None
+
+            rows.append({
+                "lvl": lvl + 1,
+                "is_jc": True,
+                "id": (j.get("job_card_number") or "").strip() or (a.activity_id or ""),
+                "name": (j.get("job_card_description") or "").strip(),
+                "hh": j_h,
+                "pts": pts_calc,
+                "pct": 0.0,
+                "start": j.get("start"),
+                "finish": j.get("finish"),
+                "wk_desc": (j.get("working_code_description") or "").strip(),
+            })
+
+    # ===== workbook =====
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Schedule"
+
+    # Sem linhas de grade (visual e impressão)
+    ws.sheet_view.showGridLines = False
+    ws.print_options.gridLines = False
+
+    headers = [
+        "Activity / JobCard",
+        "Name / Description",
+        "HH (h)",
+        "Pts",
+        "%",
+        "Start",
+        "Finish",
+        "ID Level",   # oculto
+        "Raw ID",     # oculto
+    ]
+    ws.append(headers)
+
+    header_font = Font(bold=True, color="111111")
+    for col in range(1, len(headers) + 1):
+        c = ws.cell(row=1, column=col, value=headers[col - 1])
+        c.font = header_font
+        c.alignment = Alignment(vertical="center")
+
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{max(2, len(rows)+1)}"
+
+    widths = [34, 56, 14, 12, 8, 12, 12, 8, 20]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    # Helpers de estilo
+    dotted_bottom = Side(style=ROW_BORDER_STYLE, color=ROW_BORDER_COLOR)
+
+    def apply_row_dotted_border(row_idx: int, first_col: int, last_col: int):
+        """Aplica borda inferior pontilhada cinza em todas as células da linha."""
+        for col in range(first_col, last_col + 1):
+            cell = ws.cell(row=row_idx, column=col)
+            b = cell.border
+            cell.border = Border(
+                left=b.left, right=b.right, top=b.top, bottom=dotted_bottom
+            )
+
+    def left_bar(color_hex):
+        """Borda lateral esquerda + mesma borda inferior pontilhada."""
+        return Border(
+            left=Side(style="thin", color=color_hex),
+            bottom=dotted_bottom
+        )
+
+    fill_gray  = PatternFill("solid", fgColor="F3F4F6")
+    fill_beige = PatternFill("solid", fgColor="F5F0E6")
+
+    # ===== escrever linhas (apenas espaços reais na coluna A) =====
+    first_row = 2
+    for i, r in enumerate(rows, start=first_row):
+        lvl = max(0, int(r["lvl"]))
+        lvl_spaces = min(lvl, INDENT_MAX_LEVEL)  # nível que vira espaços
+        raw_id = r["id"] or ""
+        display_id = (INDENT_UNIT * lvl_spaces) + raw_id
+
+        # Coluna A (somente espaços reais no texto)
+        c_id = ws.cell(row=i, column=1, value=display_id)
+        c_id.alignment = Alignment(indent=0, vertical="center")
+
+        # Coluna B
+        ws.cell(row=i, column=2, value=(r["name"] or r["wk_desc"] or ""))
+
+        # HH
+        c_hh = ws.cell(row=i, column=3, value=(r["hh"] if r["hh"] is not None else None))
+        if r["hh"] is not None:
+            c_hh.number_format = '#,##0.0" h"'
+
+        # Pts
+        c_pts = ws.cell(row=i, column=4, value=(r["pts"] if r["pts"] is not None else None))
+        if r["pts"] is not None:
+            c_pts.number_format = '#,##0.##'
+
+        # %
+        c_pct = ws.cell(row=i, column=5, value=r["pct"])
+        c_pct.number_format = "0.00%"
+
+        # Datas
+        st = _excel_date(r["start"])
+        fn = _excel_date(r["finish"])
+        if st:
+            cs = ws.cell(row=i, column=6, value=st)
+            cs.number_format = "DD/MM/YYYY"
+        if fn:
+            cf = ws.cell(row=i, column=7, value=fn)
+            cf.number_format = "DD/MM/YYYY"
+
+        # Colunas ocultas (sem espaços)
+        ws.cell(row=i, column=8, value=lvl)     # ID Level
+        ws.cell(row=i, column=9, value=raw_id)  # Raw ID
+
+        # Borda pontilhada nesta linha
+        apply_row_dotted_border(i, 1, len(headers))
+
+    # Oculta as colunas de auditoria (fora do loop)
+    ws.column_dimensions[get_column_letter(8)].hidden = True
+    ws.column_dimensions[get_column_letter(9)].hidden = True
+
+    # ===== Realce opcional “topo de grupo” (onde o próximo nível é maior)
+    last_col = len(headers)
+    n = len(rows)
+    for idx in range(n):
+        excel_row = first_row + idx
+        cur_lvl = int(rows[idx]["lvl"])
+        next_lvl = int(rows[idx + 1]["lvl"]) if (idx + 1) < n else cur_lvl
+        if next_lvl > cur_lvl >= 0:
+            rng = ws[f"A{excel_row}:{get_column_letter(last_col)}{excel_row}"]
+            for cell in rng[0]:
+                cell.font = Font(bold=True, color="111111")
+                # mantém a borda inferior pontilhada
+                cell.border = Border(
+                    left=cell.border.left,
+                    right=cell.border.right,
+                    top=cell.border.top,
+                    bottom=dotted_bottom
+                )
+            pal = cur_lvl % 3
+            if pal == 0:
+                for cell in rng[0]:
+                    cell.border = Border(
+                        left=Side(style="thin", color="111111"),
+                        right=cell.border.right, top=cell.border.top,
+                        bottom=dotted_bottom
+                    )
+            elif pal == 1:
+                for cell in rng[0]:
+                    cell.fill = fill_gray
+                    cell.border = Border(
+                        left=Side(style="thin", color="9CA3AF"),
+                        right=cell.border.right, top=cell.border.top,
+                        bottom=dotted_bottom
+                    )
+            else:
+                for cell in rng[0]:
+                    cell.fill = fill_beige
+                    cell.border = Border(
+                        left=Side(style="thin", color="B49C78"),
+                        right=cell.border.right, top=cell.border.top,
+                        bottom=dotted_bottom
+                    )
+
+    # ===== resposta =====
+    bio = BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+    resp = HttpResponse(
+        bio.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    resp["Content-Disposition"] = 'attachment; filename="taskfy_schedule.xlsx"'
+    return resp
+
