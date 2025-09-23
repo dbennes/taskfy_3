@@ -192,7 +192,8 @@ urlpatterns = [
     path('allocated/manpower/import/', views_allocated_manpower.import_allocated_manpower, name='import_allocated_manpower'),
     path('allocated/manpower/export/', views_allocated_manpower.export_allocated_manpower_csv, name='export_allocated_manpower_csv'),
     path("allocated/manpower/template/", views_allocated_manpower.allocated_manpower_template, name="allocated_manpower_template"),
-    
+
+    path("allocated/manpower/export/xlsx/", views_allocated_manpower.export_allocated_manpower_xlsx, name="export_allocated_manpower_xlsx"),
 
     # BAIXAR JOBCARDS EM PDF EM LOTE (ZIP) 
     path("jobcards/downloads/", views_downloads_jobcards.page, name="download_jobcards_page"),

@@ -830,3 +830,115 @@ def export_allocated_manpower_csv(request):
             ]
         )
     return response
+
+@login_required(login_url="login")
+@permission_required("jobcards.change_jobcard", raise_exception=True)
+def export_allocated_manpower_xlsx(request):
+    """
+    Exporta XLSX respeitando os filtros atuais.
+    Colunas: jobcard_number, discipline, working_code, direct_labor, task_order, qty, hours
+    - Ordenado por (jobcard_number, task_order, direct_labor)
+    - Cabeçalho estilizado, AutoFilter, Freeze Pane, AutoFit, formatação numérica 2 casas
+    """
+    if not _HAS_OPENPYXL:
+        return HttpResponse(
+            "To export XLSX, install openpyxl (pip install openpyxl).",
+            status=500,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    # === Filtros iguais aos do CSV ===
+    f_job = (request.GET.get("filter_job") or "").strip()
+    f_disc = (request.GET.get("filter_disc") or "").strip()
+    f_lab  = (request.GET.get("filter_labor") or "").strip()
+    q      = (request.GET.get("q") or "").strip()
+
+    qs = AllocatedManpower.objects.all()
+    if f_job:
+        qs = qs.filter(jobcard_number__icontains=f_job)
+    if f_disc:
+        qs = qs.filter(discipline__icontains=f_disc)
+    if f_lab:
+        qs = qs.filter(direct_labor__icontains=f_lab)
+    if q:
+        qs = qs.filter(
+            Q(jobcard_number__icontains=q)
+            | Q(discipline__icontains=q)
+            | Q(working_code__icontains=q)
+            | Q(direct_labor__icontains=q)
+        )
+
+    qs = qs.order_by("jobcard_number", "task_order", "direct_labor").only(
+        "jobcard_number", "discipline", "working_code",
+        "direct_labor", "task_order", "qty", "hours"
+    )
+
+    # === Monta XLSX em memória ===
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "AllocatedManpower"
+
+    headers = ["jobcard_number","discipline","working_code","direct_labor","task_order","qty","hours"]
+    ws.append(headers)
+
+    # Linhas
+    for r in qs:
+        ws.append([
+            r.jobcard_number or "",
+            r.discipline or "",
+            r.working_code or "",
+            r.direct_labor or "",
+            r.task_order if r.task_order is not None else "",
+            float(r.qty or 0.0),
+            float(r.hours or 0.0),
+        ])
+
+    # Estilo cabeçalho
+    header_fill  = PatternFill("solid", fgColor="F3F5F8")
+    header_font  = Font(bold=True)
+    thin = Side(style="thin", color="D0D0D0")
+    border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+    for col_idx, _ in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(vertical="center")
+        cell.border = border
+
+    # AutoFilter e congelar linha 1
+    ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{ws.max_row}"
+    ws.freeze_panes = "A2"
+
+    # Formatação numérica (2 casas) para qty (F) e hours (G)
+    for row in ws.iter_rows(min_row=2, min_col=6, max_col=7):
+        for cell in row:
+            cell.number_format = "0.00"
+
+    # Auto-ajuste de largura (simples)
+    for col_idx in range(1, len(headers) + 1):
+        col = get_column_letter(col_idx)
+        max_len = 0
+        for cell in ws[col]:
+            v = cell.value
+            l = len(str(v)) if v is not None else 0
+            if l > max_len:
+                max_len = l
+        ws.column_dimensions[col].width = min(60, max(10, max_len + 2))
+
+    # Retorna resposta
+    out = io.BytesIO()
+    wb.save(out)
+    out.seek(0)
+
+    filename = f'allocated_manpower_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    resp = HttpResponse(
+        out.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    resp["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return resp

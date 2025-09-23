@@ -99,6 +99,10 @@
     <h6 class="window-title ms-2">Allocated Manpower — Complete Database View</h6>
 
     <div class="ms-auto header-actions d-flex gap-2">
+      
+      <button id="btnXlsxAll" class="btn btn-light btn-sm">
+        <i class="fa-solid fa-file-arrow-down me-1"></i> Download
+      </button>
       <a href="{% url 'allocated_manpower_template' %}" class="btn btn-outline-light btn-sm">
         <i class="fa-solid fa-download me-1"></i> CSV Template
       </a>
@@ -416,5 +420,33 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 {% endif %}
+
+<script>
+  // === EXPORT XLSX ===
+  function buildExportXlsxURL(allData){
+    const base = "{% url 'export_allocated_manpower_xlsx' %}";
+    const p = new URLSearchParams();
+    if(!allData){
+      const q     = $('#globalSearch').val() || '';
+      const job   = $('#filterJobcardNumber').val() || '';
+      const disc  = $('#filterDiscipline').val() || '';
+      const labor = $('#filterDirectLabor').val() || '';
+      if(q)     p.set('q', q);
+      if(job)   p.set('filter_job', job);
+      if(disc)  p.set('filter_disc', disc);
+      if(labor) p.set('filter_labor', labor);
+    }
+    const qs = p.toString();
+    return qs ? `${base}?${qs}` : base;
+  }
+
+  $('#btnXlsxFiltered').on('click', function(){
+    window.location.href = buildExportXlsxURL(false);
+  });
+  $('#btnXlsxAll').on('click', function(){
+    window.location.href = buildExportXlsxURL(true);
+  });
+</script>
+
 
 {% endblock %}
