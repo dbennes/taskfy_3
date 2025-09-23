@@ -19,6 +19,7 @@ import shutil
 import pdfkit
 import barcode
 from barcode.writer import ImageWriter
+from decimal import Decimal, InvalidOperation
 
 from .models import (
     JobCard, Area,
