@@ -1,211 +1,420 @@
 {% extends 'sistema/base.html' %}
+{% load static %}
 
 {% block content %}
-<div class="container-fluid mt-2">
-    <div class="d-flex align-items-center justify-content-between p-2 mb-3" style="background-color: #313131; border-radius: 8px;">
-        <div class="d-flex align-items-center me-3">
-            <span style="width: 10px; height: 10px; background-color: #ff5f57; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
-            <span style="width: 10px; height: 10px; background-color: #febc2e; border-radius: 50%; display: inline-block; margin-right: 5px;"></span>
-            <span style="width: 10px; height: 10px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
-            <h6 class="mb-0 ms-3 text-white">Allocated Manpower - Complete Database View</h6>
-        </div>
+<style>
+  /* ===== Design tokens (90% light / black accents) ===== */
+  :root{
+    --bg:#f7f8fb; --panel:#ffffff; --ink:#0b0b0c; --muted:#667085;
+    --accent:#111111; --accent-ghost:#171717;
+    --line:#e7edf3; --line-strong:#d9e0e7; --line-soft:#f3f5f8; --hover:#f6f8fe;
+    --zebra:#fbfcff;
+    --radius:12px; --radius-lg:16px; --shadow:0 6px 20px rgba(16,24,40,.06);
+  }
+  .page-wrap{ background:var(--bg); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+
+  /* ===== Apple-style window header (escuro) ===== */
+  .window-bar{
+    background:#313131; color:#fff;
+    border-radius:8px; padding:.55rem .8rem;
+    display:flex; align-items:center; gap:.6rem; box-shadow:var(--shadow);
+  }
+  .win-dots{ display:flex; gap:.45rem; align-items:center }
+  .dot{ width:10px; height:10px; border-radius:50% }
+  .dot.red{background:#ff5f57}.dot.yellow{background:#febc2e}.dot.green{background:#28c840}
+  .window-title{ margin:0; font-weight:700; font-size:.95rem; letter-spacing:.02em }
+
+  /* ===== Botões do header ===== */
+  .header-actions .btn{ border-radius:16px; padding:.35rem .7rem; font-size:.85rem; }
+
+  /* ===== Filtros (mesma linguagem visual do exemplo) ===== */
+  .filters .form-label{ font-size:.82rem; color:#233; margin-bottom:.25rem; }
+  .filters .form-control, .filters .form-select{ font-size:.85rem; border-radius:12px; }
+  .filters .btn-search{
+    font-size:.9rem; border:none; background:#63b784; color:#fff; height:40px; border-radius:12px;
+  }
+
+  /* ===== Tabela Taskfy (grades clarinhas) ===== */
+  .taskfy-table{
+    border-radius:12px;
+    overflow:hidden;
+    margin-bottom:0;
+    background:#fff;
+    border:1px solid var(--line);
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .taskfy-table thead th{
+    font-size:11px;
+    padding:9px 16px !important;
+    vertical-align:middle;
+    background:#fff !important;
+    color:#23272e !important;
+    font-weight:700;
+    letter-spacing:.04em;
+    border-top:none;
+    border-bottom:1px solid var(--line-strong) !important;
+    text-align:left;
+    border-right:1px solid var(--line) !important;
+  }
+  .taskfy-table thead th:first-child{ border-left:1px solid var(--line) !important; }
+  .taskfy-table thead th:last-child{ border-right:1px solid var(--line) !important; }
+
+  .taskfy-table tbody td{
+    font-size:11px;
+    padding:9px 16px !important;
+    vertical-align:middle;
+    background:#fff !important;
+    border-right:1px solid var(--line) !important;
+    border-bottom:1px solid var(--line) !important;
+  }
+  .taskfy-table tbody tr:hover{
+    background:#f0f6fd !important;
+    transition:.14s;
+  }
+  .taskfy-table tbody td:first-child{ border-left:1px solid var(--line) !important; }
+  .taskfy-table tbody tr:last-child td{ border-bottom:1px solid var(--line) !important; }
+
+  @media (max-width: 900px){
+    .taskfy-table th, .taskfy-table td{ font-size:10px; padding:4px 7px !important; }
+  }
+
+  /* ===== SweetAlert2 custom text: 13px and left-aligned ===== */
+  .swal2-html-container{
+    font-size:13px !important;
+    text-align:left !important;
+  }
+</style>
+
+<div class="container-fluid page-wrap mt-2">
+
+  <!-- ===== HEADER ===== -->
+  <div class="window-bar mb-3">
+    <div class="win-dots">
+      <span class="dot red"></span>
+      <span class="dot yellow"></span>
+      <span class="dot green"></span>
+    </div>
+    <h6 class="window-title ms-2">Allocated Manpower — Complete Database View</h6>
+
+    <div class="ms-auto header-actions d-flex gap-2">
+      <a href="{% url 'allocated_manpower_template' %}" class="btn btn-outline-light btn-sm">
+        <i class="fa-solid fa-download me-1"></i> CSV Template
+      </a>
+      <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#importMpModal">
+        <i class="fa-solid fa-file-import me-1"></i> Import
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== FILTERS ===== -->
+  <form class="row align-items-end mb-3 filters" onsubmit="return false;" style="font-size:13px">
+    <div class="col-md-2">
+      <label for="rowsPerPage" class="form-label">Items per page:</label>
+      <select id="rowsPerPage" class="form-select">
+        <option value="10" selected>10</option>
+        <option value="18" >18</option>
+        <option value="25">25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
     </div>
 
-    <div class="d-flex flex-wrap align-items-center gap-1">
-        <div class="d-flex align-items-center gap-1 p-2 border rounded" style="font-size: 9px;">
-            <label class="mb-0 small">Show</label>
-            <select id="rowsPerPage" class="form-select form-select-sm" style="width: 70px; font-size: 10px;">
-                <option value="10">10</option>
-                <option value="18" selected>18</option>
-                <option value="25">25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-            </select>
-            <label class="mb-0 small"> entries</label>
-        </div>
-        <form id="filterForm" class="d-flex flex-wrap align-items-center gap-1 p-2 border rounded">
-            <input type="text" id="filterJobcardNumber" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Jobcard #">
-            <input type="text" id="filterDiscipline" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Discipline">
-            <input type="text" id="filterDirectLabor" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Direct Labor">
-            <button style="font-size: 9px" type="button" id="applyFilters" class="btn btn-apply btn-sm">Apply</button>
-        </form>
-        <div class="d-flex align-items-center gap-1 p-2 border rounded">
-            <input type="text" id="globalSearch" class="form-control form-control-sm" style="width: 120px; font-size: 10px;" placeholder="Search...">
-        </div>
-        <div class="ms-auto d-flex align-items-center gap-1 p-2 border rounded" id="customButtons"></div>
+    <div class="col-md-5">
+      <label for="globalSearch" class="form-label">Search:</label>
+      <input type="text" id="globalSearch" class="form-control" placeholder="Search...">
     </div>
 
-    <div class="table-responsive mt-2">
-        <table id="allocatedManpowerTable" class="table table-hover table-sm w-100 compact-table table-bordered-custom">
-            <thead class="table-light text-center table-header">
-                <tr>
-                    <th>Jobcard Number</th>
-                    <th>Discipline</th>
-                    <th>Working Code</th>
-                    <th>Direct Labor</th>
-                    <th>Qty</th>
-                    <th>Hours</th>
-                    <th>Task Order</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for mp in allocated_manpower %}
-                <tr>
-                    <td>{{ mp.jobcard_number }}</td>
-                    <td>{{ mp.discipline }}</td>
-                    <td>{{ mp.working_code }}</td>
-                    <td>{{ mp.direct_labor }}</td>
-                    <td>{{ mp.qty|floatformat:2 }}</td>
-                    <td>{{ mp.hours|floatformat:2 }}</td>
-                    <td>{{ mp.task_order }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="col-md-2">
+      <label for="filterJobcardNumber" class="form-label">Jobcard #</label>
+      <input type="text" id="filterJobcardNumber" class="form-control" placeholder="e.g. JC-0001">
     </div>
+
+    <div class="col-md-2">
+      <label for="filterDiscipline" class="form-label">Discipline</label>
+      <input type="text" id="filterDiscipline" class="form-control" placeholder="e.g. PIPING">
+    </div>
+
+    <div class="col-md-1 d-flex align-items-end">
+      <button id="applyFilters" class="btn btn-search w-100" title="Apply filters">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </button>
+    </div>
+
+    <div class="col-12 mt-2" id="activeChips" style="display:flex; gap:.4rem; flex-wrap:wrap;"></div>
+  </form>
+
+  <!-- ===== TABLE ===== -->
+  <div class="table-responsive">
+    <table id="allocatedManpowerTable" class="table table-hover align-middle shadow-sm mb-2 taskfy-table w-100">
+      <thead>
+        <tr>
+          <th>JOBCARD</th>
+          <th>DISCIPLINE</th>
+          <th>WORKING CODE</th>
+          <th>DIRECT LABOR</th>
+          <th class="text-end">QTY</th>
+          <th class="text-end">HOURS</th>
+          <th class="text-center">TASK</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
 </div>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+<!-- ===== IMPORT MODAL ===== -->
+<div class="modal fade" id="importMpModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post" action="{% url 'import_allocated_manpower' %}" enctype="multipart/form-data" style="border-radius: var(--radius-lg); overflow:hidden;">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h6 class="modal-title table-modal-title">
+          <i class="fa-solid fa-file-import"></i> Import Allocated Manpower
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="font-size:.95rem;">
+        <div class="mb-2">
+          <label class="form-label">File (CSV or XLSX)</label>
+          <input type="file" name="file" accept=".csv,.xlsx" class="form-control" required>
+          <div class="form-text">Columns: jobcard_number, discipline, working_code, direct_labor, task_order, qty, hours</div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label d-block">Import mode</label>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="mode" id="modeMerge" value="merge" checked>
+            <label class="form-check-label" for="modeMerge">Merge/Update (updates or creates, preserves other rows)</label>
+          </div>
+          <div class="form-check mt-1">
+            <input class="form-check-input" type="radio" name="mode" id="modeReplace" value="replace_jobcard">
+            <label class="form-check-label" for="modeReplace">Replace by JobCard (deletes all lines of JobCards found in the file and recreates)</label>
+          </div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Revision tag (optional)</label>
+          <input type="text" name="revision_tag" class="form-control" placeholder="e.g.: JC-0001_R03 or Batch_2025-09-22">
+        </div>
+        <div class="alert alert-info py-1">
+          After importing, <b>totals per Task</b> (total_hours) will be recalculated automatically.
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:space-between;">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:16px;">Cancel</button>
+        <button type="submit" class="btn btn-dark" style="border-radius:16px;"><i class="fa-solid fa-check me-1"></i> Import</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
 <script>
-    $(document).ready(function () {
-        let table = $('#allocatedManpowerTable').DataTable({
-            paging: true,
-            pageLength: 18,
-            autoWidth: true,
-            fixedHeader: true,
-            dom: 'Bfrtip',
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    title: 'Allocated Manpower Export',
-                    className: 'btn-minimal btn-excel',
-                    text: '<i class="fa-solid fa-file-excel me-2"></i> Export Excel'
-                },
-                {
-                    extend: 'pdfHtml5',
-                    title: 'Allocated Manpower Export',
-                    className: 'btn-minimal btn-pdf',
-                    text: '<i class="fa-solid fa-file-pdf me-2"></i> Export PDF',
-                    orientation: 'landscape',
-                    pageSize: 'A4'
-                },
-                {
-                    extend: 'print',
-                    title: 'Allocated Manpower Print',
-                    className: 'btn-minimal btn-print',
-                    text: '<i class="fa-solid fa-print me-2"></i> Print'
-                }
-            ]
-        });
+  $(function(){
+    const $chips = $('#activeChips');
 
-        table.buttons().container().appendTo('#customButtons');
+    const table = $('#allocatedManpowerTable').DataTable({
+      processing: true,
+      serverSide: true,
+      searching: true,
+      ordering: true,
+      lengthChange: false,
+      pageLength: 10,
+      autoWidth: false,
+      orderCellsTop: true,
+      searchDelay: 220,
+      responsive: false,
 
-        $('#applyFilters').click(function () {
-            table.column(0).search($('#filterJobcardNumber').val());
-            table.column(1).search($('#filterDiscipline').val());
-            table.column(3).search($('#filterDirectLabor').val());
-            table.draw();
-        });
+      /* ==== SINCRONIZAÇÃO DE ESTADO (DataTables stateSave) ==== */
+      stateSave: false,
+      // salva também os filtros customizados
+      stateSaveParams: function(settings, data){
+        data.customFilters = {
+          job:   $('#filterJobcardNumber').val() || '',
+          disc:  $('#filterDiscipline').val()   || '',
+          labor: $('#filterDirectLabor').val()  || '',
+          global: $('#globalSearch').val()      || ''
+        };
+      },
+      // ao carregar, hidrata os inputs com o que foi salvo
+      stateLoadParams: function(settings, data){
+        if (data && data.customFilters){
+          $('#filterJobcardNumber').val(data.customFilters.job);
+          $('#filterDiscipline').val(data.customFilters.disc);
+          $('#filterDirectLabor').val(data.customFilters.labor);
+          $('#globalSearch').val(data.customFilters.global);
+        }
+      },
+      initComplete: function(){
+        // reaplica a busca global salva para ficar visível no input
+        const s = this.api().state.loaded();
+        if (s && s.search && typeof s.search.search === 'string'){
+          this.api().search(s.search.search);
+        }
+        renderActiveFilters();
+      },
 
-        $('#rowsPerPage').change(function () {
-            table.page.len($(this).val()).draw();
-        });
-
-        $('#globalSearch').keyup(function () {
-            table.search($(this).val()).draw();
-        });
+      ajax: {
+        url: "{% url 'allocated_manpower_table_data' %}",
+        data: function(d){
+          d.filter_job   = $('#filterJobcardNumber').val();
+          d.filter_disc  = $('#filterDiscipline').val();
+          d.filter_labor = $('#filterDirectLabor').val();
+        }
+      },
+      columns: [
+        { data: 0, className:'td-ellipsis' },
+        { data: 1, className:'td-ellipsis' },
+        { data: 2, className:'td-ellipsis' },
+        { data: 3, className:'td-ellipsis' },
+        { data: 4, className:'text-end'    },
+        { data: 5, className:'text-end'    },
+        { data: 6, className:'text-center' }
+      ],
+      language: {
+        processing: "Loading...",
+        paginate: { previous: "Prev", next: "Next" },
+        emptyTable: "No records",
+        info: "Showing _START_-_END_ of _TOTAL_",
+        infoEmpty: "No data",
+        zeroRecords: "No matching records found"
+      },
+      deferRender: true,
+      dom: 'rt<"d-flex justify-content-between align-items-center p-2"ip>' // espaço p/ botão clear
     });
+
+    /* ===== Botão CLEAR (opcional) ===== */
+    // cria o botão ao lado da paginação
+    const $clearBtn = $('<button type="button" class="btn btn-sm btn-outline-secondary">Clear filters</button>');
+    $clearBtn.on('click', function(){
+      // zera inputs
+      $('#filterJobcardNumber, #filterDiscipline, #filterDirectLabor, #globalSearch').val('');
+      // limpa busca global do DataTables
+      table.search('');
+      // limpa estado salvo
+      if (table.state && table.state.clear) { table.state.clear(); }
+      // redesenha
+      table.draw();
+      renderActiveFilters();
+    });
+    // injeta o botão na área de paginação (definida no DOM do DT)
+    $(table.table().container())
+      .find('.dataTables_paginate')
+      .before($('<div class="me-auto"></div>').append($clearBtn));
+
+    /* ===== Global search (debounced) ===== */
+    let debounce;
+    $('#globalSearch').on('keyup', function(){
+      clearTimeout(debounce);
+      const v = this.value;
+      debounce = setTimeout(() => {
+        table.search(v).draw();
+      }, 180);
+      renderActiveFilters();
+    });
+
+    /* ===== Apply specific filters ===== */
+    $('#applyFilters').on('click', function(){
+      table.draw();
+      renderActiveFilters();
+    });
+    $('#filterJobcardNumber, #filterDiscipline, #filterDirectLabor').on('keypress', function(e){
+      if(e.which===13){
+        table.draw();
+        renderActiveFilters();
+      }
+    });
+
+    /* ===== Page length ===== */
+    $('#rowsPerPage').on('change', function(){
+      table.page.len(parseInt(this.value||18,10)).draw();
+    });
+
+    /* ===== Active filter chips ===== */
+    function renderActiveFilters(){
+      const items = [];
+      const job  = $('#filterJobcardNumber').val()?.trim();
+      const disc = $('#filterDiscipline').val()?.trim();
+      const lab  = $('#filterDirectLabor').val()?.trim();
+      const q    = $('#globalSearch').val()?.trim();
+
+      if(job)  items.push({ label:`Jobcard: ${job}`,     clear:()=>$('#filterJobcardNumber').val('') });
+      if(disc) items.push({ label:`Discipline: ${disc}`, clear:()=>$('#filterDiscipline').val('') });
+      if(lab)  items.push({ label:`Direct Labor: ${lab}`,clear:()=>$('#filterDirectLabor').val('') });
+      if(q)    items.push({ label:`Search: ${q}`,        clear:()=>{ $('#globalSearch').val(''); table.search(''); } });
+
+      $chips.empty();
+      items.forEach(it=>{
+        const $c = $(
+          `<span class="taskfy-badge taskfy-badge-waiting">
+            ${escapeHtml(it.label)}
+            <button class="btn btn-link p-0 ms-1" style="color:#7563e0; text-decoration:none;">×</button>
+          </span>`
+        );
+        $c.find('button').on('click', ()=>{
+          it.clear(); table.draw(); renderActiveFilters();
+        });
+        $chips.append($c);
+      });
+    }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    table.on('draw', renderActiveFilters);
+    renderActiveFilters();
+
+    /* ===== Tooltips ===== */
+    var tooltipTriggerList=[].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function(el){ return new bootstrap.Tooltip(el); });
+  });
 </script>
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
-    .compact-table {
-        table-layout: auto !important;
-        border: 1px solid #ddd !important;
-        border-collapse: collapse !important;
-    }
-    .compact-table td, .compact-table th {
-        white-space: nowrap !important;
-        padding: 2px 4px !important;
-        line-height: 15px !important;
-        vertical-align: middle;
-        font-size: 8px;
-        border: 0.5px solid #ddd !important;
-    }
-    .table-header th {
-        font-size: 9px !important;
-        padding: 6px 4px !important;
-        background-color: #f0f0f0 !important;
-    }
-    .compact-table tbody tr:nth-child(odd) {
-        background-color: #f8f9fa;
-    }
-    .compact-table tbody tr:nth-child(even) {
-        background-color: #f1f1f1;
-    }
-    .compact-table tbody tr:hover {
-        background-color: #d9edf7;
-    }
-    .table-bordered-custom {
-        border: 1px solid #ccc !important;
-    }
-    div.dataTables_length, div.dataTables_filter {
-        display: none !important;
-    }
-    .dt-buttons {
-        margin-left: 10px;
-        display: flex;
-        gap: 5px;
-    }
-    .paginate_button {
-        background-color: #f5f5f5 !important;
-        border: 1px solid #ddd !important;
-        color: #333 !important;
-        padding: 4px 8px !important;
-        margin: 2px !important;
-        border-radius: 4px !important;
-    }
-    .paginate_button.current {
-        background-color: rgb(184, 184, 184) !important;
-        color: white !important;
-    }
-    .paginate_button:hover {
-        background-color: #e0e0e0 !important;
-        color: #000 !important;
-    }
-    .btn-minimal {
-        border: none !important;
-        padding: 4px 10px !important;
-        font-size: 11px !important;
-        color: white !important;
-        transition: background-color 0.3s ease !important;
-    }
-    .btn-excel {
-        background-color: #a2d5a2 !important;
-        color: black;
-    }
-    .btn-excel:hover {
-        background-color: rgb(104, 165, 104) !important;
-        color: black;
-    }
-    .btn-pdf {
-        background-color: #f5a9a9 !important;
-    }
-    .btn-pdf:hover {
-        background-color: #ec8383 !important;
-    }
-    .btn-print {
-        background-color: #c7c7c7 !important;
-    }
-    .btn-print:hover {
-        background-color: #a5a5a5 !important;
-    }
+  /* corpo do texto do popup: 13px e alinhado à esquerda */
+  .swal-html-13 { font-size:13px !important; text-align:left !important; }
+  /* opcional: título um pouco menor para combinar */
+  .swal-title-13 { font-size:15px !important; }
 </style>
+
+{% if messages %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const queue = [
+    {% for message in messages %}
+      {
+        icon: (function(tags){
+          if(tags.includes('error') || tags.includes('danger')) return 'error';
+          if(tags.includes('warning')) return 'warning';
+          if(tags.includes('success')) return 'success';
+          return 'info';
+        })('{{ message.tags }}'),
+        title: (function(tags){
+          if(tags.includes('error') || tags.includes('danger')) return 'Import error';
+          if(tags.includes('warning')) return 'Warning';
+          if(tags.includes('success')) return 'Import completed';
+          return 'Notice';
+        })('{{ message.tags }}'),
+        html: "{{ message|escapejs }}",
+        confirmButtonText: 'OK',
+        width: 760,
+        customClass: {
+          htmlContainer: 'swal-html-13',
+          title: 'swal-title-13'
+        }
+      },
+    {% endfor %}
+  ];
+  const show = i => { if(i>=queue.length) return; Swal.fire(queue[i]).then(()=>show(i+1)); };
+  show(0);
+});
+</script>
+{% endif %}
+
 {% endblock %}

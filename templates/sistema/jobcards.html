@@ -1,127 +1,142 @@
 {% extends 'sistema/base.html' %}
-{% load static %} 
-{%block content%}    
+{% load static %}
+{% block content %}
 
 <div class="container-fluid">
-    <button id="downloadFilteredBtn" class="btn  w-100 mb-3" style="height:40px; background:#313131"></button>
+  <button id="downloadFilteredBtn" class="btn w-100 mb-3" style="height:40px; background:#313131"></button>
 
-    <div class="card shadow">
-        <div class="card-header py-3" style="background:#f5f5f7; border-bottom: 1px solid #d0d0d0; border-top-left-radius: 8px; border-top-right-radius: 8px;">
-                    <div class="d-flex align-items-center justify-content-between">
-
-                        
-
-                        <!-- Título -->
-                        <h5 class="m-0 fw-bold fs-6 text-left w-100" style="margin-left: -60px;">Jobcard List</h5>
-
-                        <!-- Círculos estilo Apple -->
-                        <div class="d-flex align-items-center gap-1">
-                            <span style="width: 12px; height: 12px; background-color: #ff5f57; border-radius: 50%; display: inline-block;"></span>
-                            <span style="width: 12px; height: 12px; background-color: #febc2e; border-radius: 50%; display: inline-block;"></span>
-                            <span style="width: 12px; height: 12px; background-color: #28c840; border-radius: 50%; display: inline-block;"></span>
-                        </div>
-
-                    </div>
-                </div>
-        <div class="card-body">
-            <!-- Filtros -->
-            <form method="get" class="row align-items-end mb-3" style="font-size:13px">
-                <div class="col-md-2">
-                    <label for="itemsPerPage" class="form-label">Items per page:</label>
-                    <select id="itemsPerPage" name="items_per_page" class="form-select" style="font-size:13px">
-                    <option value="5" {% if request.GET.items_per_page == "5" %}selected{% endif %}>5</option>
-                    <option value="10" {% if request.GET.items_per_page == "10" or not request.GET.items_per_page %}selected{% endif %}>10</option>
-                    <option value="20" {% if request.GET.items_per_page == "20" %}selected{% endif %}>20</option>
-                    <option value="50" {% if request.GET.items_per_page == "50" %}selected{% endif %}>50</option>
-                    <option value="100" {% if request.GET.items_per_page == "100" %}selected{% endif %}>100</option>
-                    <option value="100000" {% if request.GET.items_per_page == "100000" %}selected{% endif %}>Todos</option>
-                    </select>
-                </div>
-
-                <div class="col-md-5">
-                    <label for="filterInput" class="form-label">Search:</label>
-                    <input style="font-size:13px" type="text" id="filterInput" name="search" value="{{ request.GET.search }}" class="form-control" placeholder="Buscar...">
-                </div>
-
-                <div class="col-md-2">
-                    <label for="startDate" class="form-label">Start:</label>
-                    <input style="font-size:13px" type="date" id="startDate" name="start_date" value="{{ request.GET.start_date }}" class="form-control">
-                </div>
-
-                <div class="col-md-2">
-                    <label for="endDate" class="form-label">Finish:</label>
-                    <input style="font-size:13px" type="date" id="endDate" name="end_date" value="{{ request.GET.end_date }}" class="form-control">
-                </div>
-
-                <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary p-2" style="font-size: 13px; width: 100%; height: 40px; background: #63b784; border: none">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    </button>
-                </div>
-
-                
-            </form>
-
-
-            <!-- Tabela -->
-            <div class="table-responsive mt-2">
-                <table class="table table-bordered table-hover" id="dataTable">
-                    <thead style="font-size: 10px;">
-                        <tr>
-                            <th>DISCIPLINE</th>
-                            <th>LOCATION</th>
-                            <th>JOBCARD</th>
-                            <th>WORKING CODE</th>
-                            <th>SYSTEM</th>
-                            <th>PREPARED_BY</th>
-                            <th>COMPLETED?</th>
-                            <th>START</th>
-                            <th>FINISH</th>
-                            <th>CHECKED?</th>
-                            <th>AÇÕES</th>
-                        </tr>
-                    </thead>
-                    <tbody style="font-size: 10px;">
-                        {% for job in jobcards %}
-                        <tr>
-                            <td>{{ job.discipline }}</td>
-                            <td>{{ job.location }}</td>
-                            <td>{{ job.job_card_number }}</td>
-                            <td>{{ job.working_code_description }}</td>
-                            <td>{{ job.system }}</td>
-                            <td>{{ job.prepared_by }}</td>
-                            <td>{{ job.completed }}</td>
-                            <td>{% if job.start %}{{ job.start|date:"d/m/Y" }}{% else %}--{% endif %}</td>
-                            <td>{% if job.finish %}{{ job.finish|date:"d/m/Y" }}{% else %}--{% endif %}</td>
-                            <td>{{ job.jobcard_status }}</td>
-                            <td>
-                                <a href="{% url 'edit_jobcard' jobcard_id=job.job_card_number %}" class="text-primary" style="font-size: 12px;">
-                                    <i class="far fa-edit"></i>
-                                </a>
-                                
-                                {% with 'JobCard_'|add:job.job_card_number|add:'_Rev_'|add:job.rev|add:'.pdf' as pdf_filename %}
-                                    {% if pdf_filename in available_pdfs %}
-                                        <a href="/jobcard_backups/{{ pdf_filename }}" target="_blank" class="ms-2 text-danger" style="font-size: 15px;">
-                                            <i class="fas fa-file-download"></i>
-                                        </a>
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
+  <div class="card shadow">
+    <div class="card-header py-3" style="background:#f5f5f7; border-bottom:1px solid #d0d0d0; border-top-left-radius:8px; border-top-right-radius:8px;">
+      <div class="d-flex align-items-center justify-content-between">
+        <h5 class="m-0 fw-bold fs-6 text-left w-100" style="margin-left:-60px;">Jobcard List</h5>
+        <div class="d-flex align-items-center gap-1">
+          <span style="width:12px; height:12px; background-color:#ff5f57; border-radius:50%; display:inline-block;"></span>
+          <span style="width:12px; height:12px; background-color:#febc2e; border-radius:50%; display:inline-block;"></span>
+          <span style="width:12px; height:12px; background-color:#28c840; border-radius:50%; display:inline-block;"></span>
         </div>
+      </div>
     </div>
+
+    <div class="card-body">
+      <!-- Filtros -->
+      <form method="get" class="row align-items-end mb-3" style="font-size:13px">
+        <div class="col-md-2">
+          <label for="itemsPerPage" class="form-label">Items per page:</label>
+          <select id="itemsPerPage" name="items_per_page" class="form-select" style="font-size:13px">
+            <option value="5"   {% if items_per_page == 5 %}selected{% endif %}>5</option>
+            <option value="10"  {% if items_per_page == 10 %}selected{% endif %}>10</option>
+            <option value="20"  {% if items_per_page == 20 %}selected{% endif %}>20</option>
+            <option value="50"  {% if items_per_page == 50 %}selected{% endif %}>50</option>
+            <option value="100" {% if items_per_page == 100 %}selected{% endif %}>100</option>
+            <option value="100000" {% if items_per_page == 100000 %}selected{% endif %}>Todos</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label for="filterInput" class="form-label">Search (global):</label>
+          <input style="font-size:13px" type="text" id="filterInput" name="search"
+                 value="{{ search }}" class="form-control"
+                 placeholder="Ex.: MECH A01 JCN-0001 21/09/2025">
+        </div>
+
+        <!-- Filtro System -->
+        <div class="col-md-2">
+          <label for="system" class="form-label">System:</label>
+          <select id="system" name="system" class="form-select" style="font-size:13px">
+            <option value="">All</option>
+            {% for s in systems %}
+              <option value="{{ s }}" {% if system == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label for="startDate" class="form-label">Start:</label>
+          <input style="font-size:13px" type="date" id="startDate" name="start_date"
+                 value="{{ start_date }}" class="form-control">
+        </div>
+
+        <div class="col-md-2">
+          <label for="endDate" class="form-label">Finish:</label>
+          <input style="font-size:13px" type="date" id="endDate" name="end_date"
+                 value="{{ end_date }}" class="form-control">
+        </div>
+
+        <div class="col-md-1 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary p-2" style="font-size:13px; width:100%; height:40px; background:#63b784; border:none">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
+      </form>
+
+      <script>
+        // auto-submit nos selects
+        document.getElementById('itemsPerPage')?.addEventListener('change', function(){ this.form.submit(); });
+        document.getElementById('system')?.addEventListener('change', function(){ this.form.submit(); });
+      </script>
+
+      <!-- Tabela -->
+      <div class="table-responsive mt-2">
+        <table class="table table-bordered table-hover" id="dataTable">
+          <thead style="font-size:10px;">
+            <tr>
+              <th>DISCIPLINE</th>
+              <th>LOCATION</th>
+              <th>JOBCARD</th>
+              <th>WORKING CODE</th>
+              <th>SYSTEM</th>
+              <th>PREPARED_BY</th>
+              <th>COMPLETED?</th>
+              <th>START</th>
+              <th>FINISH</th>
+              <th>CHECKED?</th>
+              <th>AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody style="font-size:10px;">
+            {% for job in jobcards %}
+            <tr>
+              <td>{{ job.discipline }}</td>
+              <td>{{ job.location }}</td>
+              <td>{{ job.job_card_number }}</td>
+              <td>{{ job.working_code_description }}</td>
+              <td>{{ job.system }}</td>
+              <td>{{ job.prepared_by }}</td>
+              <td>{{ job.completed }}</td>
+              <td>{% if job.start %}{{ job.start|date:"d/m/Y" }}{% else %}--{% endif %}</td>
+              <td>{% if job.finish %}{{ job.finish|date:"d/m/Y" }}{% else %}--{% endif %}</td>
+              <td>{{ job.jobcard_status }}</td>
+              <td>
+                <a href="{% url 'edit_jobcard' jobcard_id=job.job_card_number %}" class="text-primary" style="font-size:12px;">
+                  <i class="far fa-edit"></i>
+                </a>
+                {% with 'JobCard_'|add:job.job_card_number|add:'_Rev_'|add:job.rev|add:'.pdf' as pdf_filename %}
+                  {% if pdf_filename in available_pdfs %}
+                    <a href="/jobcard_backups/{{ pdf_filename }}" target="_blank" class="ms-2 text-danger" style="font-size:15px;">
+                      <i class="fas fa-file-download"></i>
+                    </a>
+                  {% endif %}
+                {% endwith %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="11" class="text-center">No records.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
 </div>
 
 <nav aria-label="Page navigation example">
   <ul class="pagination justify-content-center">
     {% if jobcards.has_previous %}
       <li class="page-item">
-        <a class="page-link" href="?search={{ search }}&start_date={{ start_date }}&end_date={{ end_date }}&items_per_page={{ items_per_page }}&page={{ jobcards.previous_page_number }}" aria-label="Previous">&laquo;</a>
+        <a class="page-link"
+           href="?search={{ search }}&system={{ system }}&start_date={{ start_date }}&end_date={{ end_date }}&items_per_page={{ items_per_page }}&page={{ jobcards.previous_page_number }}"
+           aria-label="Previous">&laquo;</a>
       </li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
@@ -131,19 +146,23 @@
       {% if jobcards.number == num %}
         <li class="page-item active"><span class="page-link">{{ num }}</span></li>
       {% elif num > jobcards.number|add:"-3" and num < jobcards.number|add:"3" %}
-        <li class="page-item"><a class="page-link" href="?search={{ search }}&start_date={{ start_date }}&end_date={{ end_date }}&items_per_page={{ items_per_page }}&page={{ num }}">{{ num }}</a></li>
+        <li class="page-item">
+          <a class="page-link"
+             href="?search={{ search }}&system={{ system }}&start_date={{ start_date }}&end_date={{ end_date }}&items_per_page={{ items_per_page }}&page={{ num }}">{{ num }}</a>
+        </li>
       {% endif %}
     {% endfor %}
 
     {% if jobcards.has_next %}
       <li class="page-item">
-        <a class="page-link" href="?search={{ search }}&start_date={{ start_date }}&end_date={{ end_date }}&items_per_page={{ items_per_page }}&page={{ jobcards.next_page_number }}" aria-label="Next">&raquo;</a>
+        <a class="page-link"
+           href="?search={{ search }}&system={{ system }}&start_date={{ start_date }}&end_date={{ end_date }}&items_per_page={{ items_per_page }}&page={{ jobcards.next_page_number }}"
+           aria-label="Next">&raquo;</a>
       </li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
     {% endif %}
   </ul>
 </nav>
-
 
 {% endblock %}

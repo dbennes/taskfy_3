@@ -437,11 +437,15 @@ def schedule_gantt(request):
     return render(request, "sistema/schedule/schedule_gantt.html", {"disciplines": disciplines})
 
 
+
 @login_required(login_url="login")
 def schedule_api(request):
     """
-    Retorna atividades na ordem importada com level e TODAS as JobCards ligadas,
-    incluindo campos necessários para cálculo de pontos ponderados por JC.
+    Retorna atividades na ordem importada com level e TODAS as JobCards ligadas.
+    FILTRO DE DATAS (estrito):
+      - start={YYYY-MM-DD}  -> filtra por start__gte (somente campo start)
+      - finish={YYYY-MM-DD} -> filtra por finish__lte (somente campo finish)
+      - ambos               -> start__gte & finish__lte
     """
     q = request.GET.get("q", "").strip()
     discipline = request.GET.get("discipline", "").strip()
@@ -457,19 +461,23 @@ def schedule_api(request):
             Q(jobcard_number__icontains=q)
         )
 
+    # --------- Filtro de datas (estrito) ----------
+    # start filtra estritamente pelo campo start (>=)
     if start_f:
         try:
             sdate = datetime.strptime(start_f, "%Y-%m-%d").date()
-            acts = acts.filter(Q(finish__gte=sdate) | Q(finish__isnull=True))
-        except Exception:
+            acts = acts.filter(start__gte=sdate)
+        except ValueError:
             pass
 
+    # finish filtra estritamente pelo campo finish (<=)
     if finish_f:
         try:
             fdate = datetime.strptime(finish_f, "%Y-%m-%d").date()
-            acts = acts.filter(Q(start__lte=fdate) | Q(start__isnull=True))
-        except Exception:
+            acts = acts.filter(finish__lte=fdate)
+        except ValueError:
             pass
+    # ---------------------------------------------
 
     if discipline:
         ids = list(
@@ -510,8 +518,7 @@ def schedule_api(request):
                 "total_duration_hs": jc.get("total_duration_hs") or "",
                 "indice_kpi": jc.get("indice_kpi") or "",
                 "status": jc.get("status") or "",
-                # Mantemos 'orig_duration' APENAS para fallback de JC (se existir no banco)
-                "orig_duration": "",  # não usamos, mas deixamos a chave para compat.
+                "orig_duration": "",
             })
 
     def _safe_int(v, default=0):
@@ -544,7 +551,6 @@ def schedule_api(request):
         prog = _safe_int(getattr(a, "percent_complete", 0), 0)
         prog = max(0, min(100, prog))
 
-        # HH oficial
         hh_val = _safe_num(getattr(a, "hh", None))
 
         data.append({
@@ -554,13 +560,9 @@ def schedule_api(request):
             "start": start,
             "end": end,
             "progress": prog,
-
-            "hh": hh_val,                      # <<=== usado no frontend
+            "hh": hh_val,
             "points": _safe_num(getattr(a, "points", None)),
-
-            # Mantemos para compatibilidade do cliente (não é mais usado para atividade)
             "orig_duration": "",
-
             "jobcards": jmap.get(a.activity_id, []),
         })
 
@@ -638,15 +640,16 @@ def _is_canceled_py(obj: dict) -> bool:
 def schedule_export_excel(request):
     """
     XLSX com:
-      - Hierarquia por ESPAÇOS na coluna A (sem outline e sem indent visual).
-      - Sem linhas de grade (view e impressão).
-      - Borda pontilhada cinza médio por linha.
-      - 'ID Level' e 'Raw ID' ocultos para auditoria.
-      - HH da atividade = ScheduleActivity.hh; HH da JC = total_man_hours/total_duration_hs/orig_duration.
+      - Hierarquia por ESPAÇOS na coluna A (sem outline/indent visual).
+      - Sem linhas de grade; borda pontilhada cinza por linha.
+      - 'ID Level' e 'Raw ID' ocultos.
+      - HH da atividade = ScheduleActivity.hh.
       - Filtra JC canceladas.
       - Datas como date real.
+    FILTRO DE DATAS (estrito, igual ao schedule_api):
+      - start={YYYY-MM-DD}  -> start__gte
+      - finish={YYYY-MM-DD} -> finish__lte
     """
-    # ===== filtros iguais ao schedule_api =====
     q = request.GET.get("q", "").strip()
     discipline = request.GET.get("discipline", "").strip()
     start_f = request.GET.get("start")
@@ -661,19 +664,21 @@ def schedule_export_excel(request):
             Q(jobcard_number__icontains=q)
         )
 
+    # --------- Filtro de datas (estrito) ----------
     if start_f:
         try:
             sdate = datetime.strptime(start_f, "%Y-%m-%d").date()
-            acts = acts.filter(Q(finish__gte=sdate) | Q(finish__isnull=True))
-        except Exception:
+            acts = acts.filter(start__gte=sdate)
+        except ValueError:
             pass
 
     if finish_f:
         try:
             fdate = datetime.strptime(finish_f, "%Y-%m-%d").date()
-            acts = acts.filter(Q(start__lte=fdate) | Q(start__isnull=True))
-        except Exception:
+            acts = acts.filter(finish__lte=fdate)
+        except ValueError:
             pass
+    # ---------------------------------------------
 
     if discipline:
         ids = list(
@@ -718,7 +723,7 @@ def schedule_export_excel(request):
             "is_jc": False,
             "id": a.activity_id or "",
             "name": a.name or "",
-            "hh": _num_or_none(getattr(a, "hh", None)),     # HH oficial
+            "hh": _num_or_none(getattr(a, "hh", None)),
             "pts": _num_or_none(getattr(a, "points", None)),
             "pct": max(0, min(100, int(_num_or_none(getattr(a, "percent_complete", 0)) or 0))) / 100.0,
             "start": a.start,
@@ -749,12 +754,16 @@ def schedule_export_excel(request):
                 "wk_desc": (j.get("working_code_description") or "").strip(),
             })
 
-    # ===== workbook =====
+    # ===== workbook (resto permanece igual) =====
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+    from openpyxl.utils import get_column_letter
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Schedule"
 
-    # Sem linhas de grade (visual e impressão)
     ws.sheet_view.showGridLines = False
     ws.print_options.gridLines = False
 
@@ -766,8 +775,8 @@ def schedule_export_excel(request):
         "%",
         "Start",
         "Finish",
-        "ID Level",   # oculto
-        "Raw ID",     # oculto
+        "ID Level",
+        "Raw ID",
     ]
     ws.append(headers)
 
@@ -784,11 +793,9 @@ def schedule_export_excel(request):
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
-    # Helpers de estilo
     dotted_bottom = Side(style=ROW_BORDER_STYLE, color=ROW_BORDER_COLOR)
 
     def apply_row_dotted_border(row_idx: int, first_col: int, last_col: int):
-        """Aplica borda inferior pontilhada cinza em todas as células da linha."""
         for col in range(first_col, last_col + 1):
             cell = ws.cell(row=row_idx, column=col)
             b = cell.border
@@ -797,7 +804,6 @@ def schedule_export_excel(request):
             )
 
     def left_bar(color_hex):
-        """Borda lateral esquerda + mesma borda inferior pontilhada."""
         return Border(
             left=Side(style="thin", color=color_hex),
             bottom=dotted_bottom
@@ -806,36 +812,29 @@ def schedule_export_excel(request):
     fill_gray  = PatternFill("solid", fgColor="F3F4F6")
     fill_beige = PatternFill("solid", fgColor="F5F0E6")
 
-    # ===== escrever linhas (apenas espaços reais na coluna A) =====
     first_row = 2
     for i, r in enumerate(rows, start=first_row):
         lvl = max(0, int(r["lvl"]))
-        lvl_spaces = min(lvl, INDENT_MAX_LEVEL)  # nível que vira espaços
+        lvl_spaces = min(lvl, INDENT_MAX_LEVEL)
         raw_id = r["id"] or ""
         display_id = (INDENT_UNIT * lvl_spaces) + raw_id
 
-        # Coluna A (somente espaços reais no texto)
         c_id = ws.cell(row=i, column=1, value=display_id)
         c_id.alignment = Alignment(indent=0, vertical="center")
 
-        # Coluna B
         ws.cell(row=i, column=2, value=(r["name"] or r["wk_desc"] or ""))
 
-        # HH
         c_hh = ws.cell(row=i, column=3, value=(r["hh"] if r["hh"] is not None else None))
         if r["hh"] is not None:
             c_hh.number_format = '#,##0.0" h"'
 
-        # Pts
         c_pts = ws.cell(row=i, column=4, value=(r["pts"] if r["pts"] is not None else None))
         if r["pts"] is not None:
             c_pts.number_format = '#,##0.##'
 
-        # %
         c_pct = ws.cell(row=i, column=5, value=r["pct"])
         c_pct.number_format = "0.00%"
 
-        # Datas
         st = _excel_date(r["start"])
         fn = _excel_date(r["finish"])
         if st:
@@ -845,18 +844,14 @@ def schedule_export_excel(request):
             cf = ws.cell(row=i, column=7, value=fn)
             cf.number_format = "DD/MM/YYYY"
 
-        # Colunas ocultas (sem espaços)
         ws.cell(row=i, column=8, value=lvl)     # ID Level
         ws.cell(row=i, column=9, value=raw_id)  # Raw ID
 
-        # Borda pontilhada nesta linha
         apply_row_dotted_border(i, 1, len(headers))
 
-    # Oculta as colunas de auditoria (fora do loop)
     ws.column_dimensions[get_column_letter(8)].hidden = True
     ws.column_dimensions[get_column_letter(9)].hidden = True
 
-    # ===== Realce opcional “topo de grupo” (onde o próximo nível é maior)
     last_col = len(headers)
     n = len(rows)
     for idx in range(n):
@@ -867,7 +862,6 @@ def schedule_export_excel(request):
             rng = ws[f"A{excel_row}:{get_column_letter(last_col)}{excel_row}"]
             for cell in rng[0]:
                 cell.font = Font(bold=True, color="111111")
-                # mantém a borda inferior pontilhada
                 cell.border = Border(
                     left=cell.border.left,
                     right=cell.border.right,
@@ -899,7 +893,6 @@ def schedule_export_excel(request):
                         bottom=dotted_bottom
                     )
 
-    # ===== resposta =====
     bio = BytesIO()
     wb.save(bio)
     bio.seek(0)
@@ -909,4 +902,5 @@ def schedule_export_excel(request):
     )
     resp["Content-Disposition"] = 'attachment; filename="taskfy_schedule.xlsx"'
     return resp
+
 

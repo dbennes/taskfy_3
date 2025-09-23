@@ -96,7 +96,8 @@ import re
 from django.db.models import Sum
 from .forms import JobCardForm, EDITABLE_FIELDS
 import csv
-
+from typing import List
+from django.db import models as djm
 
 
 # - PERMISSIONAMENTO POR GRUPO
@@ -400,38 +401,155 @@ def dashboard(request):
     }
     return render(request, 'sistema/dashboard.html', context)
 
+# views.py
+import os, re
+from datetime import datetime
+from typing import List
+
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.db import models as djm
+from django.db.models import Q
+from django.shortcuts import render
+
+from .models import JobCard
+
+
+# ===== Helpers para a busca global =====
+def _field_names_by_type(model, djangotypes: List[type]) -> List[str]:
+    """Retorna nomes de campos concretos do model, filtrando por tipos Django."""
+    names = []
+    for f in model._meta.get_fields():
+        if not hasattr(f, "attname"):  # ignora relações reversas
+            continue
+        if any(isinstance(f, t) for t in djangotypes):
+            names.append(f.name)
+    return names
+
+
+def _build_global_search_q(model, raw_query: str) -> Q:
+    """
+    Busca global:
+      - tokeniza por espaço (tokens AND)
+      - texto -> icontains em todos Char/Text
+      - número -> tenta casar em Integer/Float/Decimal (igualdade)
+      - data -> dd/mm/YYYY ou YYYY-MM-DD em Date/DateTime (igualdade)
+    """
+    tokens = [t for t in re.split(r"\s+", (raw_query or "").strip()) if t]
+    if not tokens:
+        return Q()
+
+    text_fields   = _field_names_by_type(model, [djm.CharField, djm.TextField])
+    int_fields    = _field_names_by_type(model, [djm.IntegerField])
+    num_fields    = _field_names_by_type(model, [djm.FloatField, djm.DecimalField])
+    date_fields   = _field_names_by_type(model, [djm.DateField])
+    datetime_flds = _field_names_by_type(model, [djm.DateTimeField])
+
+    # prioriza campos comuns para otimizar o plano do DB
+    preferred = [
+        "job_card_number", "activity_id", "discipline", "location",
+        "system", "subsystem", "working_code", "tag",
+        "job_card_description", "working_code_description",
+        "jobcard_status", "prepared_by", "approved_br", "comments", "status",
+    ]
+    text_fields = [f for f in preferred if f in text_fields] + [f for f in text_fields if f not in preferred]
+
+    final_q = Q()
+    for token in tokens:
+        token_q = Q()
+
+        # 1) Texto
+        for fname in text_fields:
+            token_q |= Q(**{f"{fname}__icontains": token})
+
+        # 2) Número (int/float)
+        if token.isdigit():
+            val_int = int(token)
+            for fname in int_fields:
+                token_q |= Q(**{f"{fname}": val_int})
+        else:
+            try:
+                val_float = float(token.replace(",", "."))
+                for fname in num_fields:
+                    token_q |= Q(**{f"{fname}": val_float})
+            except Exception:
+                pass
+
+        # 3) Data (dd/mm/YYYY ou YYYY-MM-DD)
+        parsed_date = None
+        for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+            try:
+                parsed_date = datetime.strptime(token, fmt).date()
+                break
+            except Exception:
+                continue
+        if parsed_date:
+            for fname in date_fields:
+                token_q |= Q(**{f"{fname}": parsed_date})
+            for fname in datetime_flds:
+                token_q |= Q(**{f"{fname}__date": parsed_date})
+
+        # AND entre tokens
+        final_q &= token_q
+
+    return final_q
+
+
 @login_required(login_url='login')
-def jobcards_list(request):  
+def jobcards_list(request):
     qs = JobCard.objects.all()
 
-    search = request.GET.get('search', '')
-    start_date = request.GET.get('start_date', '')
-    end_date = request.GET.get('end_date', '')
-    items_per_page = request.GET.get('items_per_page', '10')
+    # parâmetros
+    search        = (request.GET.get('search') or '').strip()
+    system_param  = (request.GET.get('system') or '').strip()
+    start_date_s  = request.GET.get('start_date', '')
+    end_date_s    = request.GET.get('end_date', '')
+    items_s       = request.GET.get('items_per_page', '10')
 
+    # busca global (todos os campos)
     if search:
+        qs = qs.filter(_build_global_search_q(JobCard, search))
+
+    # filtro System (match exato, case-insensitive)
+    if system_param:
+        qs = qs.filter(system__iexact=system_param)
+
+    # range de datas (start, finish, date_prepared, date_approved)
+    def parse_input_date(s):
+        try:
+            return datetime.strptime(s, '%Y-%m-%d').date()
+        except Exception:
+            return None
+
+    d_start = parse_input_date(start_date_s)
+    d_end   = parse_input_date(end_date_s)
+
+    if d_start and d_end:
         qs = qs.filter(
-            Q(discipline__icontains=search) |
-            Q(job_card_number__icontains=search) |
-            Q(prepared_by__icontains=search)
+            Q(start__range=(d_start, d_end)) |
+            Q(finish__range=(d_start, d_end)) |
+            Q(date_prepared__range=(d_start, d_end)) |
+            Q(date_approved__range=(d_start, d_end))
+        )
+    elif d_start:
+        qs = qs.filter(
+            Q(start__gte=d_start) | Q(finish__gte=d_start) |
+            Q(date_prepared__gte=d_start) | Q(date_approved__gte=d_start)
+        )
+    elif d_end:
+        qs = qs.filter(
+            Q(start__lte=d_end) | Q(finish__lte=d_end) |
+            Q(date_prepared__lte=d_end) | Q(date_approved__lte=d_end)
         )
 
-    if start_date:
-        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
-        qs = qs.filter(start__gte=start_date_obj)
-
-    if end_date:
-        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
-        qs = qs.filter(start__lte=end_date_obj)
-
-    # Verifica items_per_page, define padrão 10 se inválido
+    # itens por página
     try:
-        items_per_page = int(items_per_page)
+        items_per_page = max(1, int(items_s))
     except (ValueError, TypeError):
         items_per_page = 10
 
-    paginator = Paginator(qs, items_per_page)
-
+    paginator = Paginator(qs.order_by('job_card_number'), items_per_page)
     page = request.GET.get('page')
     try:
         jobcards_page = paginator.page(page)
@@ -439,20 +557,30 @@ def jobcards_list(request):
         jobcards_page = paginator.page(1)
     except EmptyPage:
         jobcards_page = paginator.page(paginator.num_pages)
-        
-    backups_dir = os.path.join(settings.BASE_DIR, 'jobcard_backups')
-    available_pdfs = {f for f in os.listdir(backups_dir) if f.endswith('.pdf')}
+
+    # PDFs disponíveis (seguro se a pasta não existir)
+    backups_dir = os.path.join(getattr(settings, 'BASE_DIR', ''), 'jobcard_backups')
+    try:
+        available_pdfs = {f for f in os.listdir(backups_dir) if f.lower().endswith('.pdf')}
+    except Exception:
+        available_pdfs = set()
+
+    # lista de Systems para o select (distintos, não vazios)
+    systems_qs = JobCard.objects.values_list('system', flat=True).distinct()
+    systems = sorted({s for s in systems_qs if (s or '').strip()})
 
     context = {
         'jobcards': jobcards_page,
         'search': search,
-        'start_date': start_date,
-        'end_date': end_date,
+        'system': system_param,
+        'start_date': start_date_s,
+        'end_date': end_date_s,
         'items_per_page': items_per_page,
-        'paginator': paginator,
         'available_pdfs': available_pdfs,
+        'systems': systems,
     }
     return render(request, 'sistema/jobcards.html', context)
+
 
 
 # - PARTE DO DASHBOARD
@@ -1177,23 +1305,6 @@ def task_list(request):
 
 # --------- DATABASE ALOCAÇÕES --------------- #
 
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
-def allocated_manpower_list(request):
-    allocated_manpower = AllocatedManpower.objects.all()
-    context = {
-        'allocated_manpower': allocated_manpower
-    }
-    return render(request, 'sistema/allocated/allocated_manpower_list.html', context)
-
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
-def allocated_material_list(request):
-    allocated_materials = AllocatedMaterial.objects.all()
-    context = {
-        'allocated_materials': allocated_materials
-    }
-    return render(request, 'sistema/allocated/allocated_material_list.html', context)
 
 @login_required(login_url='login')
 @permission_required('jobcards.change_jobcard', raise_exception=True)
@@ -1203,6 +1314,16 @@ def allocated_tool_list(request):
         'allocated_tools': allocated_tools
     }
     return render(request, 'sistema/allocated/allocated_tool_list.html', context)
+
+
+@login_required(login_url='login')
+@permission_required('jobcards.change_jobcard', raise_exception=True)
+def allocated_material_list(request):
+    allocated_materials = AllocatedMaterial.objects.all()
+    context = {
+        'allocated_materials': allocated_materials
+    }
+    return render(request, 'sistema/allocated/allocated_material_list.html', context)
 
 @login_required(login_url='login')
 @permission_required('jobcards.change_jobcard', raise_exception=True)

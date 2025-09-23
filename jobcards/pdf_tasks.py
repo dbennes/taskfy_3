@@ -53,6 +53,29 @@ def _acquire_user_slot(user_id: int) -> bool:
 def _release_user_slot(user_id: int):
     _r().decr(f"quota:pdf:user:{user_id}")
 
+
+def _to_float(x):
+    """Converte com segurança para float (aceita str com vírgula)."""
+    if x is None:
+        return 0.0
+    if isinstance(x, (int, float)):
+        return float(x)
+    if isinstance(x, Decimal):
+        return float(x)
+    if isinstance(x, str):
+        s = x.strip()
+        # trata "1.234,56" e "1234,56"
+        if ',' in s:
+            s = s.replace('.', '').replace(',', '.')
+        try:
+            return float(s)
+        except Exception:
+            return 0.0
+    try:
+        return float(x)
+    except Exception:
+        return 0.0
+
 # ================= log simples no Redis (para o modal) =================
 
 def _log(run_id: str, message: str):
@@ -71,79 +94,87 @@ def _log(run_id: str, message: str):
 
 def compute_jobcard_fingerprint(job_card_number: str) -> str:
     """
-    Fingerprint usado para decidir se um JobCard precisa re-renderizar.
-    Inclui:
-      - campos principais do JobCard que aparecem no PDF
-      - MANPOWER, TOOLS, MATERIALS, TASKS, ENGINEERING
-    Assim, qualquer mudança relevante dispara nova renderização.
+    Fingerprint robusto: inclui todos os campos exibidos no PDF e
+    todos os recursos alocados, sempre com ordenação determinística.
     """
     j = JobCard.objects.get(job_card_number=job_card_number)
 
-    # Campos do JobCard que impactam o PDF (adicione/remova se quiser)
     job_payload = {
         "jc": j.job_card_number,
         "rev": j.rev,
-        "status": j.jobcard_status,
+        "jobcard_status": j.jobcard_status,
         "prepared_by": j.prepared_by,
-        "date_prepared": str(getattr(j, "date_prepared", "") or ""),
-        "approved_br": getattr(j, "approved_br", ""),
-        "date_approved": str(getattr(j, "date_approved", "") or ""),
+        "date_prepared": (j.date_prepared.isoformat() if j.date_prepared else ""),
+        "approved_br": j.approved_br,
+        "date_approved": (j.date_approved.isoformat() if j.date_approved else ""),
         "subsystem": j.subsystem,
         "discipline": j.discipline,
         "working_code": j.working_code,
         "working_code_description": j.working_code_description,
         "system": j.system,
         "location": j.location,
-        "seq_number": j.seq_number,
+        "level": getattr(j, "level", "") or "",
+        "workpack_number": getattr(j, "workpack_number", "") or "",
+        "seq_number": getattr(j, "seq_number", "") or "",
         "tag": j.tag,
-        "total_man_hours": float(j.total_man_hours or 0),
-        "job_card_description": j.job_card_description,
+        "unit": getattr(j, "unit", "") or "",
+        "total_man_hours": _to_float(getattr(j, "total_man_hours", 0)),
+        "job_card_description": getattr(j, "job_card_description", "") or "",
         "comments": j.comments,
         "activity_id": j.activity_id,
         "hot_work_required": j.hot_work_required,
-        "total_weight": float(j.total_weight or 0),
-        "total_duration_hs": float(j.total_duration_hs or 0),
+        "total_weight": _to_float(getattr(j, "total_weight", 0)),
+        "total_duration_hs": _to_float(getattr(j, "total_duration_hs", 0)),
         "company_comments": getattr(j, "company_comments", ""),
-        # last_modified_at ajuda a capturar outras mudanças se você mantiver auto_now=True no model
         "last_modified_at": j.last_modified_at.isoformat() if getattr(j, "last_modified_at", None) else "",
+        # imagens (se existirem no seu model)
+        "image_1": getattr(getattr(j, "image_1", None), "name", ""),
+        "image_2": getattr(getattr(j, "image_2", None), "name", ""),
+        "image_3": getattr(getattr(j, "image_3", None), "name", ""),
+        "image_4": getattr(getattr(j, "image_4", None), "name", ""),
     }
 
     payload = {
         "job": job_payload,
 
-        # MANPOWER agora no fingerprint
+        # MANPOWER
         "manp": list(
             AllocatedManpower.objects
             .filter(jobcard_number=j.job_card_number)
+            .order_by("task_order", "direct_labor", "id")
             .values("task_order", "direct_labor", "hours", "qty")
         ),
 
-        # Ferramentas cadastradas no jobcard (globais e por DL)
+        # TOOLS
         "tools": list(
             AllocatedTool.objects
             .filter(jobcard_number=j.job_card_number)
+            .order_by("direct_labor", "special_tooling", "id")
             .values("direct_labor", "qty", "qty_direct_labor", "special_tooling")
         ),
 
-        # Materiais
+        # MATERIALS
         "mats": list(
             AllocatedMaterial.objects
             .filter(jobcard_number=j.job_card_number)
+            .order_by("pmto_code", "id")
             .values("pmto_code", "description", "qty", "nps1", "comments")
         ),
 
-        # Tarefas
+        # TASKS
         "tasks": list(
             AllocatedTask.objects
             .filter(jobcard_number=j.job_card_number)
+            .order_by("task_order", "id")
             .values("task_order", "description", "max_hours", "total_hours",
                     "percent", "not_applicable", "completed")
         ),
 
-        # Documentos de engenharia
+        # ENGINEERING
         "eng": list(
             AllocatedEngineering.objects
             .filter(jobcard_number=j.job_card_number)
+            .order_by("discipline", "document", "tag", "id")
             .values("discipline", "document", "tag", "rev", "status")
         ),
     }

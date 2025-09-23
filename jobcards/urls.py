@@ -2,7 +2,8 @@ from django.urls import path
 from . import views
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views_pdf_api
-from . import views_schedule, views_documents
+from . import views_schedule, views_documents, views_allocated_manpower
+from . import views_downloads_jobcards
 
 # IMPORTANTE: use apenas UMA definição para cada rota de API
 urlpatterns = [
@@ -25,7 +26,7 @@ urlpatterns = [
     path('tasks/', views.task_list, name='task_list'),
 
     # Telas de alocação
-    path('allocated-manpower/', views.allocated_manpower_list, name='allocated_manpower_list'),
+    
     path('allocated-materials/', views.allocated_material_list, name='allocated_material_list'),
     path('allocated-tools/', views.allocated_tool_list, name='allocated_tool_list'),
     path('allocated-engineering/', views.allocated_engineering_list, name='allocated_engineering_list'),
@@ -179,16 +180,25 @@ urlpatterns = [
     path('schedule/template/',  views_schedule.schedule_template, name='schedule_template'),  # NOVA
     path("schedule/export-excel/", views_schedule.schedule_export_excel, name="schedule_export_excel"),
 
-
-
-
     path("engineering/docs/revisions/", views_documents.docs_revision_review, name="docs_revision_review"),
     path("engineering/docs/revisions/accept/<int:eng_id>/", views_documents.accept_doc_revision, name="accept_doc_revision"),
     path("engineering/docs/revisions/accept-bulk/", views_documents.accept_doc_revision_bulk, name="accept_doc_revision_bulk"),
     path('api/docs/to-accept-count/', views_documents.api_docs_to_accept_count, name='api_docs_to_accept_count'),
 
 
+    # ALOCAÇÃO DE MAO DE OBRA AJUSTADA
+    path('allocated/manpower/', views_allocated_manpower.allocated_manpower_list, name='allocated_manpower_list'),
+    path('allocated/manpower/data/', views_allocated_manpower.allocated_manpower_table_data, name='allocated_manpower_table_data'),
+    path('allocated/manpower/import/', views_allocated_manpower.import_allocated_manpower, name='import_allocated_manpower'),
+    path('allocated/manpower/export/', views_allocated_manpower.export_allocated_manpower_csv, name='export_allocated_manpower_csv'),
+    path("allocated/manpower/template/", views_allocated_manpower.allocated_manpower_template, name="allocated_manpower_template"),
+    
 
+    # BAIXAR JOBCARDS EM PDF EM LOTE (ZIP) 
+    path("jobcards/downloads/", views_downloads_jobcards.page, name="download_jobcards_page"),
+    path("jobcards/downloads/template/", views_downloads_jobcards.download_template, name="jobcards_download_template"),
+    path("jobcards/downloads/by-list/", views_downloads_jobcards.download_jobcards_by_list, name="download_jobcards_by_list"),
+    path("jobcards/downloads/all/", views_downloads_jobcards.download_all_jobcards, name="download_all_jobcards"),
 
 ]
 

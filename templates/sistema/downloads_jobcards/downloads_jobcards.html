@@ -1,0 +1,212 @@
+{% extends 'sistema/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  /* ===== Design tokens (90% light / black accents) ===== */
+  :root{
+    --bg:#f7f8fb; --panel:#ffffff; --ink:#0b0b0c; --muted:#667085;
+    --accent:#111111; --accent-ghost:#171717;
+    --line:#e7edf3; --line-strong:#d9e0e7; --line-soft:#f3f5f8; --hover:#f6f8fe;
+    --zebra:#fbfcff;
+    --radius:12px; --radius-lg:16px; --shadow:0 6px 20px rgba(16,24,40,.06);
+
+    /* Chips + button (same hue, slightly more vivid on the button) */
+    --chip-bg:#f4f6ff;
+    --chip-border:#e3e7ff;
+    --chip-strong:#e9edff;   /* button background */
+    --chip-strong-border:#cfd7ff;
+  }
+  .page-wrap{ background:var(--bg); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+
+  /* ===== Window header (no bold) ===== */
+  .window-bar{
+    background:#313131; color:#fff;
+    border-radius:8px; padding:.55rem .8rem;
+    display:flex; align-items:center; gap:.6rem; box-shadow:var(--shadow);
+  }
+  .win-dots{ display:flex; gap:.45rem; align-items:center }
+  .dot{ width:10px; height:10px; border-radius:50% }
+  .dot.red{background:#ff5f57}.dot.yellow{background:#febc2e}.dot.green{background:#28c840}
+  .window-title{ margin:0; font-weight:500; font-size:.95rem; letter-spacing:.02em }
+
+  /* ===== Cards (no bold headings) ===== */
+  .taskfy-card{
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius-lg);
+    padding:16px; box-shadow:var(--shadow);
+  }
+  .taskfy-card h6{ font-weight:500; letter-spacing:.02em; color:#111; margin:0 0 .4rem 0; }
+  .sub{ font-size:.92rem; color:#42464f; font-weight:400; }
+  .help{ font-size:.85rem; color:var(--muted); font-weight:400; }
+  .hint{ font-size:.78rem; color:#6f7787; font-weight:400; }
+  .divider{ height:1px; background:var(--line-soft); margin:.6rem 0 1rem; }
+
+  .btn-outline{
+    background:#fff; color:#111; border:1px solid var(--line-strong); border-radius:12px; font-weight:400;
+  }
+  /* Primary action with chip hue (slightly more vivid) */
+  .btn-chip{
+    background:var(--chip-strong);
+    color:#111;
+    border:1px solid var(--chip-strong-border);
+    border-radius:12px;
+    font-weight:400;
+  }
+  .btn-chip:hover{
+    background:#e2e7ff;
+    border-color:#c4ceff;
+    color:#111;
+  }
+
+  /* Chips */
+  .badge-pill{
+    border-radius:999px; padding:.2rem .6rem; font-size:.78rem;
+    background:var(--chip-bg); border:1px solid var(--chip-border); color:#111; font-weight:400;
+  }
+
+  /* SweetAlert2 text */
+  .swal2-html-container{ font-size:13px !important; text-align:left !important; }
+</style>
+
+<div class="container-fluid page-wrap mt-2">
+  <!-- ===== HEADER ===== -->
+  <div class="window-bar mb-3">
+    <div class="win-dots">
+      <span class="dot red"></span>
+      <span class="dot yellow"></span>
+      <span class="dot green"></span>
+    </div>
+    <h6 class="window-title ms-2">JobCards — Download (ZIP)</h6>
+
+    <div class="ms-auto d-flex gap-2">
+      <a href="{% url 'jobcards_download_template' %}" class="btn btn-outline btn-sm">
+        <i class="fa-solid fa-download me-1"></i> CSV Template
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== CONTENT ===== -->
+  <div class="row g-3">
+    <!-- CARD: By List (template) -->
+    <div class="col-lg-7">
+      <div class="taskfy-card">
+        <h6>Download by List (CSV/XLSX)</h6>
+        <div class="sub">Upload the file with <code>jobcard_number</code> to build a ZIP with existing PDFs only.</div>
+        <div class="divider"></div>
+
+        <form method="post" action="{% url 'download_jobcards_by_list' %}" enctype="multipart/form-data" class="row g-3">
+          {% csrf_token %}
+          <div class="col-12 col-md-8">
+            <label class="form-label" style="font-weight:400;">File</label>
+            <input type="file" name="file" class="form-control" accept=".csv,.xlsx" required>
+            <div class="hint mt-1">Required header: <code>jobcard_number</code>.</div>
+          </div>
+
+          <div class="col-12">
+            <button class="btn btn-chip">
+              <i class="fa-solid fa-file-zipper me-1"></i> Download ZIP (from list)
+            </button>
+            <a href="{% url 'jobcards_download_template' %}" class="btn btn-outline ms-1">
+              <i class="fa-solid fa-table-list me-1"></i> Download Template
+            </a>
+          </div>
+        </form>
+
+        <div class="mt-3 help">
+          Only PDFs already present in <code>jobcard_backups</code> are included.
+        </div>
+      </div>
+    </div>
+
+    <!-- CARD: Download All -->
+    <div class="col-lg-5">
+      <div class="taskfy-card">
+        <h6>Download All JobCards</h6>
+        <div class="sub">Create a single ZIP with every JobCard that has a PDF in the backup.</div>
+        <div class="divider"></div>
+
+        <form method="post" action="{% url 'download_all_jobcards' %}">
+          {% csrf_token %}
+
+          <div class="d-flex flex-column gap-2">
+            <div>
+              <span class="badge-pill">Always ZIP</span>
+              <span class="badge-pill">Space saving</span>
+              <span class="badge-pill">Ready to share</span>
+            </div>
+
+            <div class="row g-2">
+              <div class="col-7">
+                <div class="hint">Only existing PDFs will be included.</div>
+              </div>
+              <div class="col-5 d-flex align-items-end">
+                <button type="button" class="btn btn-outline w-100" data-bs-toggle="modal" data-bs-target="#confirmAllModal">
+                  <i class="fa-solid fa-layer-group me-1"></i> Download All
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal: confirm all -->
+          <div class="modal fade" id="confirmAllModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content" style="border-radius: var(--radius-lg); overflow:hidden;">
+                <div class="modal-header" style="background:#21262b; color:#fff;">
+                  <h6 class="modal-title" style="font-weight:500;">
+                    <i class="fa-regular fa-rectangle-xmark me-2"></i>Confirm download
+                  </h6>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  Only PDFs already present in <code>jobcard_backups</code> will be included. Continue?
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-chip">
+                    <i class="fa-solid fa-file-zipper me-1"></i> Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- /Modal -->
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+{% if messages %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const queue = [
+    {% for message in messages %}
+      {
+        icon: (function(tags){
+          if(tags.includes('error') || tags.includes('danger')) return 'error';
+          if(tags.includes('warning')) return 'warning';
+          if(tags.includes('success')) return 'success';
+          return 'info';
+        })('{{ message.tags }}'),
+        title: (function(tags){
+          if(tags.includes('error') || tags.includes('danger')) return 'Error';
+          if(tags.includes('warning')) return 'Warning';
+          if(tags.includes('success')) return 'Success';
+          return 'Notice';
+        })('{{ message.tags }}'),
+        html: "{{ message|escapejs }}",
+        confirmButtonText: 'OK',
+        width: 760,
+        customClass: { htmlContainer: 'swal2-html-container', title: '' }
+      },
+    {% endfor %}
+  ];
+  const show = i => { if(i>=queue.length) return; Swal.fire(queue[i]).then(()=>show(i+1)); };
+  show(0);
+});
+</script>
+{% endif %}
+{% endblock %}
