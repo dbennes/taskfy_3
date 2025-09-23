@@ -19,7 +19,7 @@ import shutil
 import pdfkit
 import barcode
 from barcode.writer import ImageWriter
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation  # ✅ uso de Decimal
 
 from .models import (
     JobCard, Area,
@@ -55,22 +55,40 @@ def _release_user_slot(user_id: int):
     _r().decr(f"quota:pdf:user:{user_id}")
 
 
-def _to_float(x):
-    """Converte com segurança para float (aceita str com vírgula)."""
+def _to_float(x) -> float:
+    """
+    Converte com segurança para float.
+    Aceita: None, int, float, Decimal, str (com vírgula/ponto, ex. '1.234,56').
+    Retorna 0.0 quando não consegue converter.
+    """
     if x is None:
         return 0.0
-    if isinstance(x, (int, float)):
+    if isinstance(x, float):
+        return x
+    if isinstance(x, int):
         return float(x)
     if isinstance(x, Decimal):
         return float(x)
     if isinstance(x, str):
         s = x.strip()
-        # trata "1.234,56" e "1234,56"
-        if ',' in s:
-            s = s.replace('.', '').replace(',', '.')
+        if not s:
+            return 0.0
+        # 1) tenta direto
         try:
             return float(s)
-        except Exception:
+        except ValueError:
+            pass
+        # 2) tenta Decimal direto
+        try:
+            return float(Decimal(s))
+        except (InvalidOperation, ValueError):
+            pass
+        # 3) heurística BR: "1.234,56" -> "1234.56"
+        try:
+            s2 = s.replace(" ", "")
+            s2 = s2.replace(".", "").replace(",", ".")
+            return float(Decimal(s2))
+        except (InvalidOperation, ValueError):
             return 0.0
     try:
         return float(x)
@@ -93,12 +111,20 @@ def _log(run_id: str, message: str):
 
 # ================= fingerprint (dedupe) =================
 
-def compute_jobcard_fingerprint(job_card_number: str) -> str:
+def compute_jobcard_fingerprint(job_ref) -> str:
     """
     Fingerprint robusto: inclui todos os campos exibidos no PDF e
-    todos os recursos alocados, sempre com ordenação determinística.
+    todos os recursos alocados, com ordenação determinística.
+
+    Aceita:
+      - job_ref = str (job_card_number)
+      - job_ref = JobCard (instância)
     """
-    j = JobCard.objects.get(job_card_number=job_card_number)
+    # ✅ Aceita tanto str quanto objeto JobCard
+    if isinstance(job_ref, JobCard):
+        j = job_ref
+    else:
+        j = JobCard.objects.get(job_card_number=str(job_ref))
 
     job_payload = {
         "jc": j.job_card_number,
@@ -193,11 +219,11 @@ def _find_wkhtmltopdf() -> str | None:
         return bin_path
 
     # 2) pasta padrão do projeto (Windows)
-    candidate = os.path.join(settings.BASE_DIR, "wkhtmltopdf", "bin", "wkhtmltopdf.exe")
+    candidate = os.path.join(str(getattr(settings, "BASE_DIR", "")), "wkhtmltopdf", "bin", "wkhtmltopdf.exe")
     if os.path.exists(candidate):
         return candidate
 
-    # 3) Program Files (Windows)
+    # 3) Program Files (Windows) / Linux
     candidates = [
         r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe",
         r"C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe",
@@ -214,7 +240,6 @@ def _find_wkhtmltopdf() -> str | None:
 
 # ================= renderizador (usa seus templates) =================
 
-# jobcards/pdf_tasks.py
 def _render_jobcard_pdf_to_disk(
     job_card_number: str,
     *,
@@ -230,7 +255,7 @@ def _render_jobcard_pdf_to_disk(
         job.save(update_fields=['jobcard_status'])
 
     # ---------- Barcode ----------
-    barcode_folder = os.path.join(settings.BASE_DIR, 'static', 'barcodes')
+    barcode_folder = os.path.join(str(getattr(settings, "BASE_DIR", "")), 'static', 'barcodes')
     os.makedirs(barcode_folder, exist_ok=True)
     barcode_filename = f'{job.job_card_number}.png'
     barcode_path = os.path.join(barcode_folder, barcode_filename)
@@ -279,7 +304,7 @@ def _render_jobcard_pdf_to_disk(
 
     allocated_tools = effective_tools
 
-    image_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', '3.jpg')
+    image_path = os.path.join(str(getattr(settings, "BASE_DIR", "")), 'static', 'assets', 'img', '3.jpg')
     image_url = f'file:///{image_path.replace("\\", "/")}'
 
     image_files = {}
@@ -351,9 +376,10 @@ def _render_jobcard_pdf_to_disk(
         try: os.unlink(footer_temp.name)
         except: pass
 
-    backups_dir = getattr(settings, 'JOB_BACKUP_DIR', os.path.join(settings.BASE_DIR, 'jobcard_backups'))
+    backups_dir = str(getattr(settings, 'JOB_BACKUP_DIR', os.path.join(str(getattr(settings, "BASE_DIR", "")), 'jobcard_backups')))
     os.makedirs(backups_dir, exist_ok=True)
-    backup_filename = f'JobCard_{job_card_number}_Rev_{job.rev}.pdf'
+    rev_tag = (job.rev or "R00").replace("/", "_").replace("\\", "_")  # ✅ sanitize + fallback
+    backup_filename = f'JobCard_{job_card_number}_Rev_{rev_tag}.pdf'
     with open(os.path.join(backups_dir, backup_filename), 'wb') as f:
         f.write(pdf_bytes)
 
@@ -362,7 +388,6 @@ def _render_jobcard_pdf_to_disk(
 
 # ================= RQ Job (executa no worker) =================
 
-# jobcards/pdf_tasks.py
 @job('pdf', timeout=60*60, result_ttl=24*60*60, failure_ttl=24*60*60)
 def render_jobcard_pdf_job(run_id: str, job_card_number: str, owner_id: int, expected_fp: str):
     close_old_connections()
@@ -384,7 +409,7 @@ def render_jobcard_pdf_job(run_id: str, job_card_number: str, owner_id: int, exp
         return "skipped-locked"
 
     try:
-        current = compute_jobcard_fingerprint(job_card_number)
+        current = compute_jobcard_fingerprint(job_card_number)  # ✅ aceita str/obj
         if current != expected_fp:
             expected_fp = current
 
