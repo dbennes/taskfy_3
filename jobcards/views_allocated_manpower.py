@@ -7,7 +7,7 @@ import os
 import difflib
 from collections import defaultdict
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Dict, List, Set, Tuple
 
 from django.contrib import messages
@@ -22,7 +22,7 @@ from django.utils.safestring import mark_safe
 from .models import (
     AllocatedManpower,
     AllocatedTask,
-    JobCard,         # fields: job_card_number, discipline, working_code
+    JobCard,         # fields: job_card_number, total_man_hours, total_duration_hs, discipline, working_code
     ManpowerBase,    # lista “válida” de direct_labor
     TaskBase,        # catálogo de tasks por (working_code, order)
 )
@@ -36,7 +36,7 @@ except Exception:
 
 
 # =========================
-# Helpers
+# Helpers numéricos e I/O
 # =========================
 def _to_decimal(value) -> Decimal:
     """Converte string -> Decimal aceitando vírgula/ponto. Vazio -> 0."""
@@ -56,6 +56,29 @@ def _to_decimal(value) -> Decimal:
         return Decimal(s)
     except InvalidOperation:
         return Decimal("0")
+
+
+def _q2(val: float | Decimal) -> Decimal:
+    """Arredonda para 2 casas com HALF_UP em Decimal."""
+    try:
+        d = val if isinstance(val, Decimal) else Decimal(str(val or 0))
+    except Exception:
+        d = Decimal("0")
+    return d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _coerce_for_field(val: Decimal, model_field: models.Field):
+    """
+    Converte Decimal(2 casas) para o tipo do campo alvo do JobCard.
+    - DecimalField -> Decimal
+    - Float/Integer -> float
+    - Char/Text -> string "0.00"
+    """
+    if isinstance(model_field, models.DecimalField):
+        return val
+    if isinstance(model_field, (models.FloatField, models.IntegerField)):
+        return float(val)
+    return f"{val:.2f}"
 
 
 def _read_rows_from_upload(fobj, filename) -> List[dict]:
@@ -195,6 +218,9 @@ def _manpower_valid_names_set() -> Set[str]:
     return {(v or "").strip().lower() for v in vals if v}
 
 
+# =========================
+# Regras de negócio (Tasks)
+# =========================
 def _recalc_task_totals(affected_pairs: Set[Tuple[str, int]]) -> int:
     """
     Para cada (jobcard_number, task_order):
@@ -422,6 +448,64 @@ def _ensure_missing_tasks_as_na(valid_rows: List[dict], job_map: Dict[str, dict]
             batch_size=1000,
         )
     return len(to_create) + len(to_update)
+
+
+# =========================
+# Sincronismo JobCard ↔ Tasks
+# =========================
+def _sync_jobcard_from_allocatedtask(jobcards: Set[str]) -> int:
+    """
+    Mantém o JobCard como ESPELHO do que está em AllocatedTask:
+      - JobCard.total_man_hours     = SUM(AllocatedTask.total_hours)
+      - JobCard.total_duration_hs   = SUM(AllocatedTask.max_hours)
+    Retorna a contagem de JobCards alterados.
+    """
+    if not jobcards:
+        return 0
+
+    aggs = (
+        AllocatedTask.objects
+        .filter(jobcard_number__in=jobcards)
+        .values("jobcard_number")
+        .annotate(
+            sum_total=Sum("total_hours"),
+            sum_dur=Sum("max_hours"),
+        )
+    )
+    by_jc = {
+        r["jobcard_number"]: (
+            _q2(r["sum_total"] or 0),
+            _q2(r["sum_dur"] or 0),
+        )
+        for r in aggs
+    }
+
+    # Campos reais do seu JobCard (são CharField na sua model)
+    f_tmh = JobCard._meta.get_field("total_man_hours")
+    f_dur = JobCard._meta.get_field("total_duration_hs")
+
+    to_update = []
+    for job in JobCard.objects.filter(job_card_number__in=jobcards):
+        tmh, dur = by_jc.get(job.job_card_number, (Decimal("0.00"), Decimal("0.00")))
+        new_tmh = _coerce_for_field(tmh, f_tmh)
+        new_dur = _coerce_for_field(dur, f_dur)
+
+        curr_tmh = job.total_man_hours
+        curr_dur = job.total_duration_hs
+
+        # Comparação via string para evitar ruído de tipos
+        if (str(curr_tmh) != str(new_tmh)) or (str(curr_dur) != str(new_dur)):
+            job.total_man_hours = new_tmh
+            job.total_duration_hs = new_dur
+            to_update.append(job)
+
+    if to_update:
+        JobCard.objects.bulk_update(
+            to_update,
+            ["total_man_hours", "total_duration_hs"],
+            batch_size=500,
+        )
+    return len(to_update)
 
 
 # =========================
@@ -677,6 +761,7 @@ def import_allocated_manpower(request):
     affected_pairs: Set[Tuple[str, int]] = set()
     created_na = 0
     pct_updates = 0
+    agg_updates = 0  # novo: quantos JobCards sincronizados
 
     try:
         with transaction.atomic():
@@ -721,6 +806,9 @@ def import_allocated_manpower(request):
             affected_jobcards = {r["jobcard_number"] for r in valid_rows}
             pct_updates = _recalc_jobcard_percentages(affected_jobcards)
 
+            # ✅ NOVO: manter JobCard exatamente igual ao que está em AllocatedTask
+            agg_updates = _sync_jobcard_from_allocatedtask(affected_jobcards)
+
         # ===== Mensagens =====
         base_msg = (
             f"<p><b>Import completed</b>.</p>"
@@ -729,6 +817,7 @@ def import_allocated_manpower(request):
             f"<li>{len(affected_pairs)} affected task(s)</li>"
             f"<li>{updated_tasks} task(s) updated (total/max/description)</li>"
             f"<li>{pct_updates} task(s) with % recalculated</li>"
+            f"<li><b>{agg_updates}</b> JobCard(s) synced from AllocatedTask</li>"
             f"</ul>"
         )
         if mode == "replace_jobcard":
@@ -831,6 +920,7 @@ def export_allocated_manpower_csv(request):
         )
     return response
 
+
 @login_required(login_url="login")
 @permission_required("jobcards.change_jobcard", raise_exception=True)
 def export_allocated_manpower_xlsx(request):
@@ -859,7 +949,7 @@ def export_allocated_manpower_xlsx(request):
     if f_disc:
         qs = qs.filter(discipline__icontains=f_disc)
     if f_lab:
-        qs = qs.filter(direct_labor__icontains=f_lab)
+        qs = qs.filter(direct_labor__icontains=f_labor)
     if q:
         qs = qs.filter(
             Q(jobcard_number__icontains=q)
