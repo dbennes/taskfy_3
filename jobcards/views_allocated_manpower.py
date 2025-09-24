@@ -18,6 +18,8 @@ from django.db.models.functions import Coalesce
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render, redirect
 from django.utils.safestring import mark_safe
+from django.db.models import Q, Sum, Max, F, ExpressionWrapper, DecimalField, Value
+from django.db.models.functions import Coalesce, Cast
 
 # MODELS
 from .models import (
@@ -238,22 +240,29 @@ def _recalc_task_totals(affected_pairs: Set[Tuple[str, int]]) -> int:
     jobcards = {jc for jc, _ in affected_pairs}
     orders = {o for _, o in affected_pairs}
 
-    # Σ(qty * hours) por par (usa F() e ExpressionWrapper)
-    qty_hours_expr = ExpressionWrapper(F("qty") * F("hours"), output_field=FloatField())
+    # Padroniza tudo para DECIMAL no banco
+    dec6 = DecimalField(max_digits=20, decimal_places=6)
+
+    # (qty * hours) com CAST para Decimal e COALESCE para nulos
+    qty_dec   = Cast(Coalesce(F("qty"),   Value(0)), dec6)
+    hours_dec = Cast(Coalesce(F("hours"), Value(0)), dec6)
+    qty_hours_expr = ExpressionWrapper(qty_dec * hours_dec, output_field=dec6)
+
+    # Σ(qty * hours) por (jobcard, task_order)
     totals_qs = (
         AllocatedManpower.objects
         .filter(jobcard_number__in=jobcards, task_order__in=orders)
         .values("jobcard_number", "task_order")
-        .annotate(total=Coalesce(Sum(qty_hours_expr), 0.0))
+        .annotate(total=Coalesce(Sum(qty_hours_expr, output_field=dec6), Value(0), output_field=dec6))
     )
     total_map = {(r["jobcard_number"], r["task_order"]): float(_q2(r["total"])) for r in totals_qs}
 
-    # max_hours = MAIOR 'hours' (sem qty)
+    # max_hours = MAIOR 'hours' (sem qty), também forçando Decimal
     max_qs = (
         AllocatedManpower.objects
         .filter(jobcard_number__in=jobcards, task_order__in=orders)
         .values("jobcard_number", "task_order")
-        .annotate(maxh=Coalesce(Max("hours"), 0.0))
+        .annotate(maxh=Coalesce(Max(Cast(F("hours"), dec6), output_field=dec6), Value(0), output_field=dec6))
     )
     max_map = {(r["jobcard_number"], r["task_order"]): float(_q2(r["maxh"])) for r in max_qs}
 
@@ -289,21 +298,15 @@ def _recalc_task_totals(affected_pairs: Set[Tuple[str, int]]) -> int:
             inst = existing[key]
             fields = []
             if float(inst.total_hours or 0.0) != totalh:
-                inst.total_hours = totalh
-                fields.append("total_hours")
+                inst.total_hours = totalh; fields.append("total_hours")
             if float(inst.max_hours or 0.0) != maxh:
-                inst.max_hours = maxh
-                fields.append("max_hours")
+                inst.max_hours = maxh; fields.append("max_hours")
             if (not inst.description) and desc:
-                inst.description = desc
-                fields.append("description")
-            # presente no import => aplicável e não concluído
+                inst.description = desc; fields.append("description")
             if inst.not_applicable:
-                inst.not_applicable = False
-                fields.append("not_applicable")
+                inst.not_applicable = False; fields.append("not_applicable")
             if inst.completed:
-                inst.completed = False
-                fields.append("completed")
+                inst.completed = False; fields.append("completed")
             if fields:
                 to_update.append(inst)
         else:
@@ -313,15 +316,14 @@ def _recalc_task_totals(affected_pairs: Set[Tuple[str, int]]) -> int:
                     task_order=order,
                     description=desc or "",
                     max_hours=maxh,
-                    total_hours=totalh,      # Σ(qty*hours)
+                    total_hours=totalh,
                     completed=False,
-                    percent=0.0,             # recalculado depois por participação
-                    not_applicable=False,    # presente no import => aplicável
+                    percent=0.0,
+                    not_applicable=False,
                 )
             )
 
     if to_create:
-        # cria já na ordem JC + task_order
         to_create.sort(key=lambda t: (t.jobcard_number, t.task_order))
         AllocatedTask.objects.bulk_create(to_create, batch_size=1000)
     if to_update:
@@ -334,26 +336,25 @@ def _recalc_task_totals(affected_pairs: Set[Tuple[str, int]]) -> int:
     return len(to_create) + len(to_update)
 
 
+
 def _recalc_jobcard_percentages(jobcards: Set[str]) -> int:
-    """
-    percent = total_hours_da_task / soma(total_hours_de_todas_as_tasks_do_jobcard) * 100
-    (onde total_hours é Σ(qty*hours))
-    """
     if not jobcards:
         return 0
 
-    # total por jobcard
+    dec6 = DecimalField(max_digits=20, decimal_places=6)
     totals = (
         AllocatedTask.objects.filter(jobcard_number__in=jobcards)
         .values("jobcard_number")
-        .annotate(gt=Coalesce(Sum("total_hours"), 0.0))
+        .annotate(
+            gt=Coalesce(Sum(Cast(F("total_hours"), dec6), output_field=dec6), Value(0), output_field=dec6)
+        )
     )
     gt_map = {r["jobcard_number"]: float(r["gt"] or 0.0) for r in totals}
 
     tasks = list(
         AllocatedTask.objects
         .filter(jobcard_number__in=jobcards)
-        .order_by('jobcard_number', 'task_order')  # determinismo
+        .order_by('jobcard_number', 'task_order')
     )
     to_update = []
     for t in tasks:
@@ -366,6 +367,7 @@ def _recalc_jobcard_percentages(jobcards: Set[str]) -> int:
     if to_update:
         AllocatedTask.objects.bulk_update(to_update, ["percent"], batch_size=1000)
     return len(to_update)
+
 
 
 def _ensure_missing_tasks_as_na(valid_rows: List[dict], job_map: Dict[str, dict]) -> int:
@@ -460,56 +462,39 @@ def _ensure_missing_tasks_as_na(valid_rows: List[dict], job_map: Dict[str, dict]
 # Sincronismo JobCard ↔ Tasks
 # =========================
 def _sync_jobcard_from_allocatedtask(jobcards: Set[str]) -> int:
-    """
-    Mantém o JobCard como ESPELHO do que está em AllocatedTask:
-      - JobCard.total_man_hours   = Σ(AllocatedTask.total_hours)     [Σ(qty*hours)]
-      - JobCard.total_duration_hs = Σ(AllocatedTask.max_hours)       [Σ(max 'hours')]
-    Retorna a contagem de JobCards alterados.
-    """
     if not jobcards:
         return 0
 
+    dec6 = DecimalField(max_digits=20, decimal_places=6)
     aggs = (
         AllocatedTask.objects
         .filter(jobcard_number__in=jobcards)
         .values("jobcard_number")
         .annotate(
-            sum_total=Coalesce(Sum("total_hours"), 0.0),
-            sum_dur=Coalesce(Sum("max_hours"), 0.0),
+            sum_total=Coalesce(Sum(Cast(F("total_hours"), dec6), output_field=dec6), Value(0), output_field=dec6),
+            sum_dur  = Coalesce(Sum(Cast(F("max_hours"),   dec6), output_field=dec6), Value(0), output_field=dec6),
         )
     )
-    by_jc = {
-        r["jobcard_number"]: (
-            _q2(r["sum_total"] or 0),
-            _q2(r["sum_dur"] or 0),
-        )
-        for r in aggs
-    }
+    by_jc = {r["jobcard_number"]: (_q2(r["sum_total"]), _q2(r["sum_dur"])) for r in aggs}
 
-    f_tmh = JobCard._meta.get_field("total_man_hours")     # CharField no seu model
-    f_dur = JobCard._meta.get_field("total_duration_hs")   # CharField no seu model
+    f_tmh = JobCard._meta.get_field("total_man_hours")
+    f_dur = JobCard._meta.get_field("total_duration_hs")
 
     to_update = []
     for job in JobCard.objects.filter(job_card_number__in=jobcards):
-        tmh, dur = by_jc.get(job.job_card_number, (Decimal("0.00"), Decimal("0.00")))
+        tmh, dur = by_jc.get(job.job_card_number, (_q2(0), _q2(0)))
         new_tmh = _coerce_for_field(tmh, f_tmh)
         new_dur = _coerce_for_field(dur, f_dur)
 
-        curr_tmh = job.total_man_hours
-        curr_dur = job.total_duration_hs
-
-        if (str(curr_tmh) != str(new_tmh)) or (str(curr_dur) != str(new_dur)):
-            job.total_man_hours = new_tmh
+        if (str(job.total_man_hours) != str(new_tmh)) or (str(job.total_duration_hs) != str(new_dur)):
+            job.total_man_hours  = new_tmh
             job.total_duration_hs = new_dur
             to_update.append(job)
 
     if to_update:
-        JobCard.objects.bulk_update(
-            to_update,
-            ["total_man_hours", "total_duration_hs"],
-            batch_size=500,
-        )
+        JobCard.objects.bulk_update(to_update, ["total_man_hours", "total_duration_hs"], batch_size=500)
     return len(to_update)
+
 
 
 # =========================
