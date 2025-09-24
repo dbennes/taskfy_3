@@ -13,7 +13,8 @@ from typing import Dict, List, Set, Tuple
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db import models, transaction
-from django.db.models import Q, Sum, Max
+from django.db.models import Q, Sum, Max, F, ExpressionWrapper, FloatField
+from django.db.models.functions import Coalesce
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render, redirect
 from django.utils.safestring import mark_safe
@@ -224,8 +225,8 @@ def _manpower_valid_names_set() -> Set[str]:
 def _recalc_task_totals(affected_pairs: Set[Tuple[str, int]]) -> int:
     """
     Para cada (jobcard_number, task_order):
-      - total_hours = soma de todas as hours (AllocatedManpower)
-      - max_hours   = MAIOR valor de hours (AllocatedManpower) dentro da task
+      - total_hours = Σ(qty * hours) dos manpowers da task  ✅
+      - max_hours   = MAIOR 'hours' (sem qty) dentre os manpowers da task  ✅
       - description = TaskBase.typical_task (por working_code + order), se houver
       - not_applicable = False (toda task presente no import é aplicável)
       - completed = False (sempre)
@@ -237,25 +238,29 @@ def _recalc_task_totals(affected_pairs: Set[Tuple[str, int]]) -> int:
     jobcards = {jc for jc, _ in affected_pairs}
     orders = {o for _, o in affected_pairs}
 
-    # total_hours por par
+    # Σ(qty * hours) por par (usa F() e ExpressionWrapper)
+    qty_hours_expr = ExpressionWrapper(F("qty") * F("hours"), output_field=FloatField())
     totals_qs = (
-        AllocatedManpower.objects.filter(jobcard_number__in=jobcards, task_order__in=orders)
+        AllocatedManpower.objects
+        .filter(jobcard_number__in=jobcards, task_order__in=orders)
         .values("jobcard_number", "task_order")
-        .annotate(total=Sum("hours"))
+        .annotate(total=Coalesce(Sum(qty_hours_expr), 0.0))
     )
-    total_map = {(r["jobcard_number"], r["task_order"]): float(r["total"] or 0.0) for r in totals_qs}
+    total_map = {(r["jobcard_number"], r["task_order"]): float(_q2(r["total"])) for r in totals_qs}
 
-    # max_hours = MAIOR hours da task
+    # max_hours = MAIOR 'hours' (sem qty)
     max_qs = (
-        AllocatedManpower.objects.filter(jobcard_number__in=jobcards, task_order__in=orders)
+        AllocatedManpower.objects
+        .filter(jobcard_number__in=jobcards, task_order__in=orders)
         .values("jobcard_number", "task_order")
-        .annotate(maxh=Max("hours"))
+        .annotate(maxh=Coalesce(Max("hours"), 0.0))
     )
-    max_map = {(r["jobcard_number"], r["task_order"]): float(r["maxh"] or 0.0) for r in max_qs}
+    max_map = {(r["jobcard_number"], r["task_order"]): float(_q2(r["maxh"])) for r in max_qs}
 
     # working_code por par (para buscar descrição no TaskBase)
     wk_qs = (
-        AllocatedManpower.objects.filter(jobcard_number__in=jobcards, task_order__in=orders)
+        AllocatedManpower.objects
+        .filter(jobcard_number__in=jobcards, task_order__in=orders)
         .values("jobcard_number", "task_order")
         .annotate(working_code=Max("working_code"))
     )
@@ -308,10 +313,10 @@ def _recalc_task_totals(affected_pairs: Set[Tuple[str, int]]) -> int:
                     task_order=order,
                     description=desc or "",
                     max_hours=maxh,
-                    total_hours=totalh,
+                    total_hours=totalh,      # Σ(qty*hours)
                     completed=False,
-                    percent=0.0,          # recalculado depois por participação
-                    not_applicable=False, # presente no import => aplicável
+                    percent=0.0,             # recalculado depois por participação
+                    not_applicable=False,    # presente no import => aplicável
                 )
             )
 
@@ -332,6 +337,7 @@ def _recalc_task_totals(affected_pairs: Set[Tuple[str, int]]) -> int:
 def _recalc_jobcard_percentages(jobcards: Set[str]) -> int:
     """
     percent = total_hours_da_task / soma(total_hours_de_todas_as_tasks_do_jobcard) * 100
+    (onde total_hours é Σ(qty*hours))
     """
     if not jobcards:
         return 0
@@ -340,7 +346,7 @@ def _recalc_jobcard_percentages(jobcards: Set[str]) -> int:
     totals = (
         AllocatedTask.objects.filter(jobcard_number__in=jobcards)
         .values("jobcard_number")
-        .annotate(gt=Sum("total_hours"))
+        .annotate(gt=Coalesce(Sum("total_hours"), 0.0))
     )
     gt_map = {r["jobcard_number"]: float(r["gt"] or 0.0) for r in totals}
 
@@ -456,8 +462,8 @@ def _ensure_missing_tasks_as_na(valid_rows: List[dict], job_map: Dict[str, dict]
 def _sync_jobcard_from_allocatedtask(jobcards: Set[str]) -> int:
     """
     Mantém o JobCard como ESPELHO do que está em AllocatedTask:
-      - JobCard.total_man_hours     = SUM(AllocatedTask.total_hours)
-      - JobCard.total_duration_hs   = SUM(AllocatedTask.max_hours)
+      - JobCard.total_man_hours   = Σ(AllocatedTask.total_hours)     [Σ(qty*hours)]
+      - JobCard.total_duration_hs = Σ(AllocatedTask.max_hours)       [Σ(max 'hours')]
     Retorna a contagem de JobCards alterados.
     """
     if not jobcards:
@@ -468,8 +474,8 @@ def _sync_jobcard_from_allocatedtask(jobcards: Set[str]) -> int:
         .filter(jobcard_number__in=jobcards)
         .values("jobcard_number")
         .annotate(
-            sum_total=Sum("total_hours"),
-            sum_dur=Sum("max_hours"),
+            sum_total=Coalesce(Sum("total_hours"), 0.0),
+            sum_dur=Coalesce(Sum("max_hours"), 0.0),
         )
     )
     by_jc = {
@@ -480,9 +486,8 @@ def _sync_jobcard_from_allocatedtask(jobcards: Set[str]) -> int:
         for r in aggs
     }
 
-    # Campos reais do seu JobCard (são CharField na sua model)
-    f_tmh = JobCard._meta.get_field("total_man_hours")
-    f_dur = JobCard._meta.get_field("total_duration_hs")
+    f_tmh = JobCard._meta.get_field("total_man_hours")     # CharField no seu model
+    f_dur = JobCard._meta.get_field("total_duration_hs")   # CharField no seu model
 
     to_update = []
     for job in JobCard.objects.filter(job_card_number__in=jobcards):
@@ -493,7 +498,6 @@ def _sync_jobcard_from_allocatedtask(jobcards: Set[str]) -> int:
         curr_tmh = job.total_man_hours
         curr_dur = job.total_duration_hs
 
-        # Comparação via string para evitar ruído de tipos
         if (str(curr_tmh) != str(new_tmh)) or (str(curr_dur) != str(new_dur)):
             job.total_man_hours = new_tmh
             job.total_duration_hs = new_dur
@@ -761,7 +765,7 @@ def import_allocated_manpower(request):
     affected_pairs: Set[Tuple[str, int]] = set()
     created_na = 0
     pct_updates = 0
-    agg_updates = 0  # novo: quantos JobCards sincronizados
+    agg_updates = 0  # quantos JobCards sincronizados
 
     try:
         with transaction.atomic():
@@ -806,7 +810,7 @@ def import_allocated_manpower(request):
             affected_jobcards = {r["jobcard_number"] for r in valid_rows}
             pct_updates = _recalc_jobcard_percentages(affected_jobcards)
 
-            # ✅ NOVO: manter JobCard exatamente igual ao que está em AllocatedTask
+            # ✅ Sincroniza o JobCard com o que ficou em AllocatedTask (Σ totals / Σ max)
             agg_updates = _sync_jobcard_from_allocatedtask(affected_jobcards)
 
         # ===== Mensagens =====
@@ -949,7 +953,7 @@ def export_allocated_manpower_xlsx(request):
     if f_disc:
         qs = qs.filter(discipline__icontains=f_disc)
     if f_lab:
-        qs = qs.filter(direct_labor__icontains=f_labor)
+        qs = qs.filter(direct_labor__icontains=f_lab)
     if q:
         qs = qs.filter(
             Q(jobcard_number__icontains=q)
