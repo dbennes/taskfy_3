@@ -3,7 +3,8 @@
 from django_rq import job
 from django.core.cache import cache
 from django_redis import get_redis_connection
-from django.db import close_old_connections
+from django.db import close_old_connections, transaction
+from django.db.models import Sum
 from django.utils import timezone
 from django.template.loader import render_to_string
 from django.conf import settings
@@ -245,6 +246,164 @@ def _find_wkhtmltopdf() -> str | None:
     which = shutil.which("wkhtmltopdf")
     return which
 
+
+# ================= SYNC (ÚNICA FUNÇÃO NOVA) =================
+
+def _sync_allocations_from_bases(job, *, delete_missing: bool = True) -> None:
+    """
+    Atualiza/cria/limpa os Allocated* de um JobCard com base nos bancos Base.
+    - Persiste as mudanças ANTES de gerar o PDF.
+    - Preserva progresso do usuário em AllocatedTask (completed/percent/not_applicable).
+    - Recalcula qty de ferramentas quando houver qty_direct_labor (multiplica pelo total de DL alocado).
+    - Se delete_missing=True, remove dos Allocated o que saiu dos Bases.
+    """
+    # imports locais para não alterar os imports globais
+    from .models import ManpowerBase, ToolsBase, TaskBase, MaterialBase, AllocatedManpower, AllocatedTool, AllocatedTask, AllocatedMaterial
+
+    def _norm(s):
+        return (s or "").strip().upper()
+
+    def _dec(v):
+        try:
+            return Decimal(str(v))
+        except Exception:
+            return Decimal("0")
+
+    jc = job.job_card_number
+
+    @transaction.atomic
+    def _run():
+        # ===== MANPOWER =====
+        mp_bases = list(ManpowerBase.objects.filter(
+            discipline=job.discipline,
+            working_code=job.working_code
+        ))
+
+        # task_order padrão = primeiro do TaskBase ou 1
+        first_task = TaskBase.objects.filter(
+            discipline=job.discipline, working_code=job.working_code
+        ).order_by("order").first()
+        default_task_order = first_task.order if first_task else 1
+
+        base_mp_keys = set()
+        for b in mp_bases:
+            base_mp_keys.add(b.direct_labor)
+            obj, _ = AllocatedManpower.objects.get_or_create(
+                jobcard_number=jc,
+                direct_labor=b.direct_labor,
+                defaults={"task_order": default_task_order},
+            )
+            obj.discipline = b.discipline
+            obj.working_code = b.working_code
+            obj.qty = _dec(b.qty)
+            obj.hours = _dec(b.qty)        # ajuste a fórmula se necessário
+            if not obj.task_order:
+                obj.task_order = default_task_order
+            obj.save()
+
+        if delete_missing:
+            AllocatedManpower.objects.filter(jobcard_number=jc).exclude(
+                direct_labor__in=list(base_mp_keys)
+            ).delete()
+
+        # Mapa DL -> soma qty alocada
+        mp_qty_by_dl_qs = (
+            AllocatedManpower.objects
+            .filter(jobcard_number=jc)
+            .values("direct_labor")
+            .annotate(total=Sum("qty"))
+        )
+        mp_qty_by_dl = { _norm(r["direct_labor"]): (r["total"] or Decimal("0")) for r in mp_qty_by_dl_qs }
+
+        # ===== TOOLS =====
+        tool_bases = list(ToolsBase.objects.filter(
+            discipline=job.discipline,
+            working_code=job.working_code
+        ))
+
+        base_tool_keys = set()
+        for t in tool_bases:
+            base_tool_keys.add(t.special_tooling)
+            obj, _ = AllocatedTool.objects.get_or_create(
+                jobcard_number=jc,
+                special_tooling=t.special_tooling,
+            )
+            obj.discipline = t.discipline
+            obj.working_code = t.working_code
+            obj.direct_labor = t.direct_labor
+            obj.qty_direct_labor = _dec(t.qty_direct_labor)
+
+            # Se houver qty_direct_labor -> multiplica pelo total de DL alocado
+            # Senão usa qty fixo do Base (se existir)
+            dl_total = mp_qty_by_dl.get(_norm(t.direct_labor), Decimal("0"))
+            if t.qty_direct_labor is not None:
+                obj.qty = _dec(t.qty_direct_labor) * dl_total
+            else:
+                obj.qty = _dec(getattr(t, "qty", 0))
+            obj.save()
+
+        if delete_missing:
+            AllocatedTool.objects.filter(jobcard_number=jc).exclude(
+                special_tooling__in=list(base_tool_keys)
+            ).delete()
+
+        # ===== TASKS =====
+        task_bases = list(TaskBase.objects.filter(
+            discipline=job.discipline,
+            working_code=job.working_code
+        ).order_by("order"))
+
+        base_task_orders = set()
+        for tb in task_bases:
+            base_task_orders.add(tb.order)
+            obj, _ = AllocatedTask.objects.get_or_create(
+                jobcard_number=jc,
+                task_order=tb.order,
+            )
+            # atualiza apenas o que vem do Base; preserva progresso do usuário
+            if obj.description != tb.typical_task:
+                obj.description = tb.typical_task
+                obj.save(update_fields=["description"])
+
+        if delete_missing:
+            AllocatedTask.objects.filter(jobcard_number=jc).exclude(
+                task_order__in=list(base_task_orders)
+            ).delete()
+
+        # ===== MATERIALS =====
+        mats_base = list(MaterialBase.objects.filter(job_card_number=jc))
+
+        def _mat_key(m):
+            # Chave estável para o allocated: prioriza item, senão descrição
+            if getattr(m, "item", None) is not None:
+                return f"ITEM:{m.item}"
+            desc = (m.description or "").strip()
+            return f"DESC:{desc[:64]}" if desc else f"ROW:{getattr(m, 'pk', id(m))}"
+
+        base_mat_codes = set()
+        for m in mats_base:
+            code = _mat_key(m)
+            base_mat_codes.add(code)
+            obj, _ = AllocatedMaterial.objects.get_or_create(
+                jobcard_number=jc,
+                pmto_code=code,
+            )
+            obj.discipline = m.discipline
+            obj.working_code = m.working_code
+            obj.description = m.description
+            obj.qty = _dec(getattr(m, "qty", 0))
+            obj.nps1 = getattr(m, "nps1", None)
+            obj.comments = getattr(m, "comments", None)
+            obj.save()
+
+        if delete_missing:
+            AllocatedMaterial.objects.filter(jobcard_number=jc).exclude(
+                pmto_code__in=list(base_mat_codes)
+            ).delete()
+
+    _run()
+
+
 # ================= renderizador (usa seus templates) =================
 
 def _render_jobcard_pdf_to_disk(
@@ -254,6 +413,9 @@ def _render_jobcard_pdf_to_disk(
 ):
     job = JobCard.objects.get(job_card_number=job_card_number)
     area_info = Area.objects.filter(area_code=job.location).first() if job.location else None
+
+    # 🔥 SINCRONIZA os Allocated* com os Bancos Base ANTES de gerar o PDF
+    _sync_allocations_from_bases(job, delete_missing=True)
 
     # === POLITICA DE STATUS ===
     if status_override is not None and job.jobcard_status != status_override:
@@ -281,7 +443,7 @@ def _render_jobcard_pdf_to_disk(
     allocated_tasks     = AllocatedTask.objects.filter(jobcard_number=job_card_number).order_by('task_order')
     allocated_engineerings = AllocatedEngineering.objects.filter(jobcard_number=job.job_card_number)
 
-    # Recalcular ferramentas conforme DL alocado
+    # Recalcular ferramentas conforme DL alocado (para exibição no PDF)
     dl_qty = defaultdict(float)
     for mp in allocated_manpowers:
         if mp.direct_labor:
