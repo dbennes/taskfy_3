@@ -247,21 +247,17 @@ def _find_wkhtmltopdf() -> str | None:
     return which
 
 
-# ================= SYNC (ÚNICA FUNÇÃO NOVA) =================
+# ================= SYNC opcional (mantido, mas DESLIGADO por padrão) =================
+# Mantemos a função para uso futuro, porém NÃO é chamada a menos que
+# settings.JOBCARD_SYNC_FROM_BASES = True.
 
 def _sync_allocations_from_bases(job, *, delete_missing: bool = True) -> None:
     """
     Atualiza/cria/limpa os Allocated* de um JobCard com base nos bancos Base.
-    - Persiste as mudanças ANTES de gerar o PDF.
-    - Preserva progresso do usuário em AllocatedTask (completed/percent/not_applicable).
-    - Recalcula qty de ferramentas quando houver qty_direct_labor (multiplica pelo total de DL alocado).
-    - Se delete_missing=True, remove dos Allocated o que saiu dos Bases.
+    OBS: Esta rotina NÃO é chamada por padrão. Só rodará se
+         settings.JOBCARD_SYNC_FROM_BASES == True.
     """
-    # imports locais para não alterar os imports globais
     from .models import ManpowerBase, ToolsBase, TaskBase, MaterialBase, AllocatedManpower, AllocatedTool, AllocatedTask, AllocatedMaterial
-
-    def _norm(s):
-        return (s or "").strip().upper()
 
     def _dec(v):
         try:
@@ -279,7 +275,6 @@ def _sync_allocations_from_bases(job, *, delete_missing: bool = True) -> None:
             working_code=job.working_code
         ))
 
-        # task_order padrão = primeiro do TaskBase ou 1
         first_task = TaskBase.objects.filter(
             discipline=job.discipline, working_code=job.working_code
         ).order_by("order").first()
@@ -296,7 +291,7 @@ def _sync_allocations_from_bases(job, *, delete_missing: bool = True) -> None:
             obj.discipline = b.discipline
             obj.working_code = b.working_code
             obj.qty = _dec(b.qty)
-            obj.hours = _dec(b.qty)        # ajuste a fórmula se necessário
+            obj.hours = _dec(b.qty)
             if not obj.task_order:
                 obj.task_order = default_task_order
             obj.save()
@@ -306,20 +301,20 @@ def _sync_allocations_from_bases(job, *, delete_missing: bool = True) -> None:
                 direct_labor__in=list(base_mp_keys)
             ).delete()
 
-        # Mapa DL -> soma qty alocada
+        # ===== TOOLS =====
+        tool_bases = list(ToolsBase.objects.filter(
+            discipline=job.discipline,
+            working_code=job.working_code
+        ))
+
+        # Soma qty por DL
         mp_qty_by_dl_qs = (
             AllocatedManpower.objects
             .filter(jobcard_number=jc)
             .values("direct_labor")
             .annotate(total=Sum("qty"))
         )
-        mp_qty_by_dl = { _norm(r["direct_labor"]): (r["total"] or Decimal("0")) for r in mp_qty_by_dl_qs }
-
-        # ===== TOOLS =====
-        tool_bases = list(ToolsBase.objects.filter(
-            discipline=job.discipline,
-            working_code=job.working_code
-        ))
+        mp_qty_by_dl = { (r["direct_labor"] or "").strip().upper(): (r["total"] or Decimal("0")) for r in mp_qty_by_dl_qs }
 
         base_tool_keys = set()
         for t in tool_bases:
@@ -333,9 +328,7 @@ def _sync_allocations_from_bases(job, *, delete_missing: bool = True) -> None:
             obj.direct_labor = t.direct_labor
             obj.qty_direct_labor = _dec(t.qty_direct_labor)
 
-            # Se houver qty_direct_labor -> multiplica pelo total de DL alocado
-            # Senão usa qty fixo do Base (se existir)
-            dl_total = mp_qty_by_dl.get(_norm(t.direct_labor), Decimal("0"))
+            dl_total = mp_qty_by_dl.get((t.direct_labor or "").strip().upper(), Decimal("0"))
             if t.qty_direct_labor is not None:
                 obj.qty = _dec(t.qty_direct_labor) * dl_total
             else:
@@ -360,7 +353,6 @@ def _sync_allocations_from_bases(job, *, delete_missing: bool = True) -> None:
                 jobcard_number=jc,
                 task_order=tb.order,
             )
-            # atualiza apenas o que vem do Base; preserva progresso do usuário
             if obj.description != tb.typical_task:
                 obj.description = tb.typical_task
                 obj.save(update_fields=["description"])
@@ -374,7 +366,6 @@ def _sync_allocations_from_bases(job, *, delete_missing: bool = True) -> None:
         mats_base = list(MaterialBase.objects.filter(job_card_number=jc))
 
         def _mat_key(m):
-            # Chave estável para o allocated: prioriza item, senão descrição
             if getattr(m, "item", None) is not None:
                 return f"ITEM:{m.item}"
             desc = (m.description or "").strip()
@@ -414,8 +405,11 @@ def _render_jobcard_pdf_to_disk(
     job = JobCard.objects.get(job_card_number=job_card_number)
     area_info = Area.objects.filter(area_code=job.location).first() if job.location else None
 
-    # 🔥 SINCRONIZA os Allocated* com os Bancos Base ANTES de gerar o PDF
-    _sync_allocations_from_bases(job, delete_missing=True)
+    # 🔕 SINCRONIZAÇÃO DESLIGADA POR PADRÃO:
+    # Só sincroniza se o projeto habilitar explicitamente no settings:
+    # JOBCARD_SYNC_FROM_BASES = True
+    if getattr(settings, "JOBCARD_SYNC_FROM_BASES", False):
+        _sync_allocations_from_bases(job, delete_missing=True)
 
     # === POLITICA DE STATUS ===
     if status_override is not None and job.jobcard_status != status_override:
