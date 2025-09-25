@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views_pdf_api
-from . import views_schedule, views_documents, views_allocated_manpower
+from . import views_schedule, views_documents, views_allocated_manpower, views_sync
 from . import views_downloads_jobcards
 
 # IMPORTANTE: use apenas UMA definição para cada rota de API
@@ -201,6 +201,10 @@ urlpatterns = [
     path("jobcards/downloads/by-list/", views_downloads_jobcards.download_jobcards_by_list, name="download_jobcards_by_list"),
     path("jobcards/downloads/all/", views_downloads_jobcards.download_all_jobcards, name="download_all_jobcards"),
 
+    path('jobcards/sync-all/', views_sync.api_sync_allocations_all, name='jobcard_sync_allocations_all'),
+    path('jobcards/<str:job_card_number>/sync/', views_sync.jobcard_sync_allocations, name='jobcard_sync_allocations'),
+
+    
 ]
 
 
