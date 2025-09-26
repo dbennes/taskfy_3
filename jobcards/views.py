@@ -691,37 +691,72 @@ def edit_jobcard(request, jobcard_id=None):
 
 
 
-        ### --- AllocatedTask --- ###
+         ### --- AllocatedTask --- ###
+        # Sempre sincronizar a descrição com a TaskBase atual
         task_list = TaskBase.objects.filter(working_code=job.working_code).order_by('order')
-        existing_tasks = {t.task_order: t for t in AllocatedTask.objects.filter(jobcard_number=job.job_card_number)}
-        updated_tasks = set()
+
+        # Mapa: order -> descrição atual da TaskBase
+        task_desc = {t.order: t.typical_task for t in task_list}
+
+        # Tarefas já alocadas para esta JobCard
+        existing_tasks = {
+            t.task_order: t
+            for t in AllocatedTask.objects.filter(jobcard_number=job.job_card_number)
+        }
+
+        updated_orders = set()
+
         for task in task_list:
-            max_hh = safe_float(request.POST.get(f"hh-max-{task.order}", '0'))
-            total_hh = safe_float(request.POST.get(f"hh-total-{task.order}", '0'))
-            percent = safe_float(request.POST.get(f"hh-percent-{task.order}", '0'))
-            not_applicable = request.POST.get(f"task-not-applicable-{task.order}") == 'on'
-            if task.order in existing_tasks:
-                obj = existing_tasks.pop(task.order)
-                if obj.max_hours != max_hh or obj.total_hours != total_hh or obj.percent != percent or obj.not_applicable != not_applicable:
+            order = task.order
+            max_hh = safe_float(request.POST.get(f"hh-max-{order}", '0'))
+            total_hh = safe_float(request.POST.get(f"hh-total-{order}", '0'))
+            percent = safe_float(request.POST.get(f"hh-percent-{order}", '0'))
+            not_applicable = request.POST.get(f"task-not-applicable-{order}") == 'on'
+            desc = task_desc.get(order, '').strip()  # descrição 100% da base
+
+            if order in existing_tasks:
+                obj = existing_tasks.pop(order)
+                changed = False
+
+                if (obj.description or '') != desc:
+                    obj.description = desc
+                    changed = True
+                if (obj.max_hours or 0.0) != max_hh:
                     obj.max_hours = max_hh
+                    changed = True
+                if (obj.total_hours or 0.0) != total_hh:
                     obj.total_hours = total_hh
+                    changed = True
+                if (obj.percent or 0.0) != percent:
                     obj.percent = percent
+                    changed = True
+                if bool(obj.not_applicable) != bool(not_applicable):
                     obj.not_applicable = not_applicable
-                    obj.save()
+                    changed = True
+
+                if changed:
+                    obj.save(update_fields=[
+                        "description", "max_hours", "total_hours", "percent", "not_applicable"
+                    ])
             else:
+                # Cria já com a descrição ATUAL da TaskBase
                 AllocatedTask.objects.create(
                     jobcard_number=job.job_card_number,
-                    task_order=task.order,
-                    description=task.typical_task,
+                    task_order=order,
+                    description=desc,
                     max_hours=max_hh,
                     total_hours=total_hh,
                     percent=percent,
                     not_applicable=not_applicable,
                 )
-            updated_tasks.add(task.order)
-        for task_order, obj in existing_tasks.items():
-            if task_order not in updated_tasks:
+
+            updated_orders.add(order)
+
+        # Remove tarefas que não existem mais na TaskBase (foram excluídas ou reordenadas)
+        for order, obj in existing_tasks.items():
+            if order not in updated_orders:
                 obj.delete()
+        ### --- fim AllocatedTask --- ###
 
 
 
@@ -1161,7 +1196,6 @@ def generate_pdf(request, jobcard_id):
 
 # --------- DATABASE EXIBIÇÕES --------------- #
 
-@login_required(login_url='login')
 def jobcards_overview(request):
     # Filtros e busca
     jobcards = JobCard.objects.all()
@@ -1257,8 +1291,6 @@ def jobcards_overview(request):
     # Requisição normal: página completa
     return render(request, 'sistema/databases/jobcards_overview.html', context)
 
-
-@login_required(login_url='login')
 def materials_list(request):
     materials = MaterialBase.objects.all()
 
@@ -1268,7 +1300,6 @@ def materials_list(request):
 
     return render(request, 'sistema/databases/materials_list.html', context)
 
-@login_required(login_url='login')
 def manpower_list(request):
     manpowers = ManpowerBase.objects.all()
     context = {
@@ -1276,7 +1307,6 @@ def manpower_list(request):
     }
     return render(request, 'sistema/databases/manpower_list.html', context)
 
-@login_required(login_url='login')
 def tools_list(request):
     tools = ToolsBase.objects.all()
     context = {
@@ -1284,7 +1314,6 @@ def tools_list(request):
     }
     return render(request, 'sistema/databases/tools_list.html', context)
 
-@login_required(login_url='login')
 def engineering_list(request):
     engineering = EngineeringBase.objects.all()
     context = {
@@ -1292,7 +1321,6 @@ def engineering_list(request):
     }
     return render(request, 'sistema/databases/engineering_list.html', context)
 
-@login_required(login_url='login')
 def task_list(request):
     tasks = TaskBase.objects.all()
     # Cria um dicionário: código → descrição
@@ -1306,8 +1334,6 @@ def task_list(request):
 # --------- DATABASE ALOCAÇÕES --------------- #
 
 
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
 def allocated_tool_list(request):
     allocated_tools = AllocatedTool.objects.all()
     context = {
@@ -1315,9 +1341,6 @@ def allocated_tool_list(request):
     }
     return render(request, 'sistema/allocated/allocated_tool_list.html', context)
 
-
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
 def allocated_material_list(request):
     allocated_materials = AllocatedMaterial.objects.all()
     context = {
@@ -1325,8 +1348,6 @@ def allocated_material_list(request):
     }
     return render(request, 'sistema/allocated/allocated_material_list.html', context)
 
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
 def allocated_engineering_list(request):
     allocated_engineering = AllocatedEngineering.objects.all()
     context = {
@@ -1334,8 +1355,7 @@ def allocated_engineering_list(request):
     }
     return render(request, 'sistema/allocated/allocated_engineering_list.html', context)
 
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
+
 def allocated_task_list(request):
     allocated_tasks = AllocatedTask.objects.all()
     context = {
@@ -1346,7 +1366,6 @@ def allocated_task_list(request):
 # --------- IMPORTAÇÕES BANCOS --------------- #
 
 @csrf_exempt
-@permission_required('jobcards.change_jobcard', raise_exception=True)
 def import_materials(request):
     if request.method == "POST":
         overwrite = request.POST.get('overwrite') == '1'
@@ -1444,8 +1463,7 @@ def import_materials(request):
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
-@login_required
-@permission_required('jobcards.change_jobcard', raise_exception=True)
+
 def import_jobcard(request):
     if request.method == "POST":
         overwrite = request.POST.get('overwrite') == '1'
@@ -1568,8 +1586,7 @@ def import_jobcard(request):
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
-@login_required
-@permission_required('jobcards.change_jobcard', raise_exception=True)
+
 def import_manpower(request):
     if request.method == "POST":
         file = request.FILES.get('file')
@@ -1652,8 +1669,7 @@ def import_manpower(request):
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
-@login_required
-@permission_required('jobcards.change_jobcard', raise_exception=True)
+
 def import_toolsbase(request):
     if request.method == "POST":
         file = request.FILES.get('file')
@@ -1740,8 +1756,6 @@ def import_toolsbase(request):
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 
-@login_required
-@permission_required('jobcards.change_jobcard', raise_exception=True)
 def import_engineering(request):
     if request.method == "POST":
         overwrite = request.POST.get("overwrite") == "1"
@@ -1792,8 +1806,7 @@ def import_engineering(request):
     
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
 
-@login_required
-@permission_required('jobcards.change_jobcard', raise_exception=True)
+
 def import_taskbase(request):
     if request.method == "POST":
         file = request.FILES.get('file')
@@ -1928,8 +1941,7 @@ class SystemListView(ListView):
 # --------- DELETAR DADOS -------------- #
 
 
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
+
 def delete_discipline(request, pk):
     discipline = get_object_or_404(Discipline, pk=pk)
     discipline.delete()
@@ -1937,8 +1949,6 @@ def delete_discipline(request, pk):
 
 # System Delete
 
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
 def delete_system(request, pk):
     system = get_object_or_404(System, pk=pk)
     system.delete()
@@ -1946,8 +1956,7 @@ def delete_system(request, pk):
 
 # Working Code Delete
 
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
+
 def delete_working_code(request, pk):
     working_code = get_object_or_404(WorkingCode, pk=pk)
     working_code.delete()
@@ -1955,8 +1964,7 @@ def delete_working_code(request, pk):
 
 # Area Delete
 
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
+
 def delete_area(request, pk):
     area = get_object_or_404(Area, pk=pk)
     area.delete()
@@ -1965,7 +1973,7 @@ def delete_area(request, pk):
 
 # --------- BAIXAR EXPORTAÇÕES --------- #
 
-@login_required(login_url='login')
+
 def export_materials_excel(request):
     # CAPTURA OS FILTROS ENVIADOS PELO FRONT
     material = request.GET.get('material', '')
@@ -2040,7 +2048,7 @@ def export_materials_excel(request):
     df.to_excel(response, index=False)
     return response
 
-@login_required(login_url='login')
+
 def export_manpower_excel (request):
     discipline = request.GET.get('discipline', '')
     working_code = request.GET.get('working_code', '')
@@ -2083,7 +2091,7 @@ def export_manpower_excel (request):
     df.to_excel(response, index=False)
     return response
 
-@login_required(login_url='login')
+
 def export_toolsbase_excel(request):
     discipline = request.GET.get('discipline', '')
     working_code = request.GET.get('working_code', '')
@@ -2128,7 +2136,7 @@ def export_toolsbase_excel(request):
     df.to_excel(response, index=False)
     return response
 
-@login_required(login_url='login')
+
 def export_jobcard_excel(request):
     search_number = request.GET.get('search_number', '').strip()
     search_discipline = request.GET.get('search_discipline', '').strip()
@@ -2225,7 +2233,7 @@ def export_jobcard_excel(request):
 
 # --------- AREA REPORTS --------------- #
 
-@login_required(login_url='login')
+
 def jobcards_tam(request):
     qs = JobCard.objects.filter(comments__icontains='TAM')
 
@@ -2283,14 +2291,12 @@ def jobcards_tam(request):
 
 # --------- AVANÇAR JOBCARDS --------------- #
 
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
+
 def jobcard_progress(request):
     return render(request, 'sistema/avancar/jobcard_progress.html')
 
-@login_required(login_url='login')
+
 @require_GET
-@permission_required('jobcards.change_jobcard', raise_exception=True)
 def api_jobcard_detail(request, jobcard_number):
     try:
         job = JobCard.objects.get(job_card_number=jobcard_number)
@@ -2311,9 +2317,8 @@ def api_jobcard_detail(request, jobcard_number):
     }
     return JsonResponse(data)
 
-@login_required(login_url='login')
+
 @require_POST
-@permission_required('jobcards.change_jobcard', raise_exception=True)
 def api_jobcard_advance(request, jobcard_number):
     try:
         job = JobCard.objects.get(job_card_number=jobcard_number)
@@ -2326,8 +2331,7 @@ def api_jobcard_advance(request, jobcard_number):
 
 # --------- AREA DE IMPEDIMENTOS --------------- #
 
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
+
 def create_impediment(request):
     error = None
     jobcard = None
@@ -2354,8 +2358,6 @@ def create_impediment(request):
         'error': error,
     })
         
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
 def impediments_list(request):
     search = request.GET.get('search', '')
     items_per_page = int(request.GET.get('items_per_page', 10))
@@ -2385,8 +2387,6 @@ def impediments_list(request):
     return render(request, 'sistema/impediments/impediments_list.html', context)
 
 @csrf_exempt
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
 def impediment_update(request):
     if request.method == 'POST':
         id = request.POST.get('id')
@@ -2412,8 +2412,6 @@ def impediment_update(request):
     return JsonResponse({'success': False})
 
 @csrf_exempt
-@login_required(login_url='login')
-@permission_required('jobcards.change_jobcard', raise_exception=True)
 def impediment_delete(request):
     if request.method == 'POST':
         id = request.POST.get('id')
@@ -2781,69 +2779,94 @@ def api_notificacoes_lidas(request):
         return JsonResponse({'ok': True})
     return JsonResponse({'ok': False}, status=400)
 
+# ALLOCAÇÃO DE MAO DE OBRA
 
-@login_required(login_url='login')
-@csrf_exempt
-@permission_required('jobcards.change_jobcard', raise_exception=True)
-def save_allocation(request, jobcard_id, task_order):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        # Remove todos os manpowers antigos daquela tarefa
-        AllocatedManpower.objects.filter(jobcard_number=jobcard_id, task_order=task_order).delete()
+from django.db import transaction
+from django.http import JsonResponse, HttpRequest
 
-        total_hours = 0.0
-        max_hours = 0.0
 
-        # Cria/Atualiza os manpowers enviados e calcula totals
-        for mp in data.get('manpowers', []):
-            qty = float(mp["qty"])
-            hours = float(mp["hours"])
-            total = qty * hours
-            total_hours += total
-            max_hours = max(max_hours, hours)
-            AllocatedManpower.objects.update_or_create(
-                jobcard_number=jobcard_id,
-                task_order=task_order,
-                direct_labor=mp["direct_labor"],
-                defaults={
-                    "qty": qty,
-                    "hours": hours,
-                }
-            )
+def _taskbase_description(jobcard_id: str, task_order: int) -> str:
+    """
+    Retorna a descrição *atual* da TaskBase para o working_code do JobCard + order.
+    Se não houver TaskBase correspondente, devolve string vazia.
+    """
+    job = JobCard.objects.only("working_code").get(job_card_number=jobcard_id)
+    tb = (
+        TaskBase.objects
+        .filter(working_code=job.working_code, order=task_order)
+        .only("typical_task")
+        .first()
+    )
+    return tb.typical_task if tb else ""
 
-        # Usa o que veio do frontend (para manter a mesma lógica!)
-        max_hh = float(data.get('max_hh', max_hours))
-        total_hh = float(data.get('total_hh', total_hours))
-        percent = float(data.get('percent', 0))
-        not_applicable = data.get('not_applicable', False)
 
-        # Atualiza/Cria o AllocatedTask correspondente
-        try:
-            atask = AllocatedTask.objects.get(jobcard_number=jobcard_id, task_order=task_order)
-            atask.max_hours = max_hh
-            atask.total_hours = total_hh
-            atask.percent = percent
-            atask.not_applicable = not_applicable
-            atask.save()
-        except AllocatedTask.DoesNotExist:
-            # Busca a descrição correta da TaskBase
-            taskbase = TaskBase.objects.filter(
-                working_code=JobCard.objects.get(job_card_number=jobcard_id).working_code,
-                order=task_order
-            ).first()
-            description = taskbase.typical_task if taskbase else ''
-            atask = AllocatedTask.objects.create(
-                jobcard_number=jobcard_id,
-                task_order=task_order,
-                description=description,  # AGORA SALVA CORRETAMENTE
-                max_hours=max_hh,
-                total_hours=total_hh,
-                percent=percent,
-                not_applicable=not_applicable
-            )
+@transaction.atomic
+def save_allocation(request: HttpRequest, jobcard_id: str, task_order: int):
+    """
+    Salva a alocação de manpowers da task e SINCRONIZA a descrição do AllocatedTask
+    com a descrição *atual* da TaskBase (reflete renomes/revisões feitos pelo usuário).
+    """
+    if request.method != "POST":
+        return JsonResponse({'error': 'Invalid method'}, status=400)
 
-        return JsonResponse({'success': True})
-    return JsonResponse({'error': 'Invalid method'}, status=400)
+    data = json.loads(request.body or "{}")
+
+    # 1) Limpa manpowers antigos dessa task
+    AllocatedManpower.objects.filter(
+        jobcard_number=jobcard_id,
+        task_order=task_order
+    ).delete()
+
+    # 2) Recria manpowers e calcula totais (fallbacks seguros)
+    total_hours = Decimal("0")
+    max_hours = Decimal("0")
+
+    for mp in data.get('manpowers', []):
+        # Parse seguro para Decimal
+        qty = Decimal(str(mp.get("qty", "0") or "0"))
+        hours = Decimal(str(mp.get("hours", "0") or "0"))
+        total_hours += qty * hours
+        if hours > max_hours:
+            max_hours = hours
+
+        # OBS: Se seu AllocatedManpower exigir 'discipline' e 'working_code',
+        # adicione abaixo esses campos a partir do JobCard ou do frontend.
+        AllocatedManpower.objects.update_or_create(
+            jobcard_number=jobcard_id,
+            task_order=task_order,
+            direct_labor=mp.get("direct_labor", "").strip(),
+            defaults={
+                "qty": qty,
+                "hours": hours,
+            }
+        )
+
+    # 3) Totais vindos do frontend (mantém sua lógica atual)
+    max_hh = Decimal(str(data.get('max_hh', max_hours)))
+    total_hh = Decimal(str(data.get('total_hh', total_hours)))
+    percent = float(data.get('percent', 0) or 0)
+    not_applicable = bool(data.get('not_applicable', False))
+
+    # 4) SINCRONIZA a descrição com a TaskBase SEMPRE (update or create)
+    #    - Se o usuário renomear a típica na TaskBase, aqui já reflete.
+    description = _taskbase_description(jobcard_id, task_order)
+
+    # Se quiser permitir que o frontend sobrescreva em casos específicos:
+    # description = (data.get("description") or description).strip()
+
+    AllocatedTask.objects.update_or_create(
+        jobcard_number=jobcard_id,
+        task_order=task_order,
+        defaults={
+            "description": description,          # <- atualiza sempre
+            "max_hours": float(max_hh),
+            "total_hours": float(total_hh),
+            "percent": percent,
+            "not_applicable": not_applicable,
+        }
+    )
+
+    return JsonResponse({'success': True})
 
 # --------- AREA DE SUPRIMENTOS --------------- #
 

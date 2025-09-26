@@ -3,77 +3,73 @@
 
 {% block content %}
 <style>
-  /* ===== Design tokens (90% claro / 10% dark accent) ===== */
+  /* ===== Design tokens (Taskfy) ===== */
   :root{
     --bg:#f7f8fa; --panel:#ffffff; --ink:#0b0b0c; --muted:#6b7280;
     --line:#eceff3; --line-strong:#d9dee7; --hover:#f6f8fe; --zebra:#fbfcff;
     --accent:#111111; --accent-ghost:#171717;
-    --radius:14px; --radius-lg:16px; --shadow:0 6px 18px rgba(0,0,0,.06);
+    --radius:12px; --radius-lg:14px; --shadow:0 4px 14px rgba(16,24,40,.06);
     --green:#28c840; --red:#ff5f57; --yellow:#febc2e; --dark:#313131;
     --success:#16a34a; --warning:#f59e0b; --danger:#dc2626; --primary:#0d6efd;
   }
 
-  body, .container-fluid { background:var(--bg) !important; }
+  body, .container-fluid { background:var(--bg) !important; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; }
 
-  /* ===== Cards / textos ===== */
+  /* ===== Cards / textos (minimal) ===== */
   .card-clean { background:#fff; border-radius:var(--radius-lg); box-shadow:var(--shadow); border:1px solid var(--line); overflow:hidden; }
+  .section-head { background:#f5f7fb; border-bottom:1px solid var(--line); padding:12px 14px; }
   .muted { color:var(--muted); font-size:.9rem; }
 
-  /* ===== Topbar estilo janela (escura, sticky) ===== */
+  /* ===== Topbar minimal ===== */
   .topbar-black{
     position: sticky; top: 10px; z-index: 1010;
-    background:var(--dark); border-radius:12px; padding:10px 12px; margin-bottom:12px;
-    border:1px solid rgba(255,255,255,.06);
+    background:#fff; border-radius:12px; padding:10px 12px; margin-bottom:12px;
+    border:1px solid var(--line); box-shadow:var(--shadow);
   }
-  .topbar-black .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .topbar-black .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; opacity:.9; }
   .dot.red{background:var(--red)} .dot.yellow{background:var(--yellow)} .dot.green{background:var(--green)}
-  .topbar-title{ color:#fff; margin:0; font-size:.95rem; letter-spacing:.02em; }
+  .topbar-title{ color:var(--ink); margin:0; font-size:.95rem; font-weight:600; letter-spacing:0; }
 
-  /* Botões do topbar: manter classes existentes e só melhorar legibilidade */
   .btn-topbar{
-    --bs-btn-padding-y:.4rem; --bs-btn-padding-x:.65rem; --bs-btn-font-size:.82rem;
-    border-radius:10px;
+    --bs-btn-padding-y:.42rem; --bs-btn-padding-x:.7rem; --bs-btn-font-size:.82rem;
+    border-radius:10px; font-weight:600;
   }
   .topbar-black .btn-outline-light{
-    --bs-btn-color:#e5e7eb; --bs-btn-border-color:#4b5563; --bs-btn-hover-bg:#e5e7eb; --bs-btn-hover-color:#111827;
-    --bs-btn-hover-border-color:#e5e7eb; --bs-btn-active-bg:#fff; --bs-btn-active-color:#111827;
-    background:rgba(255,255,255,.03);
+    --bs-btn-color:#374151; --bs-btn-border-color:#e5e7eb; --bs-btn-hover-bg:#f3f4f6;
+    --bs-btn-hover-color:#111827; --bs-btn-hover-border-color:#d1d5db; --bs-btn-active-bg:#eef2f7;
+    background:#fff;
   }
-  .topbar-black .btn-primary.btn-sm{ box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
 
-  /* ===== Listas / atalhos ===== */
+  /* ===== Shortcuts ===== */
   .shortcut-item{
-    border:1px solid var(--line); border-radius:12px; background:#fff;
+    border:1px solid var(--line); border-radius:12px; background:#fff; padding:10px 12px;
     transition: transform .08s ease, box-shadow .12s ease, border-color .12s;
   }
-  .shortcut-item:hover{ background:#fff; border-color:var(--line-strong); box-shadow:0 8px 22px rgba(16,24,40,.06); transform: translateY(-1px); }
+  .shortcut-item:hover{ border-color:var(--line-strong); box-shadow:0 8px 18px rgba(16,24,40,.06); transform: translateY(-1px); }
   .shortcut-item .chev{ width:22px; height:22px; border-radius:50%; background:#f3f4f6; color:#111; display:inline-grid; place-items:center; font-weight:700; }
 
-  /* ===== KPI pills ===== */
-  .kpi{ display:flex; gap:12px; flex-wrap:wrap; }
-  .kpi .item{ background:#f8fafc; border:1px solid #eef2f7; border-radius:12px; padding:10px 12px; min-width:120px; }
+  /* ===== KPI e progresso ===== */
+  .kpi{ display:flex; gap:10px; flex-wrap:wrap; }
+  .kpi .item{ background:#fafbff; border:1px solid #eef2f7; border-radius:10px; padding:8px 10px; min-width:120px; }
   .kpi .label{ font-size:.72rem; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; }
   .kpi .value{ font-weight:700; color:#111; }
+  .progress{ height: 10px; background:#eef2f7; border-radius:999px; }
+  .progress-bar{ background:var(--primary); font-size:.7rem; }
 
-  /* ===== Progress ===== */
-  .progress{ height: 12px; background:#eef2f7; border-radius:999px; }
-  .progress-bar{ background:linear-gradient(90deg, var(--primary), #60a5fa); font-size:.75rem; }
-
-  /* ===== Log / mono ===== */
+  /* ===== Log ===== */
   #regenLog{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; background:#0b0b0c08; border:1px dashed var(--line-strong); }
 
-  /* ===== Focus visível ===== */
+  /* ===== Acessibilidade ===== */
   :is(button,a,input,select,.shortcut-item):focus-visible{
-    outline: 2px solid #93c5fd; outline-offset: 2px; box-shadow: 0 0 0 4px rgba(147,197,253,.25);
+    outline: 2px solid #93c5fd; outline-offset: 2px; box-shadow: 0 0 0 4px rgba(147,197,253,.2);
   }
 
-  /* ===== Responsivo ===== */
   @media (min-width: 992px) { .sticky-lg-top-16{ position: sticky; top: 16px; } }
 </style>
 
 <div class="container-fluid mt-2">
 
-  <!-- Top black bar -->
+  <!-- Topbar minimal -->
   <div class="d-flex align-items-center justify-content-between topbar-black">
     <div class="d-flex align-items-center">
       <span class="dot red me-1"></span>
@@ -82,25 +78,19 @@
       <h6 class="topbar-title ms-3">JobCards — Mass Update (Excel/CSV)</h6>
     </div>
     <div class="d-flex gap-2">
-      <button id="btnSyncAll"
-              class="btn btn-primary btn-sm btn-topbar"
-              data-url="{% url 'jobcard_sync_allocations_all' %}">
+      <button id="btnSyncAll" class="btn btn-primary btn-sm btn-topbar" data-url="{% url 'jobcard_sync_allocations_all' %}">
         <i class="fa fa-arrows-rotate me-1"></i> Sync ALL JobCards
       </button>
-
       <button type="button" class="btn btn-outline-light btn-sm btn-topbar" data-bs-toggle="modal" data-bs-target="#regenModal">
         <i class="fa fa-sync-alt me-1"></i> Regenerate PDFs
       </button>
-
       <a href="{% url 'download_jobcard_template' %}" class="btn btn-outline-light btn-sm btn-topbar">
         <i class="fa fa-download me-1"></i> Template
       </a>
-
       <button type="button" class="btn btn-outline-light btn-sm btn-topbar" onclick="exportJobcardsExcel()">
         <i class="fa fa-file-excel me-1"></i> Export Excel
       </button>
-
-      <button type="button" class="btn btn-success btn-sm btn-topbar" data-bs-toggle="modal" data-bs-target="#importJobcardModal">
+      <button type="button" class="btn btn-outline-light btn-sm btn-topbar" data-bs-toggle="modal" data-bs-target="#importJobcardModal">
         <i class="fa fa-upload me-1"></i> Import
       </button>
     </div>
@@ -118,8 +108,8 @@
     <!-- LEFT: form -->
     <div class="col-12 col-lg-6">
       <div class="card-clean mb-3">
-        <div class="p-3 border-bottom" style="background:#f5f7fb;">
-          <h5 class="mb-0">Modify JobCard</h5>
+        <div class="section-head">
+          <h5 class="mb-0" style="font-weight:600;">Modify JobCard</h5>
           <div class="muted">Type the JobCard number to open the editor.</div>
         </div>
 
@@ -143,21 +133,19 @@
     <!-- RIGHT: shortcuts -->
     <div class="col-12 col-lg-6">
       <div class="card-clean sticky-lg-top-16">
-        <div class="p-3 border-bottom" style="background:#f5f7fb;">
-          <div class="d-flex align-items-center justify-content-between">
-            <h6 class="mb-0">Shortcuts (recent)</h6>
-            <span class="badge text-bg-light">{{ recent_jobcards|length }}</span>
-          </div>
+        <div class="section-head d-flex align-items-center justify-content-between">
+          <h6 class="mb-0" style="font-weight:600;">Shortcuts (recent)</h6>
+          <span class="badge text-bg-light">{{ recent_jobcards|length }}</span>
         </div>
         <div class="p-3">
           <input id="shortcutFilter" type="text" class="form-control mb-3" placeholder="Filter by number, discipline or area...">
           <div id="shortcutsList" class="row g-2">
             {% for jc in recent_jobcards %}
               <div class="col-12 js-shortcut">
-                <a class="shortcut-item d-flex align-items-center p-2 text-decoration-none"
+                <a class="shortcut-item d-flex align-items-center text-decoration-none"
                    href="{% url 'modify_jobcard_edit' jobcard=jc.job_card_number %}">
                   <div class="flex-grow-1">
-                    <strong class="text-dark">{{ jc.job_card_number }}</strong>
+                    <strong class="text-dark" style="font-weight:600;">{{ jc.job_card_number }}</strong>
                     <div class="muted">
                       {{ jc.discipline }} · {{ jc.location }}{% if jc.last_modified_at %} · {{ jc.last_modified_at|date:"d/m/Y H:i" }}{% endif %}
                     </div>
@@ -169,7 +157,6 @@
               <div class="col-12 muted">No suggestions yet.</div>
             {% endfor %}
           </div>
-          <!-- Empty state do filtro -->
           <div id="shortcutsEmpty" class="text-center text-muted d-none">
             <i class="fa-regular fa-face-thinking me-1"></i>No results for this filter.
           </div>
@@ -179,6 +166,8 @@
   </div>
 
 </div>
+
+<!-- ====================== MODAIS (PADRÃO BOOTSTRAP) ====================== -->
 
 <!-- MODAL: Import -->
 <div class="modal fade" id="importJobcardModal" tabindex="-1" aria-labelledby="importJobcardModalLabel" aria-hidden="true">
@@ -204,13 +193,13 @@
   </div>
 </div>
 
-<!-- MODAL: Result (para import) -->
+<!-- MODAL: Result (import) -->
 <div class="modal fade" id="resultJobcardModal" tabindex="-1" aria-labelledby="resultJobcardModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header bg-secondary text-white">
+      <div class="modal-header">
         <h5 class="modal-title" id="resultJobcardModalLabel">Import Result</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body" id="resultJobcardModalBody"></div>
       <div class="modal-footer">
@@ -225,14 +214,14 @@
      data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <div class="modal-header bg-dark text-white">
+      <div class="modal-header">
         <div class="d-flex flex-column">
           <h5 class="modal-title" id="regenModalLabel">Regenerate PDFs</h5>
-          <small class="text-white-50">All JobCards whose status is <b>not</b> <code>NO CHECKED</code> / <code>NOT CHECKED</code> will be processed.</small>
+          <small class="text-muted">All JobCards whose status is <b>not</b> <code>NO CHECKED</code> / <code>NOT CHECKED</code> will be processed.</small>
         </div>
         <div class="ms-3 d-flex align-items-center">
-          <span id="regenStatus" class="badge rounded-pill bg-secondary status-pill me-2">IDLE</span>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          <span id="regenStatus" class="badge rounded-pill bg-secondary me-2">IDLE</span>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="regenCloseBtn"></button>
         </div>
       </div>
 
@@ -284,17 +273,33 @@
 
 <!-- MODAL: Sync Result -->
 <div class="modal fade" id="syncResultModal" tabindex="-1" aria-labelledby="syncResultModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
-      <div id="syncResultHeader" class="modal-header bg-secondary text-white">
+      <div class="modal-header">
         <h5 class="modal-title" id="syncResultModalLabel">Sync report</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <div id="syncResultBody"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Syncing (loading padrão, backdrop estático) -->
+<div class="modal fade" id="syncingModal" tabindex="-1" aria-hidden="true"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body d-flex align-items-center gap-3">
+        <div class="spinner-border" role="status" aria-hidden="true"></div>
+        <div>
+          <strong id="syncingTitle">Syncing…</strong>
+          <div class="text-muted small" id="syncingSubtitle">Aguarde alguns instantes</div>
+        </div>
       </div>
     </div>
   </div>
@@ -317,51 +322,7 @@ function exportJobcardsExcel(){
   window.open(url,'_blank');
 }
 
-/* ========================= Import (Template) ========================= */
-document.addEventListener('DOMContentLoaded', function(){
-  const form = document.getElementById('importJobcardForm');
-  if (!form) return;
-  form.addEventListener('submit', function(e){
-    e.preventDefault();
-    const fileInput = document.getElementById('importJobcardFile');
-    if(!fileInput.files.length){ return showImportResult('Error','Please select a file.'); }
-
-    const fd = new FormData(this);
-    fetch("{% url 'import_jobcard_modify' %}", { method: "POST", body: fd })
-    .then(r => r.json())
-    .then(data => {
-      const up = document.getElementById('importJobcardModal');
-      if (up) bootstrap.Modal.getOrCreateInstance(up).hide();
-
-      if (data.status === 'ok') {
-        showImportResult('Success', `Updated: ${data.updated}`, true);
-      } else if (data.status === 'not_found') {
-        const missing = (data.missing || []).join(', ');
-        showImportResult('Error', `These JobCards do not exist: ${missing}`);
-      } else {
-        showImportResult('Error', data.message || 'An error occurred!');
-      }
-    })
-    .catch(() => showImportResult('Error','Upload failed.'));
-  });
-
-  function showImportResult(title, msg, reload){
-    const header = document.querySelector('#resultJobcardModal .modal-header');
-    const titleEl = document.getElementById('resultJobcardModalLabel');
-    const bodyEl = document.getElementById('resultJobcardModalBody');
-
-    if(title==='Success'){ header.classList.remove('bg-danger'); header.classList.add('bg-success'); titleEl.textContent = 'Import Success'; }
-    else{ header.classList.remove('bg-success'); header.classList.add('bg-danger'); titleEl.textContent = 'Import Error'; }
-
-    bodyEl.textContent = msg;
-
-    const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('resultJobcardModal'));
-    m.show();
-    if(reload){ setTimeout(()=>window.location.reload(), 1500); }
-  }
-});
-
-/* ========================= Shortcuts: filtro em tempo real (não interfere no restante) ========================= */
+/* ========================= Shortcuts: filtro em tempo real ========================= */
 document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('shortcutFilter');
   const list  = document.getElementById('shortcutsList');
@@ -382,6 +343,50 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   input.addEventListener('input', deb(apply, 120));
   apply();
+});
+
+/* ========================= Import (Template) ========================= */
+document.addEventListener('DOMContentLoaded', function(){
+  const form = document.getElementById('importJobcardForm');
+  if (!form) return;
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const fileInput = document.getElementById('importJobcardFile');
+    if(!fileInput.files.length){
+      return showImportResult('Error','Please select a file.');
+    }
+    const fd = new FormData(this);
+    fetch("{% url 'import_jobcard_modify' %}", { method: "POST", body: fd })
+    .then(r => r.json())
+    .then(data => {
+      const up = document.getElementById('importJobcardModal');
+      if (up) bootstrap.Modal.getOrCreateInstance(up).hide();
+
+      if (data.status === 'ok') {
+        showImportResult('Success', `Updated: ${data.updated}`, true);
+      } else if (data.status === 'not_found') {
+        const missing = (data.missing || []).join(', ');
+        showImportResult('Error', `These JobCards do not exist: ${missing}`);
+      } else {
+        showImportResult('Error', data.message || 'An error occurred!');
+      }
+    })
+    .catch(() => showImportResult('Error','Upload failed.'));
+  });
+
+  function showImportResult(title, msg, reload){
+    const titleEl = document.getElementById('resultJobcardModalLabel');
+    const bodyEl  = document.getElementById('resultJobcardModalBody');
+
+    titleEl.textContent = (title==='Success' ? 'Import Success' : 'Import Error');
+    bodyEl.innerHTML = (title==='Success')
+      ? `<div class="alert alert-success mb-2">${msg}</div>`
+      : `<div class="alert alert-danger mb-2">${msg}</div>`;
+
+    const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('resultJobcardModal'));
+    m.show();
+    if(reload){ setTimeout(()=>window.location.reload(), 1500); }
+  }
 });
 
 /* ========================= PDF Regen UI ========================= */
@@ -406,25 +411,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const $runlab   = document.getElementById('regenRunId');
   const $force    = document.getElementById('forceChk');
   const $hard     = document.getElementById('hardChk');
+  const $close    = document.getElementById('regenCloseBtn');
 
   function fmtTime(sec){
     if (!isFinite(sec) || sec < 0) return '--';
     const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = Math.floor(sec%60);
     return (h? String(h).padStart(2,'0')+':' : '') + String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
   }
-  function setProgressActive(x){ $progress.classList.toggle('progress-bar-striped', x); $progress.classList.toggle('progress-bar-animated', x); }
-  function setStatus(txt, cls){ $status.textContent = txt; $status.className = 'badge rounded-pill status-pill ' + cls; }
-  function logLine(msg){ const at = new Date().toLocaleTimeString(); $log.textContent += `[${at}] ${msg}\n`; $log.scrollTop = $log.scrollHeight; }
+  function setProgressActive(x){
+    $progress.classList.toggle('progress-bar-striped', x);
+    $progress.classList.toggle('progress-bar-animated', x);
+  }
+  function setStatus(txt, cls){
+    $status.textContent = txt;
+    $status.className = 'badge rounded-pill ' + (cls || 'bg-secondary');
+  }
+  function logLine(msg){
+    const at = new Date().toLocaleTimeString();
+    $log.textContent += `[${at}] ${msg}\n`; $log.scrollTop = $log.scrollHeight;
+  }
   function toggleRunning(r){
     $start.disabled = r; $stop.disabled = !r;
-    const closeBtn = document.querySelector('#regenModal .modal-header .btn-close');
-    if (closeBtn) { closeBtn.style.pointerEvents = r ? 'none' : ''; closeBtn.style.opacity = r ? .5 : 1; }
+    if ($close){ $close.style.pointerEvents = r ? 'none' : ''; $close.style.opacity = r ? .5 : 1; }
   }
   function startHeartbeat(text){
     stopHeartbeat(); $hbSpin.classList.remove('d-none'); $hbText.textContent = text;
     let dots = 0; window._hb = setInterval(()=>{ dots=(dots%3)+1; $hbText.textContent = text + '.'.repeat(dots); }, 500);
   }
-  function stopHeartbeat(){ if(window._hb){ clearInterval(window._hb); window._hb = null; } $hbSpin.classList.add('d-none'); $hbText.textContent = ''; }
+  function stopHeartbeat(){
+    if(window._hb){ clearInterval(window._hb); window._hb = null; }
+    $hbSpin.classList.add('d-none'); $hbText.textContent = '';
+  }
 
   function setProgressNumbers(){
     const pct = total ? Math.round((done/total)*100) : 0;
@@ -542,29 +559,16 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('copyLogBtn')?.addEventListener('click', async ()=>{
     try{ await navigator.clipboard.writeText($log.textContent||''); }catch{}
   });
-  document.getElementById('clearLogBtn')?.addEventListener('click', ()=>{
-    $log.textContent='';
-  });
+  document.getElementById('clearLogBtn')?.addEventListener('click', ()=>{ $log.textContent=''; });
 })();
 
-/* ========================= Sync Result Modal (helpers) ========================= */
+/* ========================= Sync Result helpers (padrão) ========================= */
 function showSyncModal(status, html, titleText){
-  const header = document.getElementById('syncResultHeader');
-  const body   = document.getElementById('syncResultBody');
-  const title  = document.getElementById('syncResultModalLabel');
-
-  title.textContent = titleText || (status === 'success' ? 'Sync Success' :
-                                    status === 'error'   ? 'Sync Error'   :
-                                                          'Sync Report');
-
-  header.classList.remove('bg-success','bg-danger','bg-secondary','bg-dark');
-  header.classList.add(status === 'success' ? 'bg-success' :
-                       status === 'error'   ? 'bg-danger'   : 'bg-dark');
-
+  const body  = document.getElementById('syncResultBody');
+  const title = document.getElementById('syncResultModalLabel');
+  title.textContent = titleText || (status==='success' ? 'Sync Success' : status==='error' ? 'Sync Error' : 'Sync Report');
   body.innerHTML = html;
-
-  const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('syncResultModal'));
-  m.show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('syncResultModal')).show();
 }
 
 function renderTotalsTable(totals, processed){
@@ -580,12 +584,9 @@ function renderTotalsTable(totals, processed){
       <td>${get(name,'unchanged')}</td>
       <td>${get(name,'deleted')}</td>
     </tr>`;
-
   return `
-    <div class="alert alert-success">
-      Global sync finished. Processed: <strong>${processed||0}</strong> JobCards.
-    </div>
-    <table class="table table-sm">
+    <div class="alert alert-success">Global sync finished. Processed: <strong>${processed||0}</strong> JobCards.</div>
+    <table class="table table-sm mb-0">
       <thead>
         <tr>
           <th>Entity</th>
@@ -606,7 +607,20 @@ function renderTotalsTable(totals, processed){
   `;
 }
 
-/* ========================= Sync ALL (Base → Allocated) ========================= */
+/* ========================= Modal "Syncing…" padrão ========================= */
+let syncingModal = null;
+function openSyncing(title='Syncing…', subtitle='Aguarde alguns instantes'){
+  const el = document.getElementById('syncingModal');
+  document.getElementById('syncingTitle').textContent = title;
+  document.getElementById('syncingSubtitle').textContent = subtitle;
+  syncingModal = bootstrap.Modal.getOrCreateInstance(el);
+  syncingModal.show();
+}
+function closeSyncing(){
+  try{ syncingModal?.hide(); }catch(e){}
+}
+
+/* ========================= Sync ALL ========================= */
 (() => {
   const btn = document.getElementById('btnSyncAll');
   if (!btn) return;
@@ -615,8 +629,9 @@ function renderTotalsTable(totals, processed){
     if (!confirm('Run sync for ALL eligible JobCards? This may take a while.')) return;
 
     btn.disabled = true;
-    const original = btn.textContent;
-    btn.textContent = 'Syncing all...';
+    const original = btn.innerHTML;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Syncing…`;
+    openSyncing('Syncing ALL JobCards…', 'Isso pode levar alguns instantes');
 
     try {
       const discipline   = document.querySelector('[name="filter_discipline"]')?.value || '';
@@ -626,32 +641,32 @@ function renderTotalsTable(totals, processed){
       const res = await fetch(btn.dataset.url, {
         method: 'POST',
         headers: { 'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest' },
-        body: new URLSearchParams({
-          delete_missing: '1',
-          discipline, working_code, status
-        })
+        body: new URLSearchParams({ delete_missing: '1', discipline, working_code, status })
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        const msg = data?.error || `HTTP ${res.status}`;
-        showSyncModal('error', `<div class="alert alert-danger"><b>Sync failed:</b> ${msg}</div>`, 'Sync Error');
-        throw new Error(msg);
-      }
+      const ok = res.ok && data.ok;
 
-      const html = renderTotalsTable(data.totals || {}, data.processed);
-      showSyncModal('success', html, 'Sync Success');
-      btn.textContent = 'Synced!';
+      const html = ok
+        ? renderTotalsTable(data.totals || {}, data.processed)
+        : `<div class="alert alert-danger"><b>Sync failed:</b> ${data?.error || `HTTP ${res.status}`}</div>`;
+
+      closeSyncing();
+      showSyncModal(ok ? 'success':'error', html, ok ? 'Sync Success':'Sync Error');
+
+      btn.innerHTML = ok ? `<i class="fa fa-check me-1"></i>Synced!`
+                         : `<i class="fa fa-triangle-exclamation me-1"></i>Error`;
     } catch (err){
-      console.error('Sync ALL error:', err);
-      btn.textContent = 'Error';
+      closeSyncing();
+      showSyncModal('error', `<div class="alert alert-danger"><b>Sync failed:</b> ${err?.message||err}</div>`, 'Sync Error');
+      btn.innerHTML = `<i class="fa fa-triangle-exclamation me-1"></i>Error`;
     } finally {
-      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1200);
+      setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 1200);
     }
   });
 })();
 
-/* ========================= Sync de UMA JobCard (se existir botão) ========================= */
+/* ========================= Sync de UMA JobCard ========================= */
 (() => {
   const btn = document.getElementById('btnSyncAllocated');
   if (!btn) return;
@@ -677,8 +692,9 @@ function renderTotalsTable(totals, processed){
     }
 
     btn.disabled = true;
-    const original = btn.textContent;
-    btn.textContent = 'Syncing…';
+    const original = btn.innerHTML;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Syncing…`;
+    openSyncing('Syncing JobCard…', 'Atualizando entidades relacionadas');
 
     try{
       const res = await fetch(url, {
@@ -687,17 +703,10 @@ function renderTotalsTable(totals, processed){
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        const msg = data?.error || `HTTP ${res.status}`;
-        showSyncModal('error', `<div class="alert alert-danger"><b>Sync failed:</b> ${msg}</div>`, 'Sync Error');
-        throw new Error(msg);
-      }
+      const ok = res.ok && data.ok;
 
       const r = data.report || {};
-      const get = (sec, key) => {
-        const x = r?.[sec]?.[key];
-        return (typeof x === 'number') ? x : 0;
-      };
+      const get = (sec, key) => (typeof (r?.[sec]?.[key]) === 'number') ? r[sec][key] : 0;
       const row = (name, label) => `
         <tr><th>${label}</th>
           <td>${get(name,'created')}</td>
@@ -706,14 +715,10 @@ function renderTotalsTable(totals, processed){
           <td>${get(name,'deleted')}</td>
         </tr>`;
 
-      const html = `
-        <div class="alert alert-success">
-          JobCard synced: <strong>${data.job_card_number || ''}</strong>
-        </div>
-        <table class="table table-sm">
-          <thead>
-            <tr><th>Entity</th><th>Created</th><th>Updated</th><th>Unchanged</th><th>Deleted</th></tr>
-          </thead>
+      const htmlOk = `
+        <div class="alert alert-success">JobCard synced: <strong>${data.job_card_number || ''}</strong></div>
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Entity</th><th>Created</th><th>Updated</th><th>Unchanged</th><th>Deleted</th></tr></thead>
           <tbody>
             ${row('materials','Materials')}
             ${row('tools','Tools')}
@@ -724,13 +729,20 @@ function renderTotalsTable(totals, processed){
         </table>
       `;
 
-      showSyncModal('success', html, 'Sync Success');
-      btn.textContent = 'Synced!';
+      closeSyncing();
+      showSyncModal(ok ? 'success':'error',
+        ok ? htmlOk : `<div class="alert alert-danger"><b>Sync failed:</b> ${data?.error || `HTTP ${res.status}`}</div>`,
+        ok ? 'Sync Success':'Sync Error'
+      );
+
+      btn.innerHTML = ok ? `<i class="fa fa-check me-1"></i>Synced!`
+                         : `<i class="fa fa-triangle-exclamation me-1"></i>Error`;
     } catch(err){
-      console.error('Sync error:', err);
-      btn.textContent = 'Error';
+      closeSyncing();
+      showSyncModal('error', `<div class="alert alert-danger"><b>Sync failed:</b> ${err?.message||err}</div>`, 'Sync Error');
+      btn.innerHTML = `<i class="fa fa-triangle-exclamation me-1"></i>Error`;
     } finally {
-      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1200);
+      setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 1200);
     }
   });
 })();
