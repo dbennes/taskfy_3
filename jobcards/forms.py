@@ -1,6 +1,9 @@
 from django import forms
 from .models import Discipline, Area, WorkingCode, System, Impediments, JobCard
 
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.models import User
+
 
 class DisciplineForm(forms.ModelForm):
     class Meta:
@@ -200,3 +203,23 @@ class ScheduleImportForm(forms.Form):
         required=False, initial=True,
         label="Atualizar start/finish dos JobCards com mesmo Activity ID"
     )
+
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email"]
+        widgets = {
+            "first_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "First name"}),
+            "last_name":  forms.TextInput(attrs={"class": "form-control", "placeholder": "Last name"}),
+            "email":      forms.EmailInput(attrs={"class": "form-control", "placeholder": "Email"}),
+        }
+
+class CustomPasswordChangeForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            field.widget.attrs.update({"class": "form-control"})
+        self.fields["old_password"].widget.attrs["placeholder"] = "Current password"
+        self.fields["new_password1"].widget.attrs["placeholder"] = "New password"
+        self.fields["new_password2"].widget.attrs["placeholder"] = "Confirm new password"    

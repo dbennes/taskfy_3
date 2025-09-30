@@ -4,6 +4,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views_pdf_api
 from . import views_schedule, views_documents, views_allocated_manpower, views_sync
 from . import views_downloads_jobcards
+from . import views_account
+
 
 from sistema.authz import allow_groups, cbv_group_protect
 from sistema import roles
@@ -124,7 +126,7 @@ urlpatterns = [
     path('api/jobcard/<str:jobcard_number>/',         views.api_jobcard_detail, name='api_jobcard_detail'),
     path('api/jobcards/pdfs/', views.jobcard_pdfs, name='jobcard_pdfs'),
     path('api/revisoes_ultimas/', views.api_revisoes_ultimas, name='api_revisoes_ultimas'),
-    
+
     path('jobcard/<str:jobcard_id>/allocation/<int:task_order>/', views.save_allocation, name='save_allocation'),
     path("api/rfid/check/",           views.check_rfid,   name="check_rfid"),
     path("api/rfid/all/",             views.api_rfid_all, name="api_rfid_all"),
@@ -189,4 +191,10 @@ urlpatterns = [
     # ===== Sync (funciona como ação/HTML; protegido) =====
     path('jobcards/sync-all/',                   allow_groups(views_sync.api_sync_allocations_all, roles.PLANNER), name='jobcard_sync_allocations_all'),
     path('jobcards/<str:job_card_number>/sync/', allow_groups(views_sync.jobcard_sync_allocations,  roles.PLANNER), name='jobcard_sync_allocations'),
+
+
+    # ===== Sync (funciona como ação/HTML; protegido) =====
+    path("account/profile/", views_account.user_profile, name="user_profile"),
+    path("account/api/change-password/", views_account.api_change_password, name="api_change_password"),
+
 ]

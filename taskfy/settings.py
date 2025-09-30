@@ -168,4 +168,10 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=3650),
 }
 
-# === Autodesk APS/Forge
+# Levante o limite de campos em formulários grandes (JobCard Editor/Wizard)
+# Use um valor confortavelmente acima do seu maior formulário.
+# DATA_UPLOAD_MAX_NUMBER_FIELDS = int(os.getenv("DATA_UPLOAD_MAX_NUMBER_FIELDS", "50000"))
+
+# Se a sua versão do Django aceitar, você também pode remover o limite:
+# (Se der erro ao usar None na sua versão, mantenha o inteiro alto acima)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None

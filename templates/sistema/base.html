@@ -23,7 +23,12 @@
 
         <!-- Select2 JS -->
         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+
     </head>
+
+    
+
 
     <body style="background: #14191c; min-height: 100vh; display: flex; flex-direction: column;">
 
@@ -31,84 +36,20 @@
 
         {% include 'sistema/partials/_menu_lateral.html' %}
 
+        
+
         <div id="content-wrapper" class="d-flex flex-column flex-grow-1" style="width: 100%;">
+          
+          {% include 'sistema/partials/_topbar.html' %}
 
             <div id="content" class="flex-grow-1 p-3">
                 {% block content %}
                 {% endblock %}
             </div>
-
+            
         </div>
-
+        
     </div>
-
-    {# templates/partials/permission_denied_modal.html #}
-    <div id="perm-modal" class="perm-modal is-hidden" aria-hidden="true" role="dialog" aria-labelledby="perm-modal-title">
-      <div class="perm-backdrop" data-close="1"></div>
-      <div class="perm-card" role="document">
-        <div class="perm-head">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-            <path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm1 13h-2v2h2v-2Zm0-8h-2v6h2V7Z"/>
-          </svg>
-          <h3 id="perm-modal-title">Access denied</h3>
-        </div>
-        <p id="perm-modal-text">{{ modal_message|default:"Access denied. You do not have sufficient privileges to perform this action. If you believe this is an error, please contact your system administrator." }}</p>
-        <div class="perm-actions">
-          <button type="button" class="perm-btn" data-close="1">OK</button>
-        </div>
-      </div>
-    </div>
-
-    <style>
-    /* Minimalistic, dependency-free modal */
-    .perm-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999}
-    .perm-modal.is-hidden{display:none}
-    .perm-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:saturate(120%) blur(2px)}
-    .perm-card{position:relative;width:min(92vw,520px);background:#fff;border-radius:16px;padding:20px 18px;box-shadow:0 10px 30px rgba(0,0,0,.15)}
-    .perm-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-    .perm-head svg{fill:#111}
-    .perm-head h3{margin:0;font:600 16px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
-    #perm-modal-text{color:#555;margin:6px 2px 0 2px;font:400 14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
-    .perm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
-    .perm-btn{appearance:none;border:0;border-radius:999px;padding:10px 14px;background:#111;color:#fff;font:600 14px/1 system-ui;cursor:pointer}
-    .perm-btn:focus{outline:2px solid #1114;outline-offset:2px}
-    </style>
-
-    <script>
-    (function(){
-      const modal = document.getElementById('perm-modal');
-      if(!modal) return;
-
-      function show(msg){
-        if(msg){ const el = document.getElementById('perm-modal-text'); if(el) el.textContent = msg; }
-        modal.classList.remove('is-hidden');
-        modal.setAttribute('aria-hidden','false');
-        // cleanup possible redirect anchors
-        try{ history.replaceState(null,'',location.pathname+location.search); }catch(_){}
-      }
-      function hide(){
-        modal.classList.add('is-hidden');
-        modal.setAttribute('aria-hidden','true');
-      }
-      modal.addEventListener('click', (e)=>{ if(e.target.dataset.close) hide(); });
-      // extra: close with ESC (non-breaking)
-      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && !modal.classList.contains('is-hidden')) hide(); });
-
-      // expose globally for AJAX
-      window.showPermissionDeniedModal = show;
-
-      // Inject Django messages tagged as "modal-permission"
-      {% if messages %}
-        {% for m in messages %}
-          {% if 'modal-permission' in m.tags %}
-            window.addEventListener('DOMContentLoaded', function(){
-              show("{{ m|escapejs }}");
-            });
-          {% endif %}
-        {% endfor %}
-      {% endif %}
-    })();
-    </script>
 
     {% include 'sistema/partials/_footer.html' %}
 
@@ -134,62 +75,95 @@
     window.onload = atualizarContadorRevisoes;
 
     function marcarNotificacoesComoLidas() {
-        // 1. Marca como lidas no backend (usando a data mais recente das notificações exibidas)
-        if (window.revisoesData && window.revisoesData.length > 0) {
-            const ultimaData = window.revisoesData[0].data_mudanca_db;
-            fetch('/api_notificacoes_lidas/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ ultima_data: ultimaData }),
-            });
-        }
-
-        // 2. Some o contador do sininho imediatamente (efeito visual)
-        const badge = document.getElementById('contador-revisoes');
-        if (badge) {
-            badge.innerText = '0';
-            badge.style.display = 'none';
-        }
-    }
-    </script>
-
-    <!-- OPTIONAL: intercept 403 from fetch/jQuery and open the modal (non-breaking) -->
-    <script>
-    (function(){
-      if(window.fetch){
-        const _fetch = window.fetch;
-        window.fetch = function(input, init){
-          init = init || {};
-          const hdrs = new Headers(init.headers || {});
-          if(!hdrs.has('X-Requested-With')) hdrs.set('X-Requested-With','XMLHttpRequest');
-          if(!hdrs.has('Accept')) hdrs.set('Accept','application/json');
-          init.headers = hdrs;
-
-          return _fetch(input, init).then(async (res)=>{
-            if(res.status === 403){
-              let msg = "Access denied. You do not have sufficient privileges to perform this action. If you believe this is an error, please contact your system administrator.";
-              try { const data = await res.clone().json(); msg = data.message || data.error || msg; } catch(_){}
-              window.showPermissionDeniedModal && window.showPermissionDeniedModal(msg);
-            }
-            return res;
-          });
-        };
-      }
-
-      if(window.jQuery && window.jQuery.ajax){
-        jQuery(document).ajaxError((_, xhr)=>{
-          if(xhr && xhr.status === 403){
-            let msg = "Access denied. You do not have sufficient privileges to perform this action. If you believe this is an error, please contact your system administrator.";
-            try { const data = JSON.parse(xhr.responseText); msg = data.message || data.error || msg; } catch(_){}
-            window.showPermissionDeniedModal && window.showPermissionDeniedModal(msg);
-          }
+    // 1. Marca como lidas no backend (usando a data mais recente das notificações exibidas)
+    if (window.revisoesData && window.revisoesData.length > 0) {
+        const ultimaData = window.revisoesData[0].data_mudanca_db;
+        fetch('/api_notificacoes_lidas/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ultima_data: ultimaData }),
         });
-      }
-    })();
-    </script>
+    }
 
-    </body>
+    // 2. Some o contador do sininho imediatamente (efeito visual)
+    const badge = document.getElementById('contador-revisoes');
+    if (badge) {
+        badge.innerText = '0';
+        badge.style.display = 'none';
+    }
+}
+</script>
+
+<script>
+async function refreshPendingDocs(){
+  try{
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const resp = await fetch("{% url 'api_docs_to_accept_count' %}", {
+      headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if(!resp.ok) return;
+
+    const json = await resp.json();
+    const n = Number(json.count || 0);
+
+    // Sidebar: badge em "Documents"
+    const sideBadge = document.getElementById("badge-docs-pendentes");
+    if (sideBadge){
+      sideBadge.textContent = String(n);
+      sideBadge.style.display = n > 0 ? "inline-block" : "none";
+    }
+
+    // Dot no sino (sem número)
+    const bellDot  = document.getElementById("bell-dot");
+    if (bellDot) bellDot.style.display = n > 0 ? "block" : "none";
+
+    // Contador numérico no sino
+    const bellCount = document.getElementById("bell-count");
+    if (bellCount){
+      if (n > 0){
+        bellCount.textContent = String(n);
+        bellCount.style.display = "inline-block";
+      } else {
+        bellCount.style.display = "none";
+        bellCount.textContent = "";
+      }
+    }
+
+    // Acessibilidade e title
+    const bellLink = document.getElementById("bell-link");
+    if (bellLink){
+      bellLink.title = n > 0 ? `Pending Documents (${n})` : "Pending Documents";
+      bellLink.setAttribute("aria-label", bellLink.title);
+    }
+
+    // Remove qualquer badge numérico legado
+    const oldBellBadge = document.getElementById("contador-revisoes");
+    if (oldBellBadge) oldBellBadge.remove();
+
+  }catch(e){
+    // silencioso
+  }
+}
+
+// Inicial + polling + refresh ao voltar para a aba
+document.addEventListener("DOMContentLoaded", refreshPendingDocs);
+setInterval(refreshPendingDocs, 60000);
+document.addEventListener("visibilitychange", function(){
+  if (!document.hidden) refreshPendingDocs();
+});
+</script>
+
+
+
+    
+
+</body>
+
 </html>

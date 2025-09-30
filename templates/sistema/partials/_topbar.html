@@ -1,0 +1,437 @@
+<!-- Topbar — Minimal Clean (FINAL, cabeçalhos com ícones outline + chevron animado) -->
+<nav class="navbar navbar-expand bg-white shadow mb-4 topbar static-top navbar-light topbar-min">
+  <div class="container-fluid">
+
+    <!-- Mobile toggle -->
+    <button id="sidebarToggle" class="btn btn-link d-lg-none me-2" type="button" aria-label="Toggle sidebar">
+      <i class="fa-solid fa-bars nav-icon"></i>
+    </button>
+
+    <!-- LEFT MENUS -->
+    <ul class="navbar-nav">
+      <!-- Reports -->
+      <li class="nav-item dropdown no-arrow">
+        <a class="nav-link dropdown-toggle nav-link-min nav-trigger" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <!-- Ícone outline -->
+          <svg class="nav-svgi" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 19.5H20" />
+            <path d="M7 18V10.5" />
+            <path d="M12 18V6.5" />
+            <path d="M17 18V13.5" />
+          </svg>
+          <span class="label">Reports</span>
+          <!-- Chevron outline (gira) -->
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </a>
+        <div class="dropdown-menu dropdown-panel dropdown-panel-wide p-2">
+          <a class="opt" href="{% url 'jobcards_tam' %}">
+            <span class="ico"><i class="fa-solid fa-table-cells-large"></i></span>
+            <span class="txt"><strong>Jobcards</strong><small>[TAM] Time & Metrics</small></span>
+          </a>
+        </div>
+      </li>
+
+      <!-- Tasks -->
+      <li class="nav-item dropdown no-arrow">
+        <a class="nav-link dropdown-toggle nav-link-min nav-trigger" href="#" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+          <svg class="nav-svgi" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 6.5H20" />
+            <path d="M4 12H20" />
+            <path d="M4 17.5H20" />
+            <path d="M8 11l1.8 1.8L13 9.6" />
+          </svg>
+          <span class="label">Tasks</span>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+        </a>
+        <div class="dropdown-menu dropdown-panel dropdown-panel-wide p-2">
+          <div class="opt-grid">
+            <a class="opt" href="{% url 'upload_documents' %}">
+              <span class="ico"><i class="fa-solid fa-file-arrow-up"></i></span>
+              <span class="txt"><strong>Save Documents</strong><small>Upload & organize</small></span>
+            </a>
+            <a class="opt" href="{% url 'modify_jobcard_entry' %}">
+              <span class="ico"><i class="fa-regular fa-pen-to-square"></i></span>
+              <span class="txt"><strong>Modify Jobcard</strong><small>Edit entries</small></span>
+            </a>
+            <a class="opt" href="{% url 'schedule_gantt' %}">
+              <span class="ico"><i class="fa-solid fa-diagram-project"></i></span>
+              <span class="txt"><strong>View Schedule</strong><small>Interactive Gantt</small></span>
+            </a>
+            <a class="opt" href="{% url 'download_jobcards_by_list' %}">
+              <span class="ico"><i class="fa-solid fa-download"></i></span>
+              <span class="txt"><strong>Download Jobcards</strong><small>By list / filters</small></span>
+            </a>
+          </div>
+        </div>
+      </li>
+
+      <!-- References -->
+      <li class="nav-item dropdown no-arrow">
+        <a class="nav-link dropdown-toggle nav-link-min nav-trigger" href="#" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+          <svg class="nav-svgi" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5.5 5.5h8.5a3.5 3.5 0 0 1 3.5 3.5v9H9A3.5 3.5 0 0 1 5.5 14.5V5.5Z" />
+            <path d="M5.5 14.5A3.5 3.5 0 0 0 9 18h8.5" />
+          </svg>
+          <span class="label">References</span>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+        </a>
+        <div class="dropdown-menu dropdown-panel dropdown-panel-wide p-2">
+          <div class="opt-grid">
+            <a class="opt" href="{% url 'disciplines_list' %}">
+              <span class="ico"><i class="fa-solid fa-shapes"></i></span>
+              <span class="txt"><strong>Disciplines</strong><small>Discipline catalog</small></span>
+            </a>
+            <a class="opt" href="{% url 'workingcodes_list' %}">
+              <span class="ico"><i class="fa-solid fa-list-check"></i></span>
+              <span class="txt"><strong>Working Codes</strong><small>Code registry</small></span>
+            </a>
+            <a class="opt" href="{% url 'areas_list' %}">
+              <span class="ico"><i class="fa-solid fa-map"></i></span>
+              <span class="txt"><strong>Areas</strong><small>Locations & zones</small></span>
+            </a>
+            <a class="opt" href="{% url 'systems_list' %}">
+              <span class="ico"><i class="fa-solid fa-network-wired"></i></span>
+              <span class="txt"><strong>Sys & Subsystems</strong><small>Technical hierarchy</small></span>
+            </a>
+          </div>
+        </div>
+      </li>
+
+      <!-- Allocated -->
+      <li class="nav-item dropdown no-arrow">
+        <a class="nav-link dropdown-toggle nav-link-min nav-trigger" href="#" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+          <svg class="nav-svgi" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4.5 7.5h6v6h-6z" />
+            <path d="M13.5 7.5h6v6h-6z" />
+            <path d="M4.5 16.5h6v3h-6z" />
+            <path d="M13.5 16.5h6v3h-6z" />
+          </svg>
+          <span class="label">Allocated</span>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+        </a>
+        <div class="dropdown-menu dropdown-panel dropdown-panel-wide p-2">
+          <div class="opt-grid">
+            <a class="opt" href="{% url 'allocated_material_list' %}">
+              <span class="ico"><i class="fa-solid fa-box-open"></i></span>
+              <span class="txt"><strong>Material</strong><small>Allocated materials</small></span>
+            </a>
+            <a class="opt" href="{% url 'allocated_manpower_list' %}">
+              <span class="ico"><i class="fa-solid fa-people-group"></i></span>
+              <span class="txt"><strong>Manpower</strong><small>Allocated workforce</small></span>
+            </a>
+            <a class="opt" href="{% url 'allocated_tool_list' %}">
+              <span class="ico"><i class="fa-solid fa-screwdriver-wrench"></i></span>
+              <span class="txt"><strong>Tools</strong><small>Allocated tools</small></span>
+            </a>
+            <a class="opt" href="{% url 'allocated_engineering_list' %}">
+              <span class="ico"><i class="fa-solid fa-drafting-compass"></i></span>
+              <span class="txt"><strong>Engineering</strong><small>Docs & drawings</small></span>
+            </a>
+            <a class="opt" href="{% url 'allocated_task_list' %}">
+              <span class="ico"><i class="fa-solid fa-list-ul"></i></span>
+              <span class="txt"><strong>Tasks</strong><small>Allocated activities</small></span>
+            </a>
+          </div>
+        </div>
+      </li>
+    </ul>
+
+    <!-- RIGHT SIDE (como aprovado) -->
+    <ul class="navbar-nav ms-auto align-items-center gap-2">
+      <!-- Search (desktop, pill) -->
+      <li class="nav-item d-none d-sm-block">
+        <div class="search-pill" role="search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="topbarSearch" class="search-input" type="search" placeholder="Search…  ⌘K" aria-label="Search">
+        </div>
+      </li>
+
+      <!-- Search (mobile) -->
+      <li class="nav-item d-sm-none">
+        <a class="chip-btn square" data-bs-toggle="collapse" href="#mobileSearch" role="button" aria-expanded="false" aria-controls="mobileSearch">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </a>
+      </li>
+      <div class="collapse w-100 p-2" id="mobileSearch">
+        <form class="w-100">
+          <input class="form-control form-control-sm" type="search" placeholder="Search…" aria-label="Search mobile">
+        </form>
+      </div>
+
+      <!-- Divider -->
+      <li class="nav-item d-none d-sm-flex">
+        <span class="topbar-divider" role="separator" aria-orientation="vertical"></span>
+      </li>
+
+      <!-- Quick create -->
+      <li class="nav-item dropdown">
+        <a class="chip-btn square" href="#" data-bs-toggle="dropdown" aria-expanded="false" title="Quick Create">
+          <i class="fa-regular fa-square-plus"></i>
+        </a>
+        <div class="dropdown-menu dropdown-menu-end dropdown-panel p-2">
+          <a class="dropdown-item" href="{% url 'modify_jobcard_entry' %}"><i class="fa-regular fa-file-lines me-2"></i>Modify Jobcard</a>
+          <a class="dropdown-item" href="{% url 'upload_documents' %}"><i class="fa-regular fa-folder-open me-2"></i>Upload Docs</a>
+        </div>
+      </li>
+
+      <!-- Notifications -->
+      <li class="nav-item">
+        <a id="bellLink" class="chip-btn"
+           href="{% url 'docs_revision_review' %}#pending"
+           data-count="{{ pending_docs_count|default:0 }}"
+           title="Pending Documents" aria-live="polite" aria-atomic="true">
+          <i class="fa-regular fa-bell"></i>
+          <span id="bellBadge" class="bell-badge" aria-hidden="true">0</span>
+          <span class="notify-dot" aria-hidden="true"></span>
+        </a>
+      </li>
+
+      <!-- Email -->
+      <li class="nav-item d-none d-md-block">
+        <span class="user-email">{{ request.user.email|default:request.user.username }}</span>
+      </li>
+
+      <!-- User -->
+      <li class="nav-item dropdown">
+        <a class="chip-btn" href="#" data-bs-toggle="dropdown" aria-expanded="false" aria-label="User menu">
+          <i class="fa-regular fa-circle-user"></i>
+        </a>
+        <!-- ⚠️ sem .dropdown-panel-wide aqui -->
+        <div class="dropdown-menu dropdown-menu-end dropdown-panel p-2 user-menu">
+          <div class="px-2 pb-2">
+            <div class="text-muted small">Signed in as</div>
+            <div class="fw-semibold">{{ request.user.username }}</div>
+          </div>
+          <a class="menu-item" href="{% url 'dashboard' %}"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
+          <a class="menu-item" href="{% url 'user_profile' %}"><i class="fa-regular fa-id-badge"></i><span>Profile</span></a>
+          <div class="dropdown-divider my-1"></div>
+          <a class="menu-item" href="#"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a>
+        </div>
+      </li>
+
+      <!-- Divider -->
+      <li class="nav-item d-none d-sm-flex">
+        <span class="topbar-divider" role="separator" aria-orientation="vertical"></span>
+      </li>
+    </ul>
+
+  </div>
+</nav>
+
+<!-- ================== STYLES ================== -->
+<style>
+  :root{
+    --bg:#f7f8fa; --panel:#fff;
+    --ink:#0b0b0c; --muted:#6b7280; --icon:#858796;
+    --line:#eceff3; --line-strong:#d9dee7; --hover:#f9fafb;
+    --brand:#879aff; --r:12px;
+    --trigger-radius:12px; --trigger-pad-y:.36rem; --trigger-pad-x:.56rem; --trigger-gap:.5rem;
+    --trigger-size:.9rem; --trigger-weight:400;
+  }
+
+  .topbar-min{ border-bottom:1px solid var(--line); }
+
+  /* Remove caret padrão do Bootstrap */
+  .navbar .dropdown-toggle::after{ display:none !important; }
+
+  /* ===== TRIGGERS (com ícone outline + chevron) ===== */
+  .nav-trigger{
+    display:inline-flex; align-items:center; gap:var(--trigger-gap);
+    padding:var(--trigger-pad-y) var(--trigger-pad-x);
+    border-radius:var(--trigger-radius);
+    border:1px solid transparent;
+    background:transparent;
+    color:var(--icon) !important;
+    line-height:1; letter-spacing:.1px;
+    font-size:var(--trigger-size); font-weight:var(--trigger-weight);
+    transition:background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+    position:relative;
+  }
+  .nav-trigger:hover{ background:var(--hover); border-color:var(--line); }
+  .nav-trigger:focus{ outline:2px solid rgba(135,154,255,.35); outline-offset:2px; }
+  .nav-trigger .label{ color:var(--icon) !important; }
+
+  /* sublinhado sutil quando aberto */
+  .nav-trigger::after{
+    content:""; position:absolute; left:10px; right:10px; bottom:-9px; height:2px; border-radius:2px;
+    background:var(--brand); transform:scaleX(0); opacity:0; transition:transform .18s ease, opacity .18s ease;
+  }
+  .dropdown.show > .nav-trigger::after,
+  .nav-trigger[aria-expanded="true"]::after{ transform:scaleX(1); opacity:1; }
+
+  /* SVG outline nos cabeçalhos */
+  .nav-svgi, .chev{
+    width:16px; height:16px; stroke:currentColor; fill:none;
+    stroke-linecap:round; stroke-linejoin:round;
+    pointer-events:none; /* não bloqueia o clique no <a> */
+  }
+  .nav-svgi{ stroke-width:1.8; }
+  .chev{ stroke-width:2; margin-left:.15rem; transition:transform .18s ease; }
+  .nav-trigger[aria-expanded="true"] .chev{ transform:rotate(180deg); }
+
+  /* Dropdown panel (base) */
+  .dropdown-panel{
+    border:1px solid var(--line); border-radius:14px; background:#fff;
+    box-shadow:0 10px 28px rgba(0,0,0,.06);
+  }
+  /* Largura ampla só nos menus da esquerda */
+  .dropdown-panel-wide{ min-width:520px; }
+
+  /* Cards dentro dos dropdowns */
+  .opt-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem; }
+  .opt{
+    display:flex; align-items:center; gap:.7rem; text-decoration:none;
+    border:1px solid var(--line); border-radius:12px; background:#fff; padding:.65rem .7rem;
+    color:var(--ink); transition:background-color .15s ease, border-color .15s ease;
+  }
+  .opt:hover{ background:var(--hover); border-color:var(--line-strong); }
+  .ico{
+    width:32px; height:32px; border-radius:10px; display:grid; place-items:center;
+    border:1px solid var(--line); background:#fff; color:var(--icon); flex:0 0 32px;
+  }
+  .txt{ display:flex; flex-direction:column; line-height:1.1; }
+  .txt strong{ color:#878787; font-weight:600; }
+  .txt small{ color:var(--muted); }
+
+  /* RIGHT — search pill e chips já aprovados */
+  .search-pill{
+    position:relative; width:260px; border:1px solid var(--line); border-radius:12px; background:#fff;
+    padding:8px 12px 8px 36px; transition:width .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .search-pill:focus-within{ width:320px; border-color:var(--line-strong); box-shadow:0 8px 24px rgba(0,0,0,.06); }
+  .search-pill i{ position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--icon) !important; }
+  .search-input{ width:100%; border:none; outline:none; background:transparent; font-size:.95rem; }
+  .search-input::placeholder{ color:#a6aebc; }
+
+  .chip-btn{
+    position:relative; display:grid; place-items:center;
+    width:36px; height:36px; border:1px solid var(--line); background:#fff; color:var(--ink);
+    border-radius:9999px; transition:background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .chip-btn.square{ border-radius:12px; }
+  .chip-btn:hover{ background:var(--hover); border-color:var(--line-strong); }
+  .chip-btn:focus{ outline:2px solid var(--brand); outline-offset:2px; }
+  .chip-btn i{ font-size:18px; color:var(--icon) !important; }
+
+  /* Sino badge + dot */
+  .bell-badge{
+    position:absolute; top:-6px; right:-6px;
+    display:none; min-width:16px; height:16px; padding:0 4px;
+    border-radius:999px; background:#d42f2f; color:#fff; font-weight:700;
+    font-size:10px; line-height:16px; text-align:center; box-shadow:0 0 0 2px #fff;
+    font-variant-numeric: tabular-nums; z-index:2;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  .notify-dot{ position:absolute; top:6px; right:6px; width:6px; height:6px; border-radius:50%; background:#d42f2f; display:none; }
+  .notify-dot::after{ content:""; position:absolute; inset:-4px; border-radius:50%; border:2px solid #d42f2f; opacity:.7; animation:pulse 1.8s ease-out infinite; }
+  @keyframes pulse{ 0%{ transform:scale(1); opacity:.7; } 100%{ transform:scale(2.2); opacity:0; } }
+
+  /* User dropdown items */
+  .menu-item{
+    display:flex; align-items:center; gap:.6rem;
+    padding:.5rem .6rem; border-radius:10px; color:var(--ink);
+    text-decoration:none;
+  }
+  .menu-item i{ color:var(--icon); width:22px; text-align:center; }
+  .menu-item span{ line-height:1.1; }
+  .menu-item:hover{ background:var(--hover); }
+
+  /* Email (ellipsis) */
+  .user-email{ display:inline-block; max-width:260px; color:var(--muted); font-size:.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* Divisor vertical */
+  .topbar-divider{ display:inline-block; width:1px; height:24px; background:var(--line); margin:0 .25rem; }
+
+  /* Links sem underline */
+  .navbar a{ text-decoration:none !important; border-bottom:none !important; }
+
+  /* Cor dos títulos principais */
+  .nav-link-min{ color:var(--icon) !important; }
+
+  /* Tamanhos responsivos */
+  @media (max-width: 991.98px){
+    .dropdown-panel-wide{ min-width:100%; } /* só os painéis largos */
+    .opt-grid{ grid-template-columns:1fr; }
+    .search-pill{ width:200px; }
+    .search-pill:focus-within{ width:240px; }
+  }
+</style>
+
+<!-- ================== SCRIPTS ================== -->
+<script>
+  // Ctrl/Cmd + K => focar busca
+  (function(){
+    const input = document.getElementById('topbarSearch');
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault(); input && input.focus();
+      }
+    });
+  })();
+
+  // Bell badge — inicializa pelo data-count e atualiza via API
+  (function(){
+    const getBellLink = () => document.getElementById('bellLink') || document.getElementById('bell-link');
+    const getBadge    = () => document.getElementById('bellBadge') || document.getElementById('bell-count');
+    const getDot      = () => {
+      const l = getBellLink();
+      return (l && (l.querySelector('.notify-dot') || document.getElementById('bell-dot'))) || null;
+    };
+
+    function renderBell(n){
+      const link = getBellLink();
+      const badge = getBadge();
+      const dot = getDot();
+      if (!link) return;
+
+      const text = n > 99 ? '99+' : String(n);
+      link.setAttribute('data-count', String(n));
+      link.title = n > 0 ? `Pending Documents (${n})` : 'Pending Documents';
+      link.setAttribute('aria-label', link.title);
+
+      if (badge){
+        if (n > 0){
+          badge.textContent = text;
+          badge.style.display = 'inline-block';
+        }else{
+          badge.textContent = '0';
+          badge.style.display = 'none';
+        }
+      }
+      if (dot){ dot.style.display = n > 0 ? 'block' : 'none'; }
+    }
+
+    // Inicial pelo atributo do template
+    (function initFromAttr(){
+      const link = getBellLink(); if (!link) return;
+      const raw = (link.getAttribute('data-count') || '').trim();
+      const n = Number.isFinite(+raw) ? Math.max(0, parseInt(raw, 10)) : 0;
+      renderBell(n);
+    })();
+
+    // Polling (igual ao seu fluxo)
+    async function refreshPendingDocs(){
+      try{
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+
+        const resp = await fetch("{% url 'api_docs_to_accept_count' %}", {
+          headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" },
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        if (!resp.ok) return;
+
+        const json = await resp.json();
+        const n = Number.isFinite(+json.count) ? Math.max(0, parseInt(json.count, 10)) : 0;
+        renderBell(n);
+      }catch(e){ /* silencioso */ }
+    }
+
+    document.addEventListener('DOMContentLoaded', refreshPendingDocs);
+    setInterval(refreshPendingDocs, 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshPendingDocs(); });
+  })();
+</script>

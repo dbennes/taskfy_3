@@ -1,430 +1,201 @@
 <!-- Sidebar -->
 <nav class="sidebar-taskfy" id="sidebar">
-    <!-- Marca -->
-    <div class="sidebar-brand mb-2">
-        TASK<span style="color: #879aff;">FY</span>
-    </div>
+  <!-- Marca -->
+  <div class="sidebar-brand mb-2">
+    TASK<span style="color:#879aff;">FY</span>
+  </div>
 
-    <!-- General -->
-    <div class="sidebar-section">General</div>
-    <ul class="sidebar-menu">
-        <li>
-            <a class="sidebar-link" href="{% url 'dashboard' %}">
-                <i class="fa-solid fa-gauge-high"></i>
-                Dashboard
-            </a>
-        </li>
-        <li>
-            <a class="sidebar-link" href="{% url 'jobcards_list' %}">
-                <i class="fa-solid fa-table-columns me-2" aria-hidden="true"></i>
-                Jobcards List
-            </a>
-        </li>
-        <li>
-            <a class="sidebar-link" href="{% url 'jobcards_planning_list' %}">
-                <i class="fa-solid fa-diagram-project me-2" aria-hidden="true"></i>
-                Jobcard Planning
-            </a>
-        </li>
-        <li>
-            <a class="sidebar-link" href="{% url 'jobcard_progress' %}">
-                <i class="fa-solid fa-clipboard-check"></i>
-                Report Progress
-            </a>
-        </li>
-        
-        <li>
-            <a class="sidebar-link" href="{% url 'create_impediment' %}">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                Report Constraints
-            </a>
-        </li>
-        <li>
-            <a class="sidebar-link" href="{% url 'impediments_list' %}">
-                <i class="fa-solid fa-list-check"></i>
-                Constraints List
-            </a>
-        </li>
+  <!-- General -->
+  <div class="sidebar-section">General</div>
+  <ul class="sidebar-menu">
+    <li>
+      <a class="sidebar-link" href="{% url 'dashboard' %}">
+        <i class="fa-solid fa-gauge-high"></i> Dashboard
+      </a>
+    </li>
+    <li>
+      <a class="sidebar-link" href="{% url 'jobcards_list' %}">
+        <i class="fa-solid fa-table-columns me-2" aria-hidden="true"></i> Jobcards List
+      </a>
+    </li>
+    <li>
+      <a class="sidebar-link" href="{% url 'jobcards_planning_list' %}">
+        <i class="fa-solid fa-diagram-project me-2" aria-hidden="true"></i> Jobcard Planning
+      </a>
+    </li>
+    <li>
+      <a class="sidebar-link" href="{% url 'jobcard_progress' %}">
+        <i class="fa-solid fa-clipboard-check"></i> Report Progress
+      </a>
+    </li>
+    <li>
+      <a class="sidebar-link" href="{% url 'create_impediment' %}">
+        <i class="fa-solid fa-triangle-exclamation"></i> Report Constraints
+      </a>
+    </li>
+    <li>
+      <a class="sidebar-link" href="{% url 'impediments_list' %}">
+        <i class="fa-solid fa-list-check"></i> Constraints List
+      </a>
+    </li>
 
-        <!-- Documents com contador de pendentes (para aceitação) -->
-        <li>
-            <a class="sidebar-link d-flex align-items-center" href="{% url 'docs_revision_review' %}">
-                <i class="fa-solid fa-file-lines"></i>
-                <span>Documents</span>
-                <span id="badge-docs-pendentes"
-                      class="badge rounded-pill bg-danger ms-auto"
-                      style="font-size:10px; display:none;">0</span>
-            </a>
-        </li>
-    </ul>
+    <!-- Documents com contador de pendentes -->
+    <li>
+      <a class="sidebar-link d-flex align-items-center" href="{% url 'docs_revision_review' %}">
+        <i class="fa-solid fa-file-lines"></i>
+        <span>Documents</span>
+        <span id="badge-docs-pendentes"
+              class="badge rounded-pill bg-danger ms-auto"
+              style="font-size:10px; display:none;">0</span>
+      </a>
+    </li>
+  </ul>
 
-    <!-- Bases -->
-    <div class="sidebar-section">Bases</div>
-    <ul class="sidebar-menu">
-        <li><a class="sidebar-link" href="{% url 'jobcards_overview' %}"><i class="fa-solid fa-database"></i>Jobcard Base</a></li>
-        <li><a class="sidebar-link" href="{% url 'task_list' %}"><i class="fa-solid fa-list-ul"></i>Task Base</a></li>
-        <li><a class="sidebar-link" href="{% url 'manpower_list' %}"><i class="fa-solid fa-users"></i>Manpower Base</a></li>
-        <li><a class="sidebar-link" href="{% url 'materials_list' %}"><i class="fa-solid fa-cube"></i>Material Base</a></li>
-        <li><a class="sidebar-link" href="{% url 'tools_list' %}"><i class="fa-solid fa-screwdriver-wrench"></i>Tools Base</a></li>
-        <li><a class="sidebar-link" href="{% url 'engineering_list' %}"><i class="fa-solid fa-drafting-compass"></i>Documents Base</a></li>
-    </ul>
+  <!-- Bases -->
+  <div class="sidebar-section">Bases</div>
+  <ul class="sidebar-menu">
+    <li><a class="sidebar-link" href="{% url 'jobcards_overview' %}"><i class="fa-solid fa-database"></i> Jobcard Base</a></li>
+    <li><a class="sidebar-link" href="{% url 'task_list' %}"><i class="fa-solid fa-list-ul"></i> Task Base</a></li>
+    <li><a class="sidebar-link" href="{% url 'manpower_list' %}"><i class="fa-solid fa-users"></i> Manpower Base</a></li>
+    <li><a class="sidebar-link" href="{% url 'materials_list' %}"><i class="fa-solid fa-cube"></i> Material Base</a></li>
+    <li><a class="sidebar-link" href="{% url 'tools_list' %}"><i class="fa-solid fa-screwdriver-wrench"></i> Tools Base</a></li>
+    <li><a class="sidebar-link" href="{% url 'engineering_list' %}"><i class="fa-solid fa-drafting-compass"></i> Documents Base</a></li>
+  </ul>
 
-    <!-- Engineering -->
-    <div class="sidebar-section mt-4">Engineering</div>
-    <ul class="sidebar-menu">
-        <li>
-            <a class="sidebar-link" href="{% url 'pmto_list' %}">
-                <i class="fa-solid fa-code"></i> PMTO Code
-            </a>
-        </li>
-        <li>
-            <a class="sidebar-link" href="{% url 'mr_list' %}">
-                <i class="fa-regular fa-file-lines"></i> Material Requisition
-            </a>
-        </li>
-    </ul>
+  <!-- Engineering -->
+  <div class="sidebar-section mt-4">Engineering</div>
+  <ul class="sidebar-menu">
+    <li>
+      <a class="sidebar-link" href="{% url 'pmto_list' %}">
+        <i class="fa-solid fa-code"></i> PMTO Code
+      </a>
+    </li>
+    <li>
+      <a class="sidebar-link" href="{% url 'mr_list' %}">
+        <i class="fa-regular fa-file-lines"></i> Material Requisition
+      </a>
+    </li>
+  </ul>
 
-    <!-- Procurement -->
-    <div class="sidebar-section mt-4">Procurement</div>
-    <ul class="sidebar-menu">
-        <li>
-            <a class="sidebar-link" href="{% url 'procurement_list' %}">
-                <i class="fa-solid fa-cart-shopping"></i> Purchase Order
-            </a>
-        </li>
-        <li>
-            <a class="sidebar-link" href="{% url 'po_tracking' %}">
-                <i class="fa-solid fa-columns"></i> PO Tracking
-            </a>
-        </li>
-    </ul>
+  <!-- Procurement -->
+  <div class="sidebar-section mt-4">Procurement</div>
+  <ul class="sidebar-menu">
+    <li>
+      <a class="sidebar-link" href="{% url 'procurement_list' %}">
+        <i class="fa-solid fa-cart-shopping"></i> Purchase Order
+      </a>
+    </li>
+    <li>
+      <a class="sidebar-link" href="{% url 'po_tracking' %}">
+        <i class="fa-solid fa-columns"></i> PO Tracking
+      </a>
+    </li>
+  </ul>
 
-    <!-- Stock Control -->
-    <div class="sidebar-section mt-4">Stock Control</div>
-    <ul class="sidebar-menu">
-        <li>
-            <a class="sidebar-link" href="{% url 'warehouse_kanban' %}">
-                <i class="fa-solid fa-warehouse"></i> Warehouse
-            </a>
-        </li>
-        <li>
-            <a class="sidebar-link d-flex align-items-center gap-2" href="{% url 'warehouse_rfid' %}">
-                <i class="fa-solid fa-qrcode"></i> RFID Pieces Control
-            </a>
-        </li>
-        <li>
-            <a class="sidebar-link d-flex align-items-center gap-2" href="{% url 'warehouse_logistics' %}">
-                <i class="fa-solid fa-truck-ramp-box"></i> Warehouse Logistics
-            </a>
-        </li>
-    </ul>
+  <!-- Stock Control -->
+  <div class="sidebar-section mt-4">Stock Control</div>
+  <ul class="sidebar-menu">
+    <li>
+      <a class="sidebar-link" href="{% url 'warehouse_kanban' %}">
+        <i class="fa-solid fa-warehouse"></i> Warehouse
+      </a>
+    </li>
+    <li>
+      <a class="sidebar-link d-flex align-items-center gap-2" href="{% url 'warehouse_rfid' %}">
+        <i class="fa-solid fa-qrcode"></i> RFID Pieces Control
+      </a>
+    </li>
+    <li>
+      <a class="sidebar-link d-flex align-items-center gap-2" href="{% url 'warehouse_logistics' %}">
+        <i class="fa-solid fa-truck-ramp-box"></i> Warehouse Logistics
+      </a>
+    </li>
+  </ul>
 
-    <!-- Sair -->
-    <div class="sidebar-logout">
-        <a href="#" class="sidebar-link">
-            <i class="fa-solid fa-right-from-bracket"></i>
-            Log Out
-        </a>
-    </div>
+  <!-- Sair -->
+  <div class="sidebar-logout">
+    <a href="#" class="sidebar-link">
+      <i class="fa-solid fa-right-from-bracket"></i> Log Out
+    </a>
+  </div>
 </nav>
+
+<!-- Overlay do drawer -->
 <div id="sidebarOverlay" class="hide"></div>
 
-<!-- Conteúdo principal -->
-<div class="d-flex flex-column" id="content-wrapper">
-    <div id="content">
-        <!-- Topbar -->
-        <nav class="navbar navbar-expand bg-white shadow mb-4 topbar static-top navbar-light">
-            <div class="container-fluid">
-                <!-- Botão hambúrguer (mobile) -->
-                <button id="sidebarToggle" class="btn btn-link d-lg-none me-2" type="button" aria-label="Toggle sidebar">
-                    <i class="fa-solid fa-bars"></i>
-                </button>
-
-                <ul class="navbar-nav">
-                    <!-- Relatórios -->
-                    <li class="nav-item dropdown no-arrow">
-                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
-                            <span class="d-none d-lg-inline me-2 text-gray-600 small">
-                                Reports <i class="fa-solid fa-chevron-down fa-sm fa-fw me-2 text-gray-400"></i>
-                            </span>
-                        </a>
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item" href="{% url 'jobcards_tam' %}">Jobcards <span style="font-size:09px; color: red; font-weight: bold"> [TAM]</span></a>
-                        </div>
-                    </li>
-
-                    <!-- Tasks -->
-                    <li class="nav-item dropdown no-arrow">
-                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
-                            <span class="d-none d-lg-inline me-2 text-gray-600 small">
-                                Tasks <i class="fa-solid fa-chevron-down fa-sm fa-fw me-2 text-gray-400"></i>
-                            </span>
-                        </a>
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item" href="{% url 'upload_documents' %}"> 
-                                <i class="fa-solid fa-file-arrow-up fa-sm fa-fw text-gray-400"></i>
-                                Save Documents
-                            </a>
-                            <a class="dropdown-item" href="{% url 'modify_jobcard_entry' %}"> 
-                                <i class="fa-regular fa-pen-to-square fa-sm fa-fw text-gray-400"></i>
-                                Modify Jobcard
-                            </a>
-                            <a class="dropdown-item" href="{% url 'schedule_gantt' %}">
-                                <i class="fa-solid fa-project-diagram fa-sm fa-fw text-gray-400"></i>
-                                View Schedule
-                            </a>
-                            <a class="dropdown-item" href="{% url 'download_jobcards_by_list' %}">
-                                <i class="fa-solid fa-download fa-sm fa-fw text-gray-400"></i>
-                                Download Jobcards
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- References -->
-                    <li class="nav-item dropdown no-arrow">
-                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
-                            <span class="d-none d-lg-inline me-2 text-gray-600 small">
-                            References <i class="fa-solid fa-chevron-down fa-sm fa-fw me-2 text-gray-400"></i>
-                            </span>
-                        </a>
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item" href="{% url 'disciplines_list' %}">
-                                <i class="fa-solid fa-shapes fa-sm fa-fw me-2 text-gray-400"></i>
-                                Disciplines
-                            </a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'areas_list' %}">
-                                <i class="fa-solid fa-map fa-sm fa-fw me-2 text-gray-400"></i>
-                                Areas
-                            </a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'workingcodes_list' %}">
-                                <i class="fa-solid fa-list-check fa-sm fa-fw me-2 text-gray-400"></i>
-                                Working Codes
-                            </a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'systems_list' %}">
-                                <i class="fa-solid fa-network-wired fa-sm fa-fw me-2 text-gray-400"></i>
-                                Sys & Subsystems
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Allocated -->
-                    <li class="nav-item dropdown no-arrow">
-                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
-                            <span class="d-none d-lg-inline me-2 text-gray-600 small">
-                                Allocated <i class="fa-solid fa-chevron-down fa-sm fa-fw me-2 text-gray-400"></i>
-                            </span>
-                        </a>
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item" href="{% url 'allocated_material_list' %}">Material Allocated</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'allocated_manpower_list' %}">Manpower Allocated</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'allocated_tool_list' %}">Tools Allocated</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'allocated_engineering_list' %}">Engineering Allocated</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'allocated_task_list' %}">Task Allocated</a>
-                        </div>
-                    </li>
-
-                    <!-- Links simples -->
-                    <li class="nav-item"><a class="nav-link" href="#">Imports</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#">Exports</a></li>
-                </ul>
-
-                <!-- Usuário e busca -->
-                <ul class="navbar-nav flex-nowrap ms-auto">
-                    <li class="nav-item dropdown d-sm-none no-arrow">
-                        <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#"><i class="fa-solid fa-magnifying-glass"></i></a>
-                        <div class="dropdown-menu dropdown-menu-end p-3">
-                            <form class="me-auto navbar-search w-100">
-                                <div class="input-group">
-                                    <input class="bg-light form-control border-0 small" type="text" placeholder="Search...">
-                                    <button class="btn btn-primary py-0" type="button">
-                                        <i class="fa-solid fa-magnifying-glass"></i>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </li>
-
-                    <div class="d-none d-sm-block topbar-divider"></div>
-                    <ul class="navbar-nav flex-nowrap ms-auto">
-                        <!-- Sininho (revisões recentes) -->
-                        <li class="nav-item mx-2" id="li-revisao-alerta">
-                            <a onclick="marcarNotificacoesComoLidas()" class="nav-link position-relative" href="{% url 'dashboard' %}#recent-revisions" title="Recent Document Revisions">
-                                <i class="fa-regular fa-bell" style="font-size: 20px; color:#4953a7;"></i>
-                                <span id="contador-revisoes" class="position-absolute translate-middle badge rounded-pill bg-danger" style="font-size:10px; display:none;">
-                                    0
-                                </span>
-                            </a>
-                        </li>
-
-                        <!-- Usuário -->
-                        <li class="nav-item dropdown no-arrow">
-                            <a class="dropdown-toggle nav-link" data-bs-toggle="dropdown" href="#">
-                                <span class="d-none d-lg-inline me-2 text-gray-600 small">{{user.username}}</span>
-                                <i class="fa-regular fa-circle-user" style="font-size:18px"></i>
-                            </a>
-                        </li>
-                    </ul>
-                </ul>
-            </div>
-        </nav>
-
-        <style>
-/* ===== Sidebar (visual apenas; estrutura intacta) ===== */
-.sidebar-link .badge { min-width: 18px; line-height: 1; }
-
-.sidebar-taskfy {
-  width: 250px;
-  background: #fff;
-  box-shadow: 1px 0 6px rgba(40,60,90,0.06);
-  padding: 24px 0 10px 14px;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  font-size: 13px;
-  position: sticky;
-  top: 0;
-}
-.sidebar-brand {
-  font-size: 18px;
-  font-weight:600;
-  letter-spacing: .5px;
-  color: #222;
-  padding: 0 0 10px 22px;
-  font-family: Inter, system-ui, -apple-system, Arial, sans-serif;
-}
-.sidebar-section {
-  font-size: 10.5px;
-  color: #9aa3b2;
-  padding: 9px 18px 6px 22px;
-  font-weight: 800;
-  margin-top: 6px;
-  margin-bottom: 2px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.sidebar-menu { list-style: none; margin: 0; padding: 0; }
-.sidebar-menu li { width: 100%; }
-
-.sidebar-link {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 11px; color: #4d4f63; text-decoration: none;
-  border-radius: 10px; padding: 9px 12px 9px 36px; margin: 2px 6px 2px 8px;
-  font-weight: 400; position: relative;
-  transition: background .18s ease, color .18s ease, transform .08s ease;
-}
-.sidebar-link i { font-size: 14px; color: #9fa6b8; min-width: 16px; transition: color .18s ease, transform .18s ease; }
-
-/* Indicador à esquerda animado */
-.sidebar-link::before{
-  content:""; position:absolute; left:12px; top:50%; transform:translateY(-50%) scaleY(0);
-  width:3px; height:60%; border-radius:3px; background:#4c6fff; opacity:.0; transition:transform .18s, opacity .18s;
-}
-
-.sidebar-link:hover { background:#eef3ff; color:#263248; }
-.sidebar-link:hover i { color:#3b57f0; transform: translateX(1px); }
-.sidebar-link:hover::before{ transform:translateY(-50%) scaleY(1); opacity:1; }
-
-.sidebar-link.active,
-.sidebar-link:focus {
-  background:#e9f0ff;
-  color:#1f2a44;
-  box-shadow: inset 0 0 0 1px #dfe7ff;
-}
-.sidebar-link.active i { color:#3758e4; }
-.sidebar-link.active::before { transform:translateY(-50%) scaleY(1); opacity:1; }
-
-.sidebar-logout { margin-top:auto; padding-top:10px; border-top:1px solid #ececf1; }
-.sidebar-logout .sidebar-link { color:#a3a7b7; padding-left:22px; }
-.sidebar-logout .sidebar-link i { color:#a3a7b7; }
-.sidebar-logout .sidebar-link:hover { background:#f5f6f9; color:#d42f2f; }
-.sidebar-logout .sidebar-link:hover i { color:#d42f2f; }
-
-/* ===== Drawer mobile ===== */
-#sidebarOverlay.hide { display:none; }
-#sidebarOverlay{
-  display:block; position:fixed; z-index:1059; top:0; left:0; width:100vw; height:100vh;
-  background: rgba(0,0,0,.15); opacity:0; pointer-events:none; transition: opacity .18s ease;
-}
-
-@media (max-width: 991px) {
-  .sidebar-taskfy {
-    position: fixed; left: -260px; top: 0; height: 100vh; width: 240px; z-index: 1060;
-    transition: left 0.22s cubic-bezier(.4,0,.2,1); border-radius: 0; padding-top: 60px;
+<!-- ====== Estilos exclusivos da Sidebar ====== -->
+<style>
+  /* Sidebar */
+  .sidebar-taskfy{
+    width:250px;
+    background:#fff;
+    box-shadow:1px 0 6px rgba(40,60,90,0.06);
+    padding:24px 0 10px 14px;
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+    font-size:13px;
+    position:sticky;
+    top:0;
   }
-  .sidebar-taskfy.open { left: 0; }
-  #sidebarOverlay.active { opacity:1; pointer-events:auto; }
-}
-
-/* ===== Pequenos retoques Topbar ===== */
-.topbar .nav-link { font-weight:600; }
-.topbar .dropdown-menu a.dropdown-item i { width:18px; text-align:center; }
-
-/* (Opcional) reduz leve o espaçamento do content-wrapper no mobile */
-@media (max-width: 575px){
-  #content { padding: .5rem !important; }
-}
-        </style>
-
-        <script>
-/* Marca link ativo pela URL atual (não altera suas rotas) */
-(function() {
-  try {
-    var current = window.location.pathname.replace(/\/+$/, "");
-    document.querySelectorAll(".sidebar-link").forEach(function(a){
-      var href = a.getAttribute("href") || "";
-      var norm = href.replace(window.location.origin, "").replace(/\/+$/, "");
-      if (norm && norm === current) a.classList.add("active");
-    });
-  } catch(e){}
-})();
-
-/* Drawer: abre/fecha no mobile sem alterar estrutura */
-(function(){
-  var btn = document.getElementById("sidebarToggle");
-  var sidebar = document.getElementById("sidebar");
-  var overlay = document.getElementById("sidebarOverlay");
-  if(btn && sidebar && overlay){
-    btn.addEventListener("click", function(){
-      sidebar.classList.toggle("open");
-      overlay.classList.toggle("active");
-      overlay.classList.remove("hide");
-    });
-    overlay.addEventListener("click", function(){
-      sidebar.classList.remove("open");
-      overlay.classList.remove("active");
-    });
+  .sidebar-brand{
+    font-size:18px; font-weight:600; letter-spacing:.5px; color:#222;
+    padding:0 0 10px 22px;
+    font-family: Inter, system-ui, -apple-system, Arial, sans-serif;
   }
-})();
+  .sidebar-section{
+    font-size:10.5px; color:#9aa3b2; padding:9px 18px 6px 22px; font-weight:800;
+    margin-top:6px; margin-bottom:2px; letter-spacing:.08em; text-transform:uppercase;
+  }
+  .sidebar-menu{ list-style:none; margin:0; padding:0; }
+  .sidebar-menu li{ width:100%; }
 
-/* ===== Badge de Documentos pendentes (para aceitação) =====
-   Busca no endpoint que já aplica a sua LÓGICA DE STATUS no backend.
-   Mostra o número EXATO (sem "99+").
-*/
-async function atualizarBadgeDocsPendentes(){
-  try{
-    const resp = await fetch("{% url 'api_docs_to_accept_count' %}", {
-      headers: {'X-Requested-With': 'XMLHttpRequest'}
-    });
-    if(!resp.ok) return;
-    const data = await resp.json();
-    const n = Number(data.count || 0);
-    const badge = document.getElementById("badge-docs-pendentes");
-    if(!badge) return;
-    if(n > 0){
-      badge.textContent = String(n);      // <- sem limite
-      badge.style.display = "inline-block";
-    } else {
-      badge.style.display = "none";
+  .sidebar-link{
+    display:flex; align-items:center; gap:10px;
+    font-size:11px; color:#4d4f63; text-decoration:none;
+    border-radius:10px; padding:9px 12px 9px 36px; margin:2px 6px 2px 8px;
+    font-weight:400; position:relative;
+    transition: background .18s ease, color .18s ease, transform .08s ease;
+  }
+  .sidebar-link i{ font-size:14px; color:#9fa6b8; min-width:16px; transition: color .18s ease, transform .18s ease; }
+
+  /* Indicador à esquerda animado */
+  .sidebar-link::before{
+    content:""; position:absolute; left:12px; top:50%; transform:translateY(-50%) scaleY(0);
+    width:3px; height:60%; border-radius:3px; background:#4c6fff; opacity:.0; transition:transform .18s, opacity .18s;
+  }
+
+  .sidebar-link:hover{ background:#eef3ff; color:#263248; }
+  .sidebar-link:hover i{ color:#3b57f0; transform: translateX(1px); }
+  .sidebar-link:hover::before{ transform:translateY(-50%) scaleY(1); opacity:1; }
+
+  .sidebar-link.active, .sidebar-link:focus{
+    background:#e9f0ff; color:#1f2a44; box-shadow: inset 0 0 0 1px #dfe7ff;
+  }
+  .sidebar-link.active i{ color:#3758e4; }
+  .sidebar-link.active::before{ transform:translateY(-50%) scaleY(1); opacity:1; }
+
+  .sidebar-logout{ margin-top:auto; padding-top:10px; border-top:1px solid #ececf1; }
+  .sidebar-logout .sidebar-link{ color:#a3a7b7; padding-left:22px; }
+  .sidebar-logout .sidebar-link i{ color:#a3a7b7; }
+  .sidebar-logout .sidebar-link:hover{ background:#f5f6f9; color:#d42f2f; }
+  .sidebar-logout .sidebar-link:hover i{ color:#d42f2f; }
+
+  /* Badge do "Documents" na sidebar */
+  .sidebar-link .badge { min-width:18px; line-height:1; }
+
+  /* Drawer mobile */
+  #sidebarOverlay.hide{ display:none; }
+  #sidebarOverlay{
+    display:block; position:fixed; z-index:1059; top:0; left:0; width:100vw; height:100vh;
+    background:rgba(0,0,0,.15); opacity:0; pointer-events:none; transition: opacity .18s ease;
+  }
+  @media (max-width: 991px){
+    .sidebar-taskfy{
+      position:fixed; left:-260px; top:0; height:100vh; width:240px; z-index:1060;
+      transition:left .22s cubic-bezier(.4,0,.2,1); border-radius:0; padding-top:60px;
     }
-  }catch(e){ /* silencioso */ }
-}
-document.addEventListener("DOMContentLoaded", atualizarBadgeDocsPendentes);
-setInterval(atualizarBadgeDocsPendentes, 60000);
-        </script>
+    .sidebar-taskfy.open{ left:0; }
+    #sidebarOverlay.active{ opacity:1; pointer-events:auto; }
+  }
+</style>

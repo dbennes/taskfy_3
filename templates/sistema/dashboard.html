@@ -609,9 +609,9 @@ body, .container-fluid {
 
   
 
-  
+  <!--
   <div class="row gx-4 align-items-stretch mt-3" style="min-height: 360px;">
-    <!-- Coluna Gráficos -->
+     Coluna Gráficos 
     <div class="col-lg-5 d-flex flex-column gap-3" style="min-height: 360px;">
       <div class="dashboard-graph-card flex-fill mb-0">
         <div class="chart-title mb-2">JobCards per Area</div>
@@ -621,22 +621,22 @@ body, .container-fluid {
       </div>
     </div>
 
-    <!-- Coluna 3D Viewer  -->
+      Coluna 3D Viewer
     <div class="col-lg-7 d-flex flex-column">
       <div class="card flex-fill mb-0"
         style="background:#fff; border-radius:16px; box-shadow:0 2px 8px #0001; display:flex; flex-direction:column; height: 100%;">
           <div class="card-body p-0" style="flex:1 1 auto; min-height:0; overflow:hidden; height: 100%;">
 
-            <!-- Coluna 3D Viewer  -->
-            <!--<div id="viewerContainer" style="width:100%; height:100%; border-radius:10px; background:#151c22; min-height:0;"> -->
+           
+            <div id="viewerContainer" style="width:100%; height:100%; border-radius:10px; background:#151c22; min-height:0;">
              <img class="" src="{% static 'assets/img/image.png' %}" alt="Logo" style="width: 100%; border-radius:16px; height: 100%"/> 
 
 
           </div>
         </div>
       </div>
-    </div> 
-  </div>
+    </div> -->
+  </div> 
 
   <!-- TABELAS RECENTES E ENGENHARIA -->
   <div class="row gx-4 mt-3">
@@ -984,17 +984,8 @@ new Chart(document.getElementById('totalBar'), {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 
-<div class="card-body" style="width:100%;">
-  <canvas id="jobcardCheckedLine" style="width:100%; height:240px;"></canvas>
-</div>
 
-<style>
-#jobcardCheckedLine {
-    width: 100% !important;
-    height: 240px !important;
-    display: block;
-}
-</style>
+
 
 <script>
 const checkedDays = {{ checked_days|safe }};
