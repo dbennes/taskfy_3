@@ -1,101 +1,85 @@
-# sistema/views_account.py
-from django.contrib import messages
+# jobcards/views_account.py
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import authenticate, login, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.password_validation import validate_password
+from django.contrib import messages
+from django.http import JsonResponse, HttpResponseBadRequest
 from django.shortcuts import render, redirect
-from django.utils import timezone, translation
-from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.http import JsonResponse
 
-from .forms import ProfileForm, CustomPasswordChangeForm
+from .forms import ProfileForm, CustomPasswordChangeForm  # <-- seus forms
 
-
-@ensure_csrf_cookie  # Ensure CSRF cookie is set so AJAX can send it back
 @login_required
 def user_profile(request):
     """
-    User profile screen.
-    - ProfileForm updates first_name/last_name/email.
-    - Password change is handled via AJAX (api_change_password).
-    - Force English UI/help_text using translation.override('en') for this page.
+    Página de Profile:
+    - GET: entrega ProfileForm preenchido + CustomPasswordChangeForm para o modal.
+    - POST (action=update_profile): salva nome/sobrenome/email e volta pra página.
     """
-    user = request.user
-
-    # Render in English (labels/help_text/messages) regardless of site locale
-    with translation.override('en'):
-        if request.method == "POST":
-            action = request.POST.get("action")
-
-            if action == "update_profile":
-                # Update basic profile fields
-                form = ProfileForm(request.POST, instance=user)
-                if form.is_valid():
-                    form.save()
-                    messages.success(request, "Profile updated successfully.")
-                    return redirect("user_profile")
-                else:
-                    # Keep password form clean on profile validation errors
-                    pwd_form = CustomPasswordChangeForm(user=user)
-
-            elif action == "change_password":
-                # Legacy fallback — prefer using the AJAX endpoint instead
-                form = ProfileForm(instance=user)
-                pwd_form = CustomPasswordChangeForm(user=user, data=request.POST)
-                if pwd_form.is_valid():
-                    pwd_form.save()
-                    update_session_auth_hash(request, pwd_form.user)  # keep user logged in
-                    messages.success(request, "Password changed successfully.")
-                    return redirect("user_profile")
-                else:
-                    messages.error(request, "Please correct the errors in the password form.")
-
-            else:
-                # Unknown action → just show both forms
-                form = ProfileForm(instance=user)
-                pwd_form = CustomPasswordChangeForm(user=user)
+    if request.method == "POST" and request.POST.get("action") == "update_profile":
+        form = ProfileForm(request.POST, instance=request.user)
+        pwd_form = CustomPasswordChangeForm(user=request.user)  # só para renderizar o modal
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profile updated successfully.")
+            return redirect("user_profile")
         else:
-            # GET: initial forms
-            form = ProfileForm(instance=user)
-            pwd_form = CustomPasswordChangeForm(user=user)
-
-    # Read-only groups (group memberships should be managed by admins)
-    groups = list(user.groups.values_list("name", flat=True))
+            messages.error(request, "Please fix the errors below.")
+    else:
+        form = ProfileForm(instance=request.user)
+        pwd_form = CustomPasswordChangeForm(user=request.user)
 
     context = {
         "form": form,
-        "pwd_form": pwd_form,  # used by the modal fields
-        "groups": groups,
-        "now": timezone.now(),
+        "pwd_form": pwd_form,
+        "groups": request.user.groups.all(),  # seu template usa
+        "sessions": [],                      # preencha se tiver sua lógica
     }
-    # Keep your current template path
+    # ATENÇÃO: confirme se este é o mesmo template que você mostrou
     return render(request, "sistema/user_profile/user_profile.html", context)
 
 
 @login_required
-@require_POST
 def api_change_password(request):
     """
-    AJAX endpoint for changing the user's password.
-    - Validates using PasswordChangeForm (via CustomPasswordChangeForm).
-    - Forces English messages regardless of site locale.
-    - Returns JSON with success or field-level errors (inline-friendly for the modal).
+    Troca de senha via AJAX.
+    Aceita tanto os nomes do PasswordChangeForm (old_password/new_password1/new_password2)
+    quanto o seu formato (current_password/new_password/new_password2).
+    Retorna JSON no formato esperado pelo seu JS do modal.
     """
-    with translation.override('en'):
-        form = CustomPasswordChangeForm(user=request.user, data=request.POST)
+    if request.method != "POST" or request.headers.get("X-Requested-With") != "XMLHttpRequest":
+        return HttpResponseBadRequest("Invalid request")
+
+    # 1) Se vier com os campos do PasswordChangeForm, use-o (mais seguro/clean)
+    if any(k in request.POST for k in ("old_password", "new_password1", "new_password2")):
+        form = PasswordChangeForm(user=request.user, data=request.POST)
         if form.is_valid():
-            form.save()
-            update_session_auth_hash(request, form.user)  # keep user logged in
+            user = form.save()
+            update_session_auth_hash(request, user)  # mantém sessão
             return JsonResponse({"ok": True, "message": "Password changed successfully."})
+        errors = {k: [str(e) for e in v] for k, v in form.errors.items()}
+        nfe = [str(e) for e in form.non_field_errors()]
+        return JsonResponse({"ok": False, "errors": errors, "non_field_errors": nfe}, status=400)
 
-        # Serialize errors safely:
-        # - form.errors is an ErrorDict (no .getlist); use get_json_data() for clean messages/codes.
-        # - Do NOT HTML-escape here; the frontend already escapes when rendering.
-        raw = form.errors.get_json_data(escape_html=False)
-        errors = {k: [item["message"] for item in v] for k, v in raw.items() if k != "__all__"}
-        non_field = [item["message"] for item in raw.get("__all__", [])]
+    # 2) Caso contrário, trate o formato "current_password/new_password/new_password2"
+    user = request.user
+    current = request.POST.get("current_password", "")
+    new1 = request.POST.get("new_password", "")
+    new2 = request.POST.get("new_password2", "")
 
-        return JsonResponse(
-            {"ok": False, "errors": errors, "non_field_errors": non_field},
-            status=400
-        )
+    if new1 != new2:
+        return JsonResponse({"ok": False, "detail": "Senhas novas não conferem."}, status=400)
+    if not user.check_password(current):
+        return JsonResponse({"ok": False, "detail": "Senha atual incorreta."}, status=400)
+    try:
+        validate_password(new1, user=user)
+    except Exception as e:
+        msgs = getattr(e, "messages", None) or [str(e)]
+        return JsonResponse({"ok": False, "detail": "; ".join(str(x) for x in msgs)}, status=400)
+
+    user.set_password(new1)
+    user.save(update_fields=["password"])
+    auth_user = authenticate(request, username=user.username, password=new1)
+    if auth_user is not None:
+        login(request, auth_user)
+    return JsonResponse({"ok": True, "message": "Password changed successfully."})

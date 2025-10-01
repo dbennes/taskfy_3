@@ -1,0 +1,9 @@
+Bem-vindo ao Taskfy
+
+Olá {{ user.get_full_name|default:user.username }},
+
+Acesse com a senha provisória que você recebeu e altere-a no primeiro login:
+
+{{ login_link }}
+
+— Taskfy

@@ -1,0 +1,8 @@
+Olá {{ user.get_full_name|default:user.username }},
+
+Bem-vindo ao Taskfy!
+
+Sua senha temporária é: {{ temp_pwd }}
+
+Por segurança, você será obrigado(a) a alterar a senha ao entrar pela primeira vez.
+{{ login_hint }}

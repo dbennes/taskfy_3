@@ -1,10 +1,12 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views_pdf_api
 from . import views_schedule, views_documents, views_allocated_manpower, views_sync
 from . import views_downloads_jobcards
 from . import views_account
+
+from .views_auth  import TaskfyPasswordChangeView
 
 
 from sistema.authz import allow_groups, cbv_group_protect
@@ -193,8 +195,16 @@ urlpatterns = [
     path('jobcards/<str:job_card_number>/sync/', allow_groups(views_sync.jobcard_sync_allocations,  roles.PLANNER), name='jobcard_sync_allocations'),
 
 
-    # ===== Sync (funciona como ação/HTML; protegido) =====
+    # ===== MUDAR A SENHA DO SISTEMA =====
     path("account/profile/", views_account.user_profile, name="user_profile"),
+    path("account/api/change-password/", views_account.api_change_password, name="api_change_password"),
+
+
+    # ===== E-MAIL DE NOVO USUARIO ===== #
+    path("accounts/password_change/", TaskfyPasswordChangeView.as_view(), name="password_change"),
+    path("accounts/", include("django.contrib.auth.urls")),  # inclui /reset/<uid>/<token>/ etc.
+
+    
     path("account/api/change-password/", views_account.api_change_password, name="api_change_password"),
 
 ]

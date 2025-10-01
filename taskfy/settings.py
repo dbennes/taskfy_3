@@ -29,13 +29,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'jobcards',
-
+    
     'rest_framework',
     'corsheaders',
 
     # Mantido (fila RQ)
     'django_rq',
+    "jobcards.apps.JobcardsConfig",  # << use o AppConfig
 ]
 
 # =================================================
@@ -63,16 +63,15 @@ RQ_QUEUES = {
 # === Middleware ===
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-
-    # WhiteNoise deve vir logo após o SecurityMiddleware
     'whitenoise.middleware.WhiteNoiseMiddleware',
 
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',           # CORS alto na pilha
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
 
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    #"jobcards.middleware.ForcePasswordChangeMiddleware",  # << aqui sim
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -175,3 +174,30 @@ SIMPLE_JWT = {
 # Se a sua versão do Django aceitar, você também pode remover o limite:
 # (Se der erro ao usar None na sua versão, mantenha o inteiro alto acima)
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
+
+
+# === Email / SMTP (Office 365) ===
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.office365.com"
+EMAIL_PORT = 587              # STARTTLS
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = "suporte.taskfy@utci.com.br"   # UPN completo da caixa
+EMAIL_HOST_PASSWORD = "D(450820795928uv"
+DEFAULT_FROM_EMAIL = "Taskfy <suporte.taskfy@utci.com.br>"
+EMAIL_TIMEOUT = 30
+
+# Se tiver HTTP interno (ex.: "http://192.168.0.10:8000"), coloque aqui; senão deixe vazio:
+BASE_URL = "http://127.0.0.1:8080"  # ou o IP/host do seu servidor  # ou "http://SEU-IP:8000"
+
+# "auto" => usa link se BASE_URL existir; senão envia senha temporária
+# também aceita "link" (força link) ou "temp" (força senha temporária)
+TASKFY_WELCOME_MODE = "login"
+
+TASKFY_SEND_ON_EMAIL_CHANGE = True
+
+# texto auxiliar no e-mail de senha temporária
+TASKFY_LOGIN_HINT = "Acesse o Taskfy pelo atalho da intranet quando disponível."
+
+# expiração do link de redefinição (quando houver link)
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24 * 3  # 3 dias

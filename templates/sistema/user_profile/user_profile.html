@@ -3,168 +3,237 @@
 
 {% block content %}
 <style>
-  /* ===== Design tokens (alinhados ao topbar) ===== */
+  /* ===== Tokens compact/minimal ===== */
   :root{
     --bg:#f7f8fa; --panel:#ffffff; --ink:#0b0b0c; --muted:#6b7280;
     --line:#eceff3; --line-strong:#d9dee7; --hover:#f6f8fe;
     --brand:#879aff; --icon:#858796;
     --shadow:0 8px 28px rgba(16,24,40,.06);
-    --radius:14px; --r-sm:12px;
+    --radius:14px;
+
+    --topbar2-bg:#ededed;
+
+    /* Escala tipográfica compacta (~0.9rem como o topbar) */
+    --fs-base:.9rem;          /* corpo */
+    --fs-title:.92rem;        /* títulos de card */
+    --fs-small:.8rem;         /* legendas/auxiliares */
+    --fs-micro:.78rem;        /* ainda menor */
   }
 
-  .page-wrap{ background:var(--bg); }
+  .page-wrap{ background:var(--bg); font-size:var(--fs-base); }
+  .text-small{ font-size:var(--fs-small); }
+  .text-micro{ font-size:var(--fs-micro); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ===== TOPBAR2 ===== */
+  .topbar2{
+    background:var(--topbar2-bg);
+    border:1px solid #e2e2e2;
+    border-radius:var(--radius);
+    padding:8px 10px;
+    box-shadow:0 6px 18px rgba(0,0,0,.06);
+  }
+  .topbar2 .title{
+    font-weight:700; letter-spacing:.2px;
+    font-size: .95rem; color:#1f2937;
+    line-height:2.5;
+  }
+  .topbar2 .dots{ display:flex; align-items:center; gap:6px; }
+  .topbar2 .dot{
+    width:11px; height:11px; border-radius:50%;
+    border:1px solid rgba(0,0,0,.08);
+    display:inline-block; background:#ddd; padding:0;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.25);
+    cursor:pointer;
+  }
+  .topbar2 .dot.red{ background:#ff5f57; }
+  .topbar2 .dot.yellow{ background:#febc2e; }
+  .topbar2 .dot.green{ background:#28c840; }
+  .topbar2 .btn{ border-radius:10px; padding:.35rem .6rem; font-size:var(--fs-small); }
+  .topbar2 .btn-light{ border:1px solid var(--line-strong); background:#fff; }
+  .topbar2 .btn-light:hover{ background:#fafafa; border-color:#dfe5ef; }
+  .topbar2 .btn-dark{ background:#111; border:0; color:#fff; }
+  .topbar2 i{ color:var(--icon); font-size:.95em; }
+
+  @media (max-width: 575.98px){
+    .topbar2{ padding:8px; }
+    .topbar2 .title{ font-size:.88rem; }
+  }
+
+  /* ===== Cards “uber-like” (compact) ===== */
   .card-uber{
     background:var(--panel); border:1px solid var(--line);
     border-radius:var(--radius); box-shadow:var(--shadow);
-    overflow:hidden; transition:transform .06s ease, box-shadow .15s ease, border-color .15s ease;
+    overflow:hidden; transition:box-shadow .15s ease, border-color .15s ease;
   }
   .card-uber:hover{ border-color:var(--line-strong); box-shadow:0 10px 36px rgba(16,24,40,.08); }
-
-  /* Cabeçalho de card (estilo “uber”) */
   .card-head{
     display:flex; align-items:center; justify-content:space-between;
-    padding:12px 16px; border-bottom:1px solid var(--line);
+    padding:8px 12px; border-bottom:1px solid var(--line);
     background:linear-gradient(180deg,#fff,#fbfbfd);
   }
   .card-title{
-    display:flex; align-items:center; gap:.5rem;
-    font-weight:700; font-size:1rem; letter-spacing:.2px; color:#1f2937;
+    display:flex; align-items:center; gap:.45rem;
+    font-weight:700; font-size:var(--fs-title); letter-spacing:.2px; color:#1f2937;
   }
-  .card-title i{ color:var(--icon); }
-
-  /* Subtítulo/legenda */
+  .card-title i{ color:var(--icon); font-size:1em; }
   .muted{ color:var(--muted); }
 
-  /* Avatar com iniciais */
+  .content-p{ padding:14px; }          /* corpo do card mais enxuto */
+  .content-p-sm{ padding:12px; }
+
+  /* Avatar iniciais (menor) */
   .avatar-xl{
-    width:64px; height:64px; border-radius:999px; display:grid; place-items:center;
+    width:56px; height:56px; border-radius:999px; display:grid; place-items:center;
     background:#111; color:#fff; font-weight:700; letter-spacing:.5px;
     box-shadow: inset 0 0 0 2px rgba(255,255,255,.15);
+    font-size:.95rem;
   }
 
   /* Chips */
   .chip{
     display:inline-flex; align-items:center; gap:6px;
     background:#f4f5f8; border:1px solid var(--line-strong);
-    border-radius:999px; padding:5px 10px; font-size:.86rem; margin:2px 6px 2px 0;
+    border-radius:999px; padding:4px 8px; font-size:var(--fs-small); margin:1px 6px 1px 0;
   }
-  .chip i{ font-size:.85rem; color:var(--icon); }
+  .chip i{ font-size:.9em; color:var(--icon); }
 
-  /* Mini KPIs */
+  /* KPIs (compactos) */
   .kpi{
-    display:flex; align-items:center; gap:10px; padding:10px 12px;
+    display:flex; align-items:center; gap:8px; padding:8px 10px;
     border:1px solid var(--line); border-radius:12px; background:#fff;
   }
   .kpi .ico{
-    width:32px; height:32px; border-radius:10px; display:grid; place-items:center;
-    border:1px solid var(--line); color:var(--icon); background:#fff;
+    width:28px; height:28px; border-radius:8px; display:grid; place-items:center;
+    border:1px solid var(--line); color:var(--icon); background:#fff; font-size:.9em;
   }
-  .kpi strong{ font-size:1.05rem; color:#1f2937; }
-  .kpi small{ color:var(--muted); }
+  .kpi strong{ font-size:.95rem; color:#1f2937; }
+  .kpi small{ color:var(--muted); font-size:var(--fs-small); }
 
-  /* Botões “fantasma” e “dark” */
+  /* Botões (compactos) */
   .btn-ghost{
-    background:#fff; color:#111; border:1px solid var(--line-strong); border-radius:12px;
-    padding:.6rem .9rem; transition:background-color .15s ease, border-color .15s ease, transform .05s ease;
+    background:#fff; color:#111; border:1px solid var(--line-strong); border-radius:10px;
+    padding:.45rem .7rem; font-size:var(--fs-small);
   }
   .btn-ghost:hover{ background:#fafafa; border-color:#dfe5ef; }
-  .btn-ghost:active{ transform:translateY(1px); }
-
   .btn-dark{
-    background:#111; color:#fff; border:0; border-radius:12px; padding:.6rem 1rem;
-    box-shadow:0 2px 0 rgba(0,0,0,.12);
+    background:#111; color:#fff; border:0; border-radius:10px; padding:.45rem .8rem;
+    box-shadow:0 2px 0 rgba(0,0,0,.12); font-size:var(--fs-small);
   }
-  .btn-dark:active{ transform:translateY(1px); }
 
-  /* Inputs */
-  .form-label{ font-weight:600; color:#2c2f36; font-size:.92rem; }
+  /* Inputs/labels (compactos) */
+  .form-label{ font-weight:600; color:#2c2f36; font-size:var(--fs-small); margin-bottom:.25rem; }
   .form-control{
-    border:1px solid var(--line-strong); border-radius:12px; padding:.6rem .8rem;
-    font-size:.95rem; transition:border-color .15s ease, box-shadow .15s ease;
-    background:#fff;
+    border:1px solid var(--line-strong); border-radius:10px; padding:.45rem .65rem;
+    font-size:.9rem; transition:border-color .15s ease, box-shadow .15s ease; background:#fff;
   }
-  .form-control:focus{ border-color:#cfd6e5; box-shadow:0 0 0 .2rem rgba(135,154,255,.18); }
-  .form-control[disabled]{ background:#fafafd; color:#697185; }
+  .form-control:focus{ border-color:#cfd6e5; box-shadow:0 0 0 .18rem rgba(135,154,255,.16); }
 
-  .divider{ height:1px; background:var(--line); margin:14px 0; }
-  .label-small{ font-size:.86rem; color:#616673; }
+  .divider{ height:1px; background:var(--line); margin:10px 0; }
+  .label-small{ font-size:var(--fs-small); color:#616673; }
 
-  /* Lista de sessões */
+  /* Sessões */
   .session{
     display:flex; align-items:center; justify-content:space-between;
-    border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:8px;
+    border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:6px;
+    font-size:var(--fs-small);
   }
-  .session .info{ display:flex; align-items:center; gap:10px; }
+  .session .info{ display:flex; align-items:center; gap:8px; min-width:0; }
   .session .device{
-    width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
-    border:1px solid var(--line); color:var(--icon); background:#fff;
+    width:28px; height:28px; border-radius:8px; display:grid; place-items:center;
+    border:1px solid var(--line); color:var(--icon); background:#fff; font-size:.9em;
   }
+  .truncate{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-  /* Switch minimal */
-  .form-switch .form-check-input{
-    width:2.25em; height:1.25em; cursor:pointer;
-  }
-
-  /* Modal: sem borda branca! */
+  /* Modal — sem borda branca (borda escura) */
   .modal-content{
     border-radius:14px !important;
-    border:1px solid #1f2328 !important;   /* <<< borda escura */
+    border:1px solid #1f2328 !important;
     box-shadow:0 20px 48px rgba(0,0,0,.22);
+    font-size:var(--fs-base);
   }
   .modal-header{
-    background:#21262b; color:#fff; border-bottom:1px solid rgba(255,255,255,.12) !important; /* <<< sem linha branca */
+    background:#21262b; color:#fff;
+    border-bottom:1px solid rgba(255,255,255,.12) !important;
+    padding:8px 12px;
   }
-  .modal-footer{ border-top:1px solid var(--line-strong); }
+  .modal-body{ padding:12px; }
+  .modal-footer{ border-top:1px solid var(--line-strong); padding:8px 12px; }
 
   /* Mostrar/ocultar senha */
   .reveal-wrap{ position:relative; }
   .reveal-btn{
     position:absolute; right:10px; top:50%; transform:translateY(-50%);
     border:0; background:transparent; color:#6b7280; padding:0; line-height:0;
+    font-size:.95em;
   }
   .reveal-btn:hover{ color:#374151; }
-  .reveal-btn i{ font-size:1rem; }
 
-  /* Layout responsivo */
-  @media (max-width: 991.98px){
-    .card-title{ font-size:.98rem; }
-  }
+  /* “Ultra-compact” quando usuário ativa a preferência */
+  .compact .content-p{ padding:12px !important; }
+  .compact .content-p-sm{ padding:10px !important; }
+  .compact .form-control{ padding:.4rem .6rem !important; }
+  .compact .btn-ghost, .compact .btn-dark{ padding:.4rem .65rem !important; }
 </style>
 
 <div class="container-fluid page-wrap">
-  <div class="row g-4">
+
+  <!-- ===== TOPBAR2 ===== -->
+  <div class="">
+    <div class="topbar2 d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="dots" role="group" aria-label="Window controls">
+          <button type="button" class="dot red" id="win-close" title="Reset filters"></button>
+          <button type="button" class="dot yellow" id="win-min" title="Minimize (hide filters)"></button>
+          <button type="button" class="dot green" id="win-max" title="Fullscreen"></button>
+        </div>
+        <div class="title">Profile</div>
+      </div>
+      <div class="d-none d-sm-flex gap-2">
+        <!-- espaço pra ações futuras; mantido enxuto -->
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 ">
 
     <!-- Mensagens Django -->
     <div class="col-12">
       {% if messages %}
         {% for message in messages %}
-          <div class="alert alert-{{ message.tags }} border-1" role="alert" style="border-radius:12px;">{{ message }}</div>
+          <div class="alert alert-{{ message.tags }} border-1 py-2 px-3" role="alert" style="border-radius:10px; font-size:var(--fs-small);">
+            {{ message }}
+          </div>
         {% endfor %}
       {% endif %}
     </div>
 
-    <!-- COL ESQUERDA: Snapshot + Ações + Sessões -->
+    <!-- COL ESQUERDA -->
     <div class="col-12 col-lg-4">
       <!-- Snapshot -->
       <div class="card-uber">
         <div class="card-head">
           <div class="card-title"><i class="fa-regular fa-id-badge"></i> Profile Snapshot</div>
         </div>
-        <div class="p-4">
-          <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="content-p">
+          <div class="d-flex align-items-center gap-2 mb-2">
             <div id="avatarInitials" class="avatar-xl">U</div>
-            <div>
-              <div class="fw-bold">{{ request.user.get_full_name|default:request.user.username }}</div>
-              <div class="muted">{{ request.user.email|default:"—" }}</div>
+            <div class="min-w-0">
+              <div class="fw-bold truncate" title="{{ request.user.get_full_name|default:request.user.username }}">
+                {{ request.user.get_full_name|default:request.user.username }}
+              </div>
+              <div class="muted truncate" style="max-width:220px" title="{{ request.user.email|default:'—' }}">
+                {{ request.user.email|default:"—" }}
+              </div>
             </div>
           </div>
 
-          <div class="row g-2 mb-3">
+          <div class="row g-2 mb-2">
             <div class="col-12">
               <div class="kpi">
                 <div class="ico"><i class="fa-regular fa-clock"></i></div>
                 <div>
-                  <strong>{{ request.user.last_login|date:"d/m/Y H:i" }}</strong><br>
+                  <strong class="num">{{ request.user.last_login|date:"d/m/y H:i" }}</strong><br>
                   <small class="muted">Last login</small>
                 </div>
               </div>
@@ -173,21 +242,21 @@
               <div class="kpi">
                 <div class="ico"><i class="fa-regular fa-calendar"></i></div>
                 <div>
-                  <strong>{{ request.user.date_joined|date:"d/m/Y" }}</strong><br>
+                  <strong class="num">{{ request.user.date_joined|date:"d/m/y" }}</strong><br>
                   <small class="muted">Member since</small>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="mb-2 fw-semibold">Groups</div>
-          <div class="mb-3">
+          <div class="mb-1 fw-semibold" style="font-size:var(--fs-small);">Groups</div>
+          <div class="mb-2">
             {% if groups %}
               {% for g in groups %}
                 <span class="chip"><i class="fa-solid fa-users"></i>{{ g }}</span>
               {% endfor %}
             {% else %}
-              <div class="muted">No group assigned.</div>
+              <div class="muted text-small">No group assigned.</div>
             {% endif %}
           </div>
 
@@ -202,55 +271,38 @@
         </div>
       </div>
 
-      <!-- Sessões ativas (opcional: se você passar 'sessions' no contexto) -->
-      <div class="card-uber mt-4">
+      <!-- Sessões ativas -->
+      <div class="card-uber mt-3">
         <div class="card-head">
-          <div class="card-title"><i class="fa-regular fa-display"></i> Active Sessions</div>
+          <div class="card-title"><i class="fa-solid fa-desktop"></i> Active Sessions</div>
         </div>
-        <div class="p-3">
+        <div class="content-p-sm">
           {% if sessions %}
             {% for s in sessions %}
               <div class="session">
-                <div class="info">
-                  <div class="device"><i class="fa-regular fa-desktop"></i></div>
-                  <div>
-                    <div class="fw-semibold">{{ s.user_agent|default:"Unknown device" }}</div>
-                    <div class="muted">{{ s.ip|default:"—" }} • {{ s.last_seen|date:"d/m/Y H:i" }}</div>
+                <div class="info min-w-0">
+                  <div class="device"><i class="fa-solid fa-desktop"></i></div>
+                  <div class="min-w-0">
+                    <div class="fw-semibold truncate" style="max-width:220px" title="{{ s.user_agent|default:'Unknown device' }}">
+                      {{ s.user_agent|default:"Unknown device" }}
+                    </div>
+                    <div class="muted text-small">
+                      <span class="truncate" style="max-width:220px" title="{{ s.ip|default:'—' }}">{{ s.ip|default:"—" }}</span>
+                      • <span class="num">{{ s.last_seen|date:"d/m/y H:i" }}</span>
+                    </div>
                   </div>
                 </div>
-                <!-- Placeholder: ação local (não quebra nada) -->
-                <button class="btn btn-sm btn-outline-danger" type="button" disabled>Sign out</button>
+                <button class="btn btn-sm btn-outline-danger py-1 px-2" type="button" disabled>Sign out</button>
               </div>
             {% endfor %}
           {% else %}
-            <div class="muted px-1">No session details available.</div>
+            <div class="muted px-1 text-small">No session details available.</div>
           {% endif %}
-        </div>
-      </div>
-
-      <!-- Preferências (salvas localmente) -->
-      <div class="card-uber mt-4">
-        <div class="card-head">
-          <div class="card-title"><i class="fa-regular fa-sliders"></i> Preferences</div>
-        </div>
-        <div class="p-3">
-          <div class="form-check form-switch mb-2">
-            <input class="form-check-input" type="checkbox" id="pref-compact">
-            <label class="form-check-label" for="pref-compact">Compact spacing</label>
-          </div>
-          <div class="form-check form-switch mb-2">
-            <input class="form-check-input" type="checkbox" id="pref-email-notify" checked>
-            <label class="form-check-label" for="pref-email-notify">Email notifications</label>
-          </div>
-          <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="pref-news-tips">
-            <label class="form-check-label" for="pref-news-tips">Tips & product news</label>
-          </div>
         </div>
       </div>
     </div>
 
-    <!-- COL DIREITA: Detalhes da conta + Segurança -->
+    <!-- COL DIREITA -->
     <div class="col-12 col-lg-8">
       <!-- Detalhes da conta -->
       <div class="card-uber">
@@ -258,11 +310,11 @@
           <div class="card-title"><i class="fa-regular fa-user"></i> Account Details</div>
         </div>
 
-        <div class="p-4">
+        <div class="content-p">
           <form method="post" action="{% url 'user_profile' %}">
             {% csrf_token %}
             <input type="hidden" name="action" value="update_profile">
-            <div class="row g-3">
+            <div class="row g-2">
               <div class="col-md-6">
                 <label class="form-label">Username</label>
                 <input class="form-control" value="{{ request.user.username }}" disabled>
@@ -284,11 +336,12 @@
 
             <div class="divider"></div>
 
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
               <div class="label-small">
                 <i class="fa-regular fa-clock me-1"></i>
-                Last login: {{ request.user.last_login|date:"d/m/Y H:i" }} &nbsp;•&nbsp;
-                Member since: {{ request.user.date_joined|date:"d/m/Y" }}
+                <span class="num">Last login: {{ request.user.last_login|date:"d/m/y H:i" }}</span>
+                &nbsp;•&nbsp;
+                <span class="num">Member since: {{ request.user.date_joined|date:"d/m/y" }}</span>
               </div>
               <button type="submit" class="btn-dark">
                 <i class="fa-regular fa-floppy-disk me-1"></i> Save changes
@@ -299,20 +352,20 @@
       </div>
 
       <!-- Segurança & Acesso -->
-      <div class="card-uber mt-4">
+      <div class="card-uber mt-3">
         <div class="card-head">
           <div class="card-title"><i class="fa-solid fa-shield-halved"></i> Security & Access</div>
         </div>
-        <div class="p-4">
-          <div class="row g-3">
+        <div class="content-p">
+          <div class="row g-2">
             <div class="col-12 col-xl-7">
               <div class="d-flex justify-content-between align-items-start align-items-md-center gap-2">
                 <div>
-                  <div class="fw-semibold mb-1">Password</div>
-                  <div class="muted">Keep your password unique and strong.</div>
+                  <div class="fw-semibold mb-1" style="font-size:var(--fs-base);">Password</div>
+                  <div class="muted text-small">Keep your password unique and strong.</div>
                 </div>
                 <button class="btn-ghost" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
-                  <i class="fa-regular fa-eye-slash me-1"></i> Change Password
+                  <i class="fa-solid fa-eye-slash me-1"></i> Change Password
                 </button>
               </div>
 
@@ -320,19 +373,19 @@
 
               <div class="d-flex justify-content-between align-items-start align-items-md-center gap-2">
                 <div>
-                  <div class="fw-semibold mb-1">Two-factor authentication</div>
-                  <div class="muted">Add an extra layer of security to your account.</div>
+                  <div class="fw-semibold mb-1" style="font-size:var(--fs-base);">Two-factor authentication</div>
+                  <div class="muted text-small">Add an extra layer of security to your account.</div>
                 </div>
                 <button class="btn-ghost" type="button" disabled>
-                  <i class="fa-regular fa-shield-keyhole me-1"></i> Configure (soon)
+                  <i class="fa-solid fa-shield-halved me-1"></i> Configure (soon)
                 </button>
               </div>
             </div>
 
             <div class="col-12 col-xl-5">
-              <div class="bg-white border rounded-3 p-3" style="border-color:var(--line);">
+              <div class="bg-white border rounded-3 p-3" style="border-color:var(--line); font-size:var(--fs-small);">
                 <div class="fw-semibold mb-1">Security tips</div>
-                <ul class="m-0 ps-3 label-small">
+                <ul class="m-0 ps-3">
                   <li>Use a unique password for Taskfy.</li>
                   <li>Enable 2FA when available.</li>
                   <li>Review active sessions regularly.</li>
@@ -342,16 +395,16 @@
           </div><!-- /row -->
         </div>
       </div>
-    </div><!-- /col direita -->
+    </div>
   </div>
 </div>
 
-<!-- Modal: Change Password (AJAX, inline errors, sem recarregar) -->
+<!-- Modal: Change Password (AJAX, inline errors) -->
 <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h6 class="modal-title text-white d-flex align-items-center">
+        <h6 class="modal-title text-white d-flex align-items-center" style="font-size:var(--fs-base);">
           <i class="fa-solid fa-lock me-2"></i> Change Password
         </h6>
         <button type="button" class="btn border-0 bg-transparent p-0 d-flex align-items-center" data-bs-dismiss="modal" aria-label="Close">
@@ -364,18 +417,18 @@
       <form id="pwdForm" method="post" novalidate>
         {% csrf_token %}
         <div class="modal-body">
-          <div id="pwdFormAlert" class="alert d-none" role="alert"></div>
+          <div id="pwdFormAlert" class="alert d-none" role="alert" style="font-size:var(--fs-small);"></div>
 
-          <div class="mb-3 js-reveal">
+          <div class="mb-2 js-reveal">
             <label class="form-label" for="id_old_password">Current password</label>
             {{ pwd_form.old_password }}
           </div>
 
-          <div class="mb-3 js-reveal">
+          <div class="mb-2 js-reveal">
             <label class="form-label" for="id_new_password1">New password</label>
             {{ pwd_form.new_password1 }}
             {% if pwd_form.help_text %}
-              <div class="form-text">{{ pwd_form.help_text|safe }}</div>
+              <div class="form-text text-small">{{ pwd_form.help_text|safe }}</div>
             {% endif %}
           </div>
 
@@ -386,8 +439,8 @@
         </div>
 
         <div class="modal-footer justify-content-between">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button id="pwdSubmitBtn" type="submit" class="btn btn-success">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button id="pwdSubmitBtn" type="submit" class="btn btn-success btn-sm">
             <span class="btn-label">Save password</span>
             <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
           </button>
@@ -398,7 +451,39 @@
 </div>
 
 <script>
-/* ==== Avatar com iniciais (client-side, não altera server) ==== */
+/* ==== TOPBAR2: handlers opcionais ==== */
+(function(){
+  const resetBtn = document.getElementById('win-close');
+  if (resetBtn){
+    resetBtn.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('taskfy:filters:reset'));
+    });
+  }
+  const minBtn = document.getElementById('win-min');
+  if (minBtn){
+    minBtn.addEventListener('click', () => {
+      const pane = document.getElementById('filtersPanel');
+      if (pane){ pane.classList.toggle('d-none'); }
+    });
+  }
+  const maxBtn = document.getElementById('win-max');
+  if (maxBtn){
+    maxBtn.addEventListener('click', async () => {
+      const root = document.documentElement;
+      try{
+        if (!document.fullscreenElement){
+          if (root.requestFullscreen) await root.requestFullscreen();
+        }else{
+          if (document.exitFullscreen) await document.exitFullscreen();
+        }
+      }catch(e){
+        document.body.classList.toggle('taskfy-fullscreen');
+      }
+    });
+  }
+})();
+
+/* ==== Avatar com iniciais ==== */
 (function(){
   const el = document.getElementById('avatarInitials');
   if (!el) return;
@@ -409,37 +494,21 @@
   el.textContent = initials;
 })();
 
-/* ==== Preferências locais (compact/tips/emails) ==== */
+/* ==== Preferências locais (compact mode) ==== */
 (function(){
   const root = document.querySelector('.page-wrap');
-  const compact = document.getElementById('pref-compact');
-  const emailN = document.getElementById('pref-email-notify');
-  const tips = document.getElementById('pref-news-tips');
-
+  const compact = document.getElementById('pref-compact'); /* pode não existir neste template */
   function load(key, def){ try{ return JSON.parse(localStorage.getItem(key) ?? JSON.stringify(def)); }catch{ return def; } }
   function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
-
-  const st = load('taskfy:prefs', {compact:false,email:true,tips:false});
-  if (compact) { compact.checked = !!st.compact; compact.addEventListener('change', ()=>{ st.compact = compact.checked; save('taskfy:prefs', st); root.classList.toggle('compact', st.compact); }); }
-  if (emailN) { emailN.checked = !!st.email;  emailN.addEventListener('change', ()=>{ st.email = emailN.checked; save('taskfy:prefs', st); }); }
-  if (tips)   { tips.checked   = !!st.tips;   tips.addEventListener('change', ()=>{ st.tips = tips.checked; save('taskfy:prefs', st); }); }
-
+  const st = load('taskfy:prefs', {compact:false});
+  if (compact){
+    compact.checked = !!st.compact;
+    compact.addEventListener('change', ()=>{ st.compact = compact.checked; save('taskfy:prefs', st); root.classList.toggle('compact', st.compact); });
+  }
   if (st.compact){ root.classList.add('compact'); }
 })();
 
-/* Compact mode (só reduz paddings levemente) */
-(function(){
-  const css = `
-    .compact .card-uber .p-4{ padding:1rem !important; }
-    .compact .card-uber .p-3{ padding:.75rem !important; }
-    .compact .card-head{ padding:10px 14px !important; }
-    .compact .form-control{ padding:.5rem .7rem !important; }
-    .compact .btn-ghost, .compact .btn-dark{ padding:.5rem .85rem !important; }
-  `;
-  const tag = document.createElement('style'); tag.textContent = css; document.head.appendChild(tag);
-})();
-
-/* ==== Change Password (AJAX) – mantém a mesma lógica + toggle show/hide ==== */
+/* ==== Change Password (AJAX) ==== */
 (function(){
   const form = document.getElementById('pwdForm');
   if (!form) return;
@@ -558,7 +627,7 @@
 
   form.addEventListener('submit', submitPwd);
 
-  /* Mostrar/ocultar senha (gera sem mexer nos names/IDs do Django) */
+  /* Mostrar/ocultar senha */
   function enhanceReveal(){
     form.querySelectorAll('.js-reveal').forEach(block => {
       const input = block.querySelector('input[type="password"], input[name$="password"], input[type="text"][name*="password"]');
@@ -581,7 +650,7 @@
         visible = !visible;
         input.setAttribute('type', visible ? 'text' : 'password');
         btn.innerHTML = visible
-          ? '<i class="fa-regular fa-eye-slash"></i>'
+          ? '<i class="fa-solid fa-eye-slash"></i>'
           : '<i class="fa-regular fa-eye"></i>';
       });
     });
@@ -590,7 +659,6 @@
   const modalEl = document.getElementById('changePasswordModal');
   if (modalEl){
     modalEl.addEventListener('shown.bs.modal', function(){
-      // limpa erros antigos e aplica reveals
       const alertBox = document.getElementById('pwdFormAlert');
       alertBox.classList.add('d-none'); alertBox.classList.remove('alert-danger','alert-success'); alertBox.innerHTML = '';
       form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));

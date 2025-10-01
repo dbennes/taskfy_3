@@ -1,10 +1,12 @@
+# jobcards/admin.py
 from django.contrib import admin, messages
-from django.contrib.auth.models import User, Group
-from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.html import format_html
 from django.db.models import Count
-from django.forms.models import model_to_dict
+from django.http import HttpResponse
+from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.conf import settings
 import csv, json
 
 from .models import (
@@ -13,6 +15,13 @@ from .models import (
     Discipline, Area, WorkingCode, System, Impediments, PMTOBase, MRBase, ProcurementBase,
     DocumentoControle, DocumentoRevisaoAlterada, WarehouseStock, WarehousePiece, DailyFieldReport
 )
+
+from django.contrib import admin, messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from .utils.account_email import send_profile_change_password_email
+
+User = get_user_model()
 
 # ===============================
 # Branding e ajustes globais
@@ -28,7 +37,6 @@ class ExportActionsMixin:
     """Ações genéricas de exportação para qualquer ModelAdmin."""
     @admin.action(description="Exportar selecionados como CSV")
     def export_as_csv(self, request, queryset):
-        # pega campos concretos do modelo (sem M2M)
         fields = [f.name for f in queryset.model._meta.fields]
         response = HttpResponse(content_type="text/csv")
         filename = f"{queryset.model._meta.model_name}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.csv"
@@ -36,20 +44,14 @@ class ExportActionsMixin:
         writer = csv.writer(response)
         writer.writerow(fields)
         for obj in queryset:
-            row = []
-            for f in fields:
-                val = getattr(obj, f, "")
-                row.append(str(val))
+            row = [str(getattr(obj, f, "")) for f in fields]
             writer.writerow(row)
         return response
 
     @admin.action(description="Exportar selecionados como JSON")
     def export_as_json(self, request, queryset):
         fields = [f.name for f in queryset.model._meta.fields]
-        data = []
-        for obj in queryset:
-            item = {f: getattr(obj, f, None) for f in fields}
-            data.append(item)
+        data = [{f: getattr(obj, f, None) for f in fields} for obj in queryset]
         response = HttpResponse(content_type="application/json")
         filename = f"{queryset.model._meta.model_name}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.json"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -58,14 +60,10 @@ class ExportActionsMixin:
 
 
 class SafeBasicAdmin(ExportActionsMixin, admin.ModelAdmin):
-    """
-    Admin básico seguro: não assume campos além de 'id' e __str__.
-    Útil para registrar rápido sem quebrar.
-    """
+    """Admin básico seguro: não assume campos além de 'id' e __str__."""
     def obj_display(self, obj):
         return str(obj)
     obj_display.short_description = "Registro"
-
     list_display = ("obj_display", "id")
     search_fields = ("id", )
     list_per_page = 25
@@ -78,12 +76,6 @@ class SafeBasicAdmin(ExportActionsMixin, admin.ModelAdmin):
 # ===============================
 @admin.register(Impediments)
 class ImpedimentsAdmin(ExportActionsMixin, admin.ModelAdmin):
-    """
-    - Busca por jobcard/autor/notes
-    - Filtro por flags e data
-    - Edição inline das flags (prático!)
-    - Ações de exportar CSV/JSON
-    """
     list_display = ("jobcard_number", "created_by", "created_at",
                     "scaffold", "material", "engineering", "notes_preview")
     list_display_links = ("jobcard_number",)
@@ -93,18 +85,13 @@ class ImpedimentsAdmin(ExportActionsMixin, admin.ModelAdmin):
                    ("created_at", admin.DateFieldListFilter))
     date_hierarchy = "created_at"
     ordering = ("-created_at",)
-    readonly_fields = ()
     list_per_page = 25
     save_on_top = True
     actions = ("export_as_csv", "export_as_json")
 
     def notes_preview(self, obj):
-        if not getattr(obj, "notes", ""):
-            return "-"
-        txt = str(obj.notes)
-        if len(txt) > 80:
-            txt = txt[:80] + "..."
-        return txt
+        txt = (obj.notes or "")
+        return "-" if not txt else (txt if len(txt) <= 80 else txt[:80] + "...")
     notes_preview.short_description = "Notes"
 
 
@@ -113,12 +100,6 @@ class ImpedimentsAdmin(ExportActionsMixin, admin.ModelAdmin):
 # ===============================
 @admin.register(JobCard)
 class JobCardAdmin(ExportActionsMixin, admin.ModelAdmin):
-    """
-    - Lista campos-chave (presentes no seu modelo)
-    - Filtros úteis
-    - Busca eficiente
-    - Data hierarchy por 'start'
-    """
     list_display = ("job_card_number", "discipline", "working_code", "system",
                     "start", "finish", "jobcard_status")
     search_fields = ("job_card_number", "tag", "working_code",
@@ -131,30 +112,15 @@ class JobCardAdmin(ExportActionsMixin, admin.ModelAdmin):
     save_on_top = True
     actions = ("export_as_csv", "export_as_json")
 
-    # Dica: se os modelos Allocated* tiverem FK para JobCard,
-    # você pode habilitar inlines abaixo (descomente e ajuste se necessário).
-    # from django.contrib import admin
-    # class AllocatedTaskInline(admin.TabularInline):
-    #     model = AllocatedTask
-    #     extra = 0
-    # class AllocatedManpowerInline(admin.TabularInline):
-    #     model = AllocatedManpower
-    #     extra = 0
-    # inlines = [AllocatedTaskInline, AllocatedManpowerInline]
-
 
 # ===============================
 # DailyFieldReport (DFR)
 # ===============================
 @admin.register(DailyFieldReport)
 class DailyFieldReportAdmin(ExportActionsMixin, admin.ModelAdmin):
-    """
-    - Mostra cabeçalho do DFR
-    - Recalcula total_lines por dfr_number (ação)
-    - Exibe snapshot (JSON) legível
-    """
     list_display = ("dfr_number", "line_seq", "jobcard_number", "discipline",
-                    "working_code", "report_date", "total_lines", "total_hours", "created_by", "created_at")
+                    "working_code", "report_date", "total_lines", "total_hours",
+                    "created_by", "created_at")
     search_fields = ("dfr_number", "jobcard_number", "discipline", "working_code", "created_by")
     list_filter = (("report_date", admin.DateFieldListFilter),
                    ("created_at", admin.DateFieldListFilter), "discipline", "working_code")
@@ -190,7 +156,6 @@ class DailyFieldReportAdmin(ExportActionsMixin, admin.ModelAdmin):
 
     @admin.action(description="Recalcular 'total_lines' por DFR Number")
     def recount_total_lines(self, request, queryset):
-        # agrupa pelos DFRs selecionados e conta linhas
         dfrs = list(queryset.values_list("dfr_number", flat=True).distinct())
         if not dfrs:
             self.message_user(request, "Nenhum DFR selecionado.", level=messages.WARNING)
@@ -200,9 +165,7 @@ class DailyFieldReportAdmin(ExportActionsMixin, admin.ModelAdmin):
                      .values("dfr_number")
                      .annotate(total=Count("id")))
         updated = 0
-        map_totals = {c["dfr_number"]: c["total"] for c in count_map}
-        # atualiza todas as linhas de cada DFR com o total correto
-        for dfr_number, total in map_totals.items():
+        for dfr_number, total in {c["dfr_number"]: c["total"] for c in count_map}.items():
             updated += DailyFieldReport.objects.filter(dfr_number=dfr_number).update(total_lines=total)
         self.message_user(request, f"Recalcular finalizado. Registros atualizados: {updated}.", level=messages.SUCCESS)
 
@@ -314,8 +277,30 @@ class WarehouseStockAdmin(SafeBasicAdmin):
 class WarehousePieceAdmin(SafeBasicAdmin):
     pass
 
+
 # ===============================
-# Usuários/Grupos (opcional)
+# Usuários — ação de reenviar boas-vindas
 # ===============================
-# admin.site.register(User)
-# admin.site.register(Group)
+@admin.action(description="Enviar e-mail de troca de senha (Profile)")
+def send_profile_change_password(modeladmin, request, queryset):
+    ok, fail = 0, 0
+    for u in queryset:
+        sent, detail = send_profile_change_password_email(u)
+        if sent:
+            ok += 1
+        else:
+            fail += 1
+            messages.warning(request, f"{u.username}: {detail}")
+    if ok:
+        messages.success(request, f"E-mails enviados: {ok}")
+    if fail:
+        messages.error(request, f"Falhas: {fail}")
+
+class UserAdmin(DjangoUserAdmin):
+    actions = [send_profile_change_password]
+
+try:
+    admin.site.unregister(User)
+except admin.sites.NotRegistered:
+    pass
+admin.site.register(User, UserAdmin)

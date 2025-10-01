@@ -570,3 +570,20 @@ class ScheduleLink(models.Model):
 
     def __str__(self):
         return f"{self.predecessor_id} -> {self.successor_id} ({self.link_type}, {self.lag_days}d)"
+    
+# # jobcards/models.py (trecho)
+from django.conf import settings
+from django.db import models
+
+class UserSecurityFlag(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="securityflag"
+    )
+    must_change_password = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"SecurityFlag<{self.user}>"
