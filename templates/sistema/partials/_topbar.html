@@ -10,28 +10,34 @@
     <!-- LEFT MENUS -->
     <ul class="navbar-nav">
       <!-- Reports -->
-      <li class="nav-item dropdown no-arrow">
-        <a class="nav-link dropdown-toggle nav-link-min nav-trigger" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-          <!-- Ícone outline -->
-          <svg class="nav-svgi" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 19.5H20" />
-            <path d="M7 18V10.5" />
-            <path d="M12 18V6.5" />
-            <path d="M17 18V13.5" />
-          </svg>
-          <span class="label">Reports</span>
-          <!-- Chevron outline (gira) -->
-          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </a>
-        <div class="dropdown-menu dropdown-panel dropdown-panel-wide p-2">
-          <a class="opt" href="{% url 'jobcards_tam' %}">
-            <span class="ico"><i class="fa-solid fa-table-cells-large"></i></span>
-            <span class="txt"><strong>Jobcards</strong><small>[TAM] Time & Metrics</small></span>
-          </a>
-        </div>
-      </li>
+<li class="nav-item dropdown no-arrow">
+  <a class="nav-link dropdown-toggle nav-link-min nav-trigger" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    <!-- Ícone outline -->
+    <svg class="nav-svgi" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 19.5H20" />
+      <path d="M7 18V10.5" />
+      <path d="M12 18V6.5" />
+      <path d="M17 18V13.5" />
+    </svg>
+    <span class="label">Reports</span>
+    <!-- Chevron outline (gira) -->
+    <svg class="chev" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  </a>
+  <div class="dropdown-menu dropdown-panel dropdown-panel-wide p-2">
+    <a class="opt" href="{% url 'jobcards_tam' %}">
+      <span class="ico"><i class="fa-solid fa-table-cells-large"></i></span>
+      <span class="txt"><strong>Jobcards</strong><small>[TAM] Time & Metrics</small></span>
+    </a>
+
+    <!-- NOVO: Workpack Dashboard -->
+    <a class="opt" href="{% url 'dashboard_workpack' %}">
+      <span class="ico"><i class="fa-solid fa-clipboard-list"></i></span>
+      <span class="txt"><strong>Workpack Dashboard</strong><small>Status & allocations</small></span>
+    </a>
+  </div>
+</li>
 
       <!-- Tasks -->
       <li class="nav-item dropdown no-arrow">
