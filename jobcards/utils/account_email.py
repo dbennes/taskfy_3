@@ -1,45 +1,35 @@
 # jobcards/utils/account_email.py
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+from django.urls import reverse
+from ..email_providers import send_via_graph
 
-def _abs_profile_change_url() -> str:
-    """
-    Monta a URL absoluta do seu Profile com o sinalizador para abrir o modal.
-    Ex.: http://SEU-HOST:8080/account/profile/?open=change-password
-    """
-    base = (getattr(settings, "BASE_URL", "") or "").rstrip("/")
-    return f"{base}/account/profile/?open=change-password"
-
-def send_profile_change_password_email(user) -> tuple[bool, str]:
-    """
-    Envia o e-mail com o link para o Profile (abrindo o modal de troca de senha).
-    Retorna (ok, detalhe).
-    """
-    email = (user.email or "").strip()
-    if not email:
-        return (False, "Usuário sem e-mail")
-
+def send_profile_change_password_email(user):
+    # Renderiza teus templates (ajuste os nomes/paths se forem outros)
     ctx = {
         "user": user,
-        "profile_change_url": _abs_profile_change_url(),
         "base_url": getattr(settings, "BASE_URL", ""),
+        "login_hint": getattr(settings, "TASKFY_LOGIN_HINT", ""),
     }
+    html = render_to_string("mail/change_password.html", ctx)
+    text = strip_tags(html)  # texto de fallback
 
-    subject = "Taskfy — Atualize sua senha"
-    text_body = render_to_string("mail/change_password.txt", ctx)
-    html_body = render_to_string("mail/change_password.html", ctx)
+    subject = "Taskfy — acesso/alteração de senha"
+    to = [user.email]
 
-    msg = EmailMultiAlternatives(
+    ok, msg = send_via_graph(
         subject=subject,
-        body=text_body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[email],
+        text_body=text,
+        html_body=html,
+        to_list=to,
+        bcc_list=[],
+        cc_list=[],
+        reply_to=None,
+        sender=getattr(settings, "EMAIL_SENDER", None),
+        attachments=None,  # se precisar, passe lista de tuplas
+        save_to_sent=True,
     )
-    msg.attach_alternative(html_body, "text/html")
-
-    try:
-        msg.send()
-        return (True, "sent")
-    except Exception as e:
-        return (False, f"SMTP: {e!r}")
+    if not ok and settings.DEBUG:
+        raise RuntimeError(msg)
+    return ok

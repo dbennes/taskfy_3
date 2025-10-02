@@ -1,0 +1,525 @@
+{% extends 'sistema/base.html' %}
+{% load static dict_extras humanize %}
+
+{% block content %}
+<style>
+  :root{
+    --bg:#f6f7fb; --panel:#ffffff; --ink:#111827; --muted:#6b7280; --line:#e8ecf3;
+    --radius:14px; --shadow:0 8px 24px rgba(16,24,40,.04);
+    --chip-bg:#fbfcfe; --chip-br:#e7ebf3; --chip-ink:#2a2f45;
+    --thead-bg:#f8fafc; --thead-ink:#2a2f45;
+
+    /* progresso (tons de cinza mais escuro) */
+    --gbg:#e5e7eb;   /* trilho */
+    --gbar:#4b5563;  /* barra (cinza 600 mais escuro) */
+  }
+
+  body, .container-fluid { background:var(--bg)!important; }
+  .wrap{ padding-inline:8px; }
+
+  /* ===== Topbar estilo Apple (traffic lights) ===== */
+  .topbar2{
+    position: sticky; top: 0; z-index: 1040;
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.75));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 8px 12px; margin: 8px 0 10px 0;
+  }
+  @supports not ((-webkit-backdrop-filter: blur(12px)) or (backdrop-filter: blur(12px))){
+    .topbar2{ background:#fff; }
+  }
+  .topbar2 .title{ font-weight:600; font-size:.9rem; color:var(--ink); }
+  .dots{ display:flex; align-items:center; gap:8px; margin-right:8px; }
+  .dot{
+    width:12px; height:12px; border-radius:50%;
+    border:1px solid rgba(0,0,0,.08);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+    cursor:pointer; appearance:none;
+    background: var(--col,#ddd);
+    position: relative;
+  }
+  .dot.red{    --col:#ff5f57; }
+  .dot.yellow{ --col:#febc2e; }
+  .dot.green{  --col:#28c840; }
+  .dots:hover .dot::before{
+    content:''; position:absolute; inset:0;
+    display:block; margin:auto; width:6px; height:6px;
+    filter:contrast(.7);
+  }
+  .dots:hover .dot.red::after,
+  .dots:hover .dot.yellow::after,
+  .dots:hover .dot.green::after{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:9px; line-height:1; color:rgba(0,0,0,.55);
+  }
+  .dots:hover .dot.red::after{ content:'×'; }
+  .dots:hover .dot.yellow::after{ content:'–'; }
+  .dots:hover .dot.green::after{ content:'+'; }
+
+  /* toolbar à direita da barra Apple */
+  .toolbar .btn{ padding:.25rem .5rem; font-size:.78rem; border-radius:10px; }
+  .toolbar .btn i{ font-size:.8rem; }
+
+  /* fullscreen/minimize helpers */
+  .topbar-card.is-hidden{ display:none!important; }
+  body.fullscreen .wrap{ padding-inline:0; }
+  body.fullscreen .container-fluid.wrap{ padding-inline:8px; }
+  body.fullscreen .panel,
+  body.fullscreen .analytics-card,
+  body.fullscreen .kpi,
+  body.fullscreen .status-card{ border-radius:10px; }
+
+  /* ===== cartões / painéis ===== */
+  .topbar-card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:12px 14px; margin-bottom:10px; }
+  .title{ font-size:.95rem; font-weight:600; color:var(--ink); }
+  .tiny{ font-size:.72rem; color:var(--muted); }
+
+  .kpi{ background:#fff; border:1px solid var(--line); border-radius:var(--radius);
+    padding:12px 14px; box-shadow:0 3px 12px rgba(0,0,0,.04); }
+  .kpi .v{ font-size:1.05rem; font-weight:700; color:var(--ink); }
+  .kpi .d{ font-size:.72rem; color:var(--muted); }
+
+  .status-card{ background:#fff; border:1px solid var(--line); border-radius:var(--radius);
+    padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .status-title{ font-size:.8rem; color:var(--ink); font-weight:600; }
+  .status-sub{ font-size:.72rem; color:var(--muted); }
+
+  /* Cartões e layout com alturas iguais + SCROLL interno nas tabelas */
+  .panel{
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:14px; display:flex; flex-direction:column; min-height:0;
+  }
+  .panel .scroll-pane{
+    flex:1 1 auto; min-height:0;
+    border:1px solid var(--line); border-radius:10px;
+    overflow:auto;
+    max-height:360px;                /* scroll interno */
+  }
+  .panel .scroll-pane table{ margin-bottom:0; }
+  .panel .scroll-pane thead th{
+    position: sticky; top: 0; z-index: 2;   /* cabeçalho sticky */
+    background: var(--thead-bg); color:var(--thead-ink); border-bottom: 1px solid var(--line);
+    max-height:360px;
+  }
+
+  .analytics-card{
+    background:#fff; border:1px solid #eef2f7; border-radius:12px;
+    box-shadow:0 2px 10px rgba(16,24,40,.03); padding:10px 12px; margin-bottom:12px;
+    display:flex; flex-direction:column; height:100%; min-height:0;
+  }
+  .analytics-title{ font-size:.9rem; color:#111827; margin:0; font-weight:600; }
+  .chart-wrapper{ position:relative; flex:1 1 auto; min-height:360px; } /* acompanha altura das tabelas */
+  .chart-wrapper canvas{ position:absolute; inset:0; }
+
+  .inline-filters{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .ctrl-item{ display:inline-flex; align-items:center; gap:6px; font-size:.78rem; color:#374151; }
+  .ctrl-item input{ transform:scale(.9); }
+
+  .table-sm td, .table-sm th{ padding:.35rem .45rem; vertical-align:middle; font-weight:400; }
+  .table-10 td, .table-10 th{ font-size:10px !important; } /* fonte 10px */
+  .alloc-table td, .alloc-table th{ font-size:10px !important; }
+  .clean-head thead th{ background:var(--thead-bg)!important; color:var(--thead-ink)!important; }
+
+  .nav-pills .nav-link{ font-size:.78rem; padding:.35rem .6rem; border-radius:10px; border:1px solid var(--line); background:#fff; color:var(--ink); margin-right:6px; }
+  .nav-pills .nav-link.active{ background:#f4f7ff; border-color:#e5ebff; }
+
+  .pill{ display:inline-flex; align-items:center; gap:6px; padding:3px 8px; border-radius:999px;
+         font-size:.72rem; border:1px solid var(--chip-br); color:var(--chip-ink); background:var(--chip-bg); }
+
+  /* barra progresso cinza escura */
+  .prog{ height:8px; background:var(--gbg); border-radius:999px; overflow:hidden; width:100%; }
+  .prog > i{ display:block; height:100%; width:var(--w,0%); background:var(--gbar); transition:width .25s ease; }
+  .pct-badge{ font-size:.72rem; color:#374151; min-width:38px; text-align:right; }
+
+  .row-stretch{ align-items:stretch; }
+</style>
+
+<div class="container-fluid wrap">
+
+  <!-- Apple-like top bar -->
+  <div class="topbar2 d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-2">
+      <div class="dots" role="group" aria-label="Window controls">
+        <button type="button" class="dot red"    id="win-close"  title="Reset filters"></button>
+        <button type="button" class="dot yellow" id="win-min"    title="Minimize (hide filters)"></button>
+        <button type="button" class="dot green"  id="win-max"    title="Fullscreen"></button>
+      </div>
+      <div class="title">Workpack Dashboard</div>
+    </div>
+    <div class="d-flex gap-2 toolbar">
+      
+    </div>
+  </div>
+
+  <!-- Topbar (filtros) -->
+  <div class="topbar-card d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <div>
+      <div class="title">Workpack</div>
+      <div class="tiny">Selecione o pacote para filtrar</div>
+    </div>
+    <form method="get" class="d-flex align-items-center gap-2">
+      <label class="tiny me-1">Workpack</label>
+      <select name="wp" class="form-select" onchange="this.form.submit()" style="min-width:220px">
+        {% for wp in workpacks %}
+          <option value="{{ wp }}" {% if wp == selected_wp %}selected{% endif %}>{{ wp }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+
+  <!-- KPIs -->
+  <div class="row g-2 mb-2">
+    <div class="col-6 col-md-2"><div class="kpi"><div class="v">{{ total_workpacks|intcomma }}</div><div class="d">Workpacks total</div></div></div>
+    <div class="col-6 col-md-2"><div class="kpi"><div class="v">{{ kpis.total_jobcards|intcomma }}</div><div class="d">JobCards in workpack</div></div></div>
+    <div class="col-6 col-md-2"><div class="kpi"><div class="v">{{ kpis.with_materials|intcomma }}</div><div class="d">JobCards with materials</div></div></div>
+    <div class="col-6 col-md-3"><div class="kpi"><div class="v">{{ kpis.activity_ids_valid|intcomma }}</div><div class="d">Activity IDs</div></div></div>
+    <div class="col-6 col-md-3"><div class="kpi"><div class="v">{{ kpis.total_hh|floatformat:2|intcomma }}</div><div class="d">Total Man-hours</div></div></div>
+  </div>
+
+  <!-- Pipeline cumulativo (cards) -->
+  <div class="row g-2 mb-2">
+    {% for s in top_cards %}
+      <div class="col-6 col-md-4 col-lg-2">
+        <div class="status-card">
+          <div>
+            <div class="status-title">{{ s.label }}</div>
+            <div class="status-sub">{{ s.pct }}%</div>
+          </div>
+          <div class="status-title">{{ s.count|intcomma }}</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Linha: Gráfico (8) + Tasks (4) -->
+  <div class="row g-2 mb-2 row-stretch">
+    <div class="col-lg-8 d-flex">
+      <div class="analytics-card w-100">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="analytics-title">JobCards by status</div>
+          <span class="chip">count per status</span>
+        </div>
+        <div class="chart-wrapper"><canvas id="statusBar"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Tasks by working code -->
+    <div class="col-lg-4 d-flex">
+      <div class="panel w-100">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span style="font-size:.85rem;">Tasks by working code</span>
+          <span class="chip">Total MH por task</span>
+        </div>
+        <div class="scroll-pane">
+          <table class="table table-sm table-10 clean-head">
+            <thead>
+              <tr class="text-uppercase">
+                <th style="width:22%">Working code</th>
+                <th>Task</th>
+                <th class="text-end" style="width:18%">Total MH</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in tasks_wc %}
+                <tr>
+                  <td>{{ r.working_code }}</td>
+                  <td>{{ r.task }}</td>
+                  <td class="text-end">{{ r.allocated_hours|floatformat:2|intcomma }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="3" class="tiny text-muted">No tasks found.</td></tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="2" class="text-end">Total:</th>
+                <th class="text-end">{{ tasks_wc_totals.allocated_hours|floatformat:2|intcomma }}</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Linha: Manpower (6) + Materials (6) -->
+  <div class="row g-2 mb-2 row-stretch">
+    <!-- Manpower com barra % cinza escura -->
+    <div class="col-lg-6 d-flex">
+      <div class="panel w-100">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span style="font-size:.85rem;">Manpower (grouped by role)</span>
+          <span class="chip"></span>
+        </div>
+        <div class="scroll-pane">
+          <table class="table table-sm table-10 clean-head">
+            <thead>
+              <tr class="text-uppercase">
+                <th>Direct labor</th>
+                <th style="width:48%;">Share</th>
+                <th class="text-end" style="width:18%;">Hours (Σ)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in manpower_agg %}
+                <tr>
+                  <td>{{ r.direct_labor }}</td>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="prog">
+                        <i style="--w:{{ r.pct_css }};"></i>
+                      </div>
+                      <span class="pct-badge">{{ r.pct|floatformat:1 }}%</span>
+                    </div>
+                  </td>
+                  <td class="text-end">{{ r.hours_total|floatformat:2|intcomma }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="3" class="tiny text-muted">No manpower allocated.</td></tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th class="text-end">Totals:</th>
+                <th>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="prog"><i style="--w:100%;"></i></div>
+                    <span class="pct-badge">100%</span>
+                  </div>
+                </th>
+                <th class="text-end">{{ manpower_totals.hours|floatformat:2|intcomma }}</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Materials -->
+    <div class="col-lg-6 d-flex">
+      <div class="panel w-100">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span style="font-size:.85rem;">All allocated materials</span>
+          <span class="chip">flat list</span>
+        </div>
+        <div class="scroll-pane">
+          <table class="table table-sm table-10 clean-head">
+            <thead>
+              <tr class="text-uppercase">
+                <th style="width:18%">JobCard</th>
+                <th style="width:16%">PMTO</th>
+                <th>Description</th>
+                <th style="width:12%">DIM</th>
+                <th style="width:12%" class="text-end">QTY</th>
+                <th style="width:20%">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in materials_flat %}
+                <tr>
+                  <td>{{ m.jobcard }}</td>
+                  <td>{{ m.pmto }}</td>
+                  <td>{{ m.desc }}</td>
+                  <td class="text-center">{{ m.dim|default:"—" }}</td>
+                  <td class="text-end">{% if m.qty is not None %}{{ m.qty|floatformat:2|intcomma }}{% endif %}</td>
+                  <td>{{ m.notes }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="6" class="tiny text-muted">No materials allocated.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabela principal (com tabs de allocations por JC) -->
+  <div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+      <span style="font-size:.85rem;">JobCards in {{ selected_wp }}</span>
+      <span class="tiny">Open the allocation tabs per row</span>
+    </div>
+
+    <table class="table table-sm">
+      <thead class="clean-head">
+        <tr class="tiny text-uppercase">
+          <th>#</th><th>JobCard</th><th>Discipline</th><th>Status</th>
+          <th>Start</th><th>Finish</th>
+          <th>HH (Manpower)</th>
+          <th>Materials</th><th>Tools</th><th>Manpower</th><th>Docs</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for jc in jobcards %}
+        <tr>
+          <td class="tiny">{{ jc.idx }}</td>
+          <td style="font-size:.82rem;">{{ jc.number }}</td>
+          <td class="tiny">{{ jc.discipline }}</td>
+          <td class="tiny">{{ jc.status }}</td>
+          <td class="tiny">{{ jc.start }}</td>
+          <td class="tiny">{{ jc.finish }}</td>
+          <td><span class="pill"><i class="fa-regular fa-clock tiny"></i> {{ jc.hh_total|floatformat:2|intcomma }} h</span></td>
+          <td><span class="pill"><i class="fa-solid fa-boxes-stacked tiny"></i> {{ jc.materials_count|intcomma }}</span></td>
+          <td><span class="pill"><i class="fa-solid fa-wrench tiny"></i> {{ jc.tools_count|intcomma }}</span></td>
+          <td><span class="pill"><i class="fa-solid fa-people-group tiny"></i> {{ jc.manpower_count|intcomma }}</span></td>
+          <td><span class="pill"><i class="fa-regular fa-file-lines tiny"></i> {{ jc.docs_count|intcomma }}</span></td>
+          <td class="text-end">
+            {% if jc.has_alloc %}
+              <button class="btn btn-light border btn-sm" style="font-size:.78rem; border-radius:10px"
+                      data-bs-toggle="collapse" data-bs-target="#alloc-{{ forloop.counter }}">
+                <i class="fa-solid fa-layer-group tiny"></i> Allocations
+              </button>
+            {% endif %}
+            <a class="btn btn-light border btn-sm" style="font-size:.78rem; border-radius:10px" target="_blank" href="{% url 'jobcard_pdf' jc.number %}">
+              <i class="fa-regular fa-file-lines tiny"></i> View
+            </a>
+          </td>
+        </tr>
+
+        {% if jc.has_alloc %}
+        <tr class="collapse" id="alloc-{{ forloop.counter }}">
+          <td colspan="12" style="background:#fbfcff;">
+            <ul class="nav nav-pills mb-2" id="tabs-{{ forloop.counter }}" role="tablist">
+              <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#mat-{{ forloop.counter }}" type="button">Materials</button></li>
+              <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tools-{{ forloop.counter }}" type="button">Tools</button></li>
+              <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#mp-{{ forloop.counter }}" type="button">Manpower</button></li>
+              <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#docs-{{ forloop.counter }}" type="button">Documents</button></li>
+            </ul>
+
+            <div class="tab-content">
+              <div class="tab-pane fade show active" id="mat-{{ forloop.counter }}">
+                <table class="table table-sm mb-0 alloc-table clean-head">
+                  <thead><tr class="text-uppercase"><th style="width:14%">PMTO</th><th>Description</th><th style="width:10%">DIM</th><th style="width:10%">QTY</th><th>Notes</th></tr></thead>
+                  <tbody>
+                    {% for m in materials_map|get_item:jc.number %}
+                      <tr><td>{{ m.pmto_code|default:"" }}</td><td>{{ m.description|default:"" }}</td><td class="text-center">{{ m.nps1|default:"—" }}</td><td class="text-center">{{ m.qty|default:"" }}</td><td>{{ m.comments|default:"" }}</td></tr>
+                    {% empty %}<tr><td colspan="5" class="tiny text-muted">No materials.</td></tr>{% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="tab-pane fade" id="tools-{{ forloop.counter }}">
+                <table class="table table-sm mb-0 alloc-table clean-head">
+                  <thead><tr class="text-uppercase"><th style="width:16%">Working code</th><th>Special tooling</th><th style="width:10%">QTY</th><th style="width:14%">Direct labor (qty)</th></tr></thead>
+                  <tbody>
+                    {% for t in tools_map|get_item:jc.number %}
+                      <tr><td>{{ t.working_code|default:"" }}</td><td>{{ t.special_tooling|default:"" }}</td><td class="text-center">{{ t.qty|default:"" }}</td><td class="text-center">{{ t.qty_direct_labor|default:"" }}</td></tr>
+                    {% empty %}<tr><td colspan="4" class="tiny text-muted">No tools.</td></tr>{% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="tab-pane fade" id="mp-{{ forloop.counter }}">
+                <table class="table table-sm mb-0 alloc-table clean-head">
+                  <thead><tr class="text-uppercase"><th style="width:18%">Working code</th><th>Direct labor</th><th style="width:10%">QTY</th><th style="width:12%">Hours</th><th style="width:12%">Task order</th><th>TASK</th></tr></thead>
+                  <tbody>
+                    {% for p in manpower_map|get_item:jc.number %}
+                      <tr>
+                        <td>{{ p.working_code|default:"" }}</td>
+                        <td>{{ p.direct_labor|default:"" }}</td>
+                        <td class="text-center">{{ p.qty|default:"" }}</td>
+                        <td class="text-center">{{ p.hours|default:"" }}</td>
+                        <td class="text-center">{{ p.task_order|default:"" }}</td>
+                        <td>{{ p.description|default:"" }}</td>
+                      </tr>
+                    {% empty %}<tr><td colspan="6" class="tiny text-muted">No manpower.</td></tr>{% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="tab-pane fade" id="docs-{{ forloop.counter }}">
+                <table class="table table-sm mb-0 alloc-table clean-head">
+                  <thead><tr class="text-uppercase"><th style="width:22%">Document</th><th>Tag</th><th style="width:10%">Rev</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {% for d in docs_map|get_item:jc.number %}
+                      <tr><td>{{ d.document|default:"" }}</td><td>{{ d.tag|default:"" }}</td><td class="text-center">{{ d.rev|default:"" }}</td><td>{{ d.status|default:"" }}</td></tr>
+                    {% empty %}<tr><td colspan="4" class="tiny text-muted">No documents.</td></tr>{% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Dados do gráfico (do contexto)
+  const STATUS_LABELS = {{ status_labels|safe }};
+  const STATUS_COUNTS = {{ status_counts|safe }};
+
+  function altGreys(n){
+    const a = [];
+    for(let i=0;i<n;i++){ a.push(i%2===0 ? '#4b5563' : '#9ca3af'); }
+    return a;
+  }
+
+  const ctxStatus = document.getElementById('statusBar');
+  const statusChart = new Chart(ctxStatus, {
+    type:'bar',
+    data:{
+      labels: STATUS_LABELS,
+      datasets:[{
+        label:'JobCards',
+        data: STATUS_COUNTS,
+        backgroundColor: altGreys(STATUS_COUNTS.length),
+        borderWidth: 0,
+        borderRadius: 6,
+        maxBarThickness: 36
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:false },
+        tooltip:{
+          backgroundColor:'#fff', titleColor:'#111', bodyColor:'#111',
+          borderColor:'#e5e7eb', borderWidth:1, padding:8, displayColors:false
+        }
+      },
+      scales:{
+        x:{ grid:{ display:false }, ticks:{ color:'#374151', font:{ size:11 } } },
+        y:{ beginAtZero:true, grid:{ color:'#eef2f7' }, ticks:{ color:'#6b7280', precision:0, stepSize:1 } }
+      }
+    }
+  });
+
+  // ===== Ações dos botões Apple =====
+  (function(){
+    const $ = (sel)=>document.querySelector(sel);
+    const closeBtn = $('#win-close');
+    const minBtn   = $('#win-min');
+    const maxBtn   = $('#win-max');
+    const topbarCard = document.querySelector('.topbar-card');
+
+    closeBtn && closeBtn.addEventListener('click', ()=>{
+      // Limpa filtros: recarrega sem querystring
+      const path = location.pathname;
+      location.href = path;
+    });
+
+    minBtn && minBtn.addEventListener('click', ()=>{
+      // Minimize: oculta barra de filtros
+      topbarCard && topbarCard.classList.toggle('is-hidden');
+    });
+
+    maxBtn && maxBtn.addEventListener('click', ()=>{
+      // Fullscreen: aplica classe no body
+      document.body.classList.toggle('fullscreen');
+    });
+  })();
+</script>
+{% endblock %}

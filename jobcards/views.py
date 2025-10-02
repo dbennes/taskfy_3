@@ -230,7 +230,7 @@ def dashboard(request):
     # Ordem visual de disciplinas
     discipline_order = [
         'LOGISTIC','SCAFFOLDING','STRUCTURAL','MECHANICAL','PIPING','TIE-IN',
-        'HVAC','INSTRUMENTATION & AUTOMATION','ELECTRICAL','TELECOM','PAINTING',
+        'HVAC','INSTRUMENTATION & AUTOMATION','ELECTRICAL','TELECOM','PAINTING', 'COMMISSIONING',
     ]
 
     # ===== Discipline summary (cumulativo >= PRELIMINARY) =====
@@ -400,6 +400,9 @@ def dashboard(request):
         'jobcards': jobcards,
     }
     return render(request, 'sistema/dashboard.html', context)
+
+
+
 
 # views.py
 import os, re

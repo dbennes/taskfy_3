@@ -29,7 +29,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    
+    'django.contrib.humanize',
+
     'rest_framework',
     'corsheaders',
 
@@ -176,28 +177,21 @@ SIMPLE_JWT = {
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 
 
-# === Email / SMTP (Office 365) ===
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.office365.com"
-EMAIL_PORT = 587              # STARTTLS
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
-EMAIL_HOST_USER = "suporte.taskfy@utci.com.br"   # UPN completo da caixa
-EMAIL_HOST_PASSWORD = "D(450820795928uv"
+# === Email — abolir SMTP e usar teu provider via backend ===
+EMAIL_BACKEND = "jobcards.email_backends_graph.GraphOnlyEmailBackend"
+
+MS_GRAPH = {
+    "TENANT_ID": "#",
+    "CLIENT_ID": "#",
+    "CLIENT_SECRET": "#",
+}
+EMAIL_SENDER = "suporte.taskfy@utci.com.br"
 DEFAULT_FROM_EMAIL = "Taskfy <suporte.taskfy@utci.com.br>"
-EMAIL_TIMEOUT = 30
 
-# Se tiver HTTP interno (ex.: "http://192.168.0.10:8000"), coloque aqui; senão deixe vazio:
-BASE_URL = "http://127.0.0.1:8080"  # ou o IP/host do seu servidor  # ou "http://SEU-IP:8000"
-
-# "auto" => usa link se BASE_URL existir; senão envia senha temporária
-# também aceita "link" (força link) ou "temp" (força senha temporária)
-TASKFY_WELCOME_MODE = "login"
-
-TASKFY_SEND_ON_EMAIL_CHANGE = True
-
-# texto auxiliar no e-mail de senha temporária
-TASKFY_LOGIN_HINT = "Acesse o Taskfy pelo atalho da intranet quando disponível."
-
-# expiração do link de redefinição (quando houver link)
-PASSWORD_RESET_TIMEOUT = 60 * 60 * 24 * 3  # 3 dias
+# (opcional, mas recomendado em prod)
+# MS_GRAPH = {
+#   "TENANT_ID": os.getenv("GRAPH_TENANT_ID"),
+#   "CLIENT_ID": os.getenv("GRAPH_CLIENT_ID"),
+#   "CLIENT_SECRET": os.getenv("GRAPH_CLIENT_SECRET"),
+# }
+# EMAIL_SENDER = os.getenv("GRAPH_SENDER", "suporte.taskfy@utci.com.br")

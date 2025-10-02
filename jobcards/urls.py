@@ -5,6 +5,7 @@ from . import views_pdf_api
 from . import views_schedule, views_documents, views_allocated_manpower, views_sync
 from . import views_downloads_jobcards
 from . import views_account
+from . import views_dashboardWorkpack
 
 from .views_auth  import TaskfyPasswordChangeView
 
@@ -206,5 +207,12 @@ urlpatterns = [
 
     
     path("account/api/change-password/", views_account.api_change_password, name="api_change_password"),
+
+    # ===== DASHBOARD WORKPACK (HTML) =====
+    path("dashboard/workpack/", views_dashboardWorkpack.dashboard_workpack, name="dashboard_workpack"),
+    path("dashboard/workpack/<str:wp_number>/", views_dashboardWorkpack.dashboard_workpack, name="dashboard_workpack_detail"),
+    path("dashboard/workpack/", allow_groups(views_dashboardWorkpack.dashboard_workpack, roles.PLANNER, roles.PROCUREMENT, roles.WAREHOUSE, roles.VIEWER), name="dashboard_workpack"),
+
+    path("jobcard/<str:jobcard_number>/pdf/", views_dashboardWorkpack.jobcard_pdf_view, name="jobcard_pdf"),
 
 ]

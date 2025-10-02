@@ -30,3 +30,37 @@ def get_attr(obj, attr):
     """Retorna o atributo de um objeto, ou None se não existir."""
     return getattr(obj, attr, None)
 
+@register.filter
+def get_item(d, key):
+    try:
+        return d.get(key, [])
+    except Exception:
+        return []
+    
+
+
+def _to_num(v):
+    try:
+        return float(str(v).replace(',', '.'))
+    except Exception:
+        return None
+
+@register.filter
+def intcomma2(value, dec=2):
+    """
+    Formata número com separador de milhar e decimais (padrão 2).
+    Ex.: 1234567.8 -> 1,234,567.80
+    """
+    n = _to_num(value)
+    if n is None:
+        return value
+    fmt = f"{{:,.{int(dec)}f}}"
+    return fmt.format(n)
+
+@register.filter
+def intcomma0(value):
+    """Milhar sem casas decimais."""
+    n = _to_num(value)
+    if n is None:
+        return value
+    return f"{int(round(n)):,}"
