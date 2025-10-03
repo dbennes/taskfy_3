@@ -1075,6 +1075,11 @@ def generate_pdf(request, jobcard_id):
     image_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', '3.jpg')
     image_url  = f'file:///{image_path.replace("\\", "/")}'
 
+    # -------- Marca d'água --------
+    watermark_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', 'utc_vazio.png')
+    watermark_url  = f'file:///{watermark_path.replace("\\", "/")}'
+    
+
     # -------- Limpa image_* inexistentes --------
     updated_fields = []
     for i in range(1, 5):
@@ -1137,6 +1142,7 @@ def generate_pdf(request, jobcard_id):
         'allocated_tasks': allocated_tasks,
         'allocated_engineerings': allocated_engineerings,
         'image_path': image_url,
+        'watermark_url': watermark_url,
         'barcode_image': barcode_url,
         'area_info': area_info,
         'image_files': image_files,
@@ -4282,6 +4288,9 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
         image_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', '3.jpg')
         image_url  = f'file:///{image_path.replace("\\", "/")}'
 
+        watermark_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', 'utc_vazio.png')
+        watermark_url  = f'file:///{watermark_path.replace("\\", "/")}'
+
         # Limpa referências quebradas de imagens
         updated_fields = []
         for i in range(1, 5):
@@ -4346,6 +4355,7 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
             'barcode_image': barcode_url,
             'area_info': area_info,
             'image_files': image_files,
+            'watermark_url': watermark_url,
         }
 
         html_string         = render_to_string('sistema/jobcard_pdf.html', context)
