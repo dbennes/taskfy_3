@@ -462,7 +462,7 @@ def _render_jobcard_pdf_to_disk(
         code128 = CODE128(job.job_card_number, writer=ImageWriter())
         with open(barcode_path, 'wb') as fh:
             code128.write(fh, options={'write_text': False})
-    barcode_url = _file_url(barcode_path)
+    barcode_url = f'file:///{barcode_path.replace("\\", "/")}'
 
     # === DADOS ===
     allocated_manpowers = list(
@@ -500,27 +500,15 @@ def _render_jobcard_pdf_to_disk(
 
     allocated_tools = effective_tools
 
-    # ====== IMAGENS DO HEADER (cache-buster) ======
-    _tmp_files = []  # para limpar no finally
+    # === LOGO (já existia) ===
+    image_path = os.path.join(base_dir, 'static', 'assets', 'img', '3.jpg')
+    image_url = f'file:///{image_path.replace("\\", "/")}'
 
-    # LOGO principal -> {{ image_path }}
-    logo_src = (
-        _to_local_path(getattr(job, "image_1", None)) or
-        _to_local_path(getattr(settings, "PDF_HEADER_LOGO", None)) or
-        os.path.join(base_dir, 'static', 'assets', 'img', '3.jpg')
-    )
-    image_url, _tmp_logo = _copy_to_temp(logo_src)
-    _tmp_files.append(_tmp_logo)
+    # === NOVO: WATERMARK (agora o RQ também envia) ===
+    watermark_path = os.path.join(base_dir, 'static', 'assets', 'img', 'utc_vazio.png')
+    watermark_url = f'file:///{watermark_path.replace("\\", "/")}' if os.path.exists(watermark_path) else None
 
-    # Watermark opcional -> {{ watermark_url }}
-    wm_src = os.path.join(base_dir, 'static', 'assets', 'img', 'utc_vazio.png')
-    if os.path.exists(wm_src):
-        watermark_url, _tmp_wm = _copy_to_temp(wm_src)
-        _tmp_files.append(_tmp_wm)
-    else:
-        watermark_url = None
-
-    # ====== Imagens do corpo (image_1..image_4) ======
+    # === Imagens do corpo (image_1..image_4) ===
     image_files = {}
     for i in range(1, 5):
         field = f'image_{i}'
@@ -528,10 +516,10 @@ def _render_jobcard_pdf_to_disk(
         if f:
             try:
                 if hasattr(f, 'path') and os.path.exists(f.path):
-                    image_files[field] = _file_url(f.path)
+                    image_files[field] = 'file:///' + f.path.replace('\\', '/')
                 elif hasattr(f, 'name') and default_storage.exists(f.name):
                     storage_path = default_storage.path(f.name)
-                    image_files[field] = _file_url(storage_path)
+                    image_files[field] = 'file:///' + storage_path.replace('\\', '/')
                 elif hasattr(f, 'url'):
                     image_files[field] = f.url
                 else:
@@ -552,8 +540,8 @@ def _render_jobcard_pdf_to_disk(
         'allocated_tools_right': allocated_tools[half:],
         'allocated_tasks': allocated_tasks,
         'allocated_engineerings': allocated_engineerings,
-        'image_path': image_url,           # usado no header.html
-        'watermark_url': watermark_url,    # usado no header.html
+        'image_path': image_url,          # logo no header
+        'watermark_url': watermark_url,   # <<==== agora o header recebe isso também
         'barcode_image': barcode_url,
         'area_info': area_info,
         'image_files': image_files,
@@ -567,7 +555,6 @@ def _render_jobcard_pdf_to_disk(
     header_temp.write(header_html.encode('utf-8')); header_temp.close()
     footer_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
     footer_temp.write(footer_html.encode('utf-8')); footer_temp.close()
-    _tmp_files += [header_temp.name, footer_temp.name]
 
     wkhtml = _find_wkhtmltopdf()
     local_config = pdfkit.configuration(wkhtmltopdf=wkhtml) if wkhtml else None
@@ -579,22 +566,18 @@ def _render_jobcard_pdf_to_disk(
                 'enable-local-file-access': '',
                 'margin-top': '35mm',
                 'margin-bottom': '30mm',
-                'header-html': _file_url(header_temp.name),
-                'footer-html': _file_url(footer_temp.name),
+                'header-html': f'file:///{header_temp.name.replace("\\", "/")}',
+                'footer-html': f'file:///{footer_temp.name.replace("\\", "/")}',
                 'header-spacing': '5',
                 'footer-spacing': '5',
                 'quiet': ''
             }
         )
     finally:
-        # remove arquivos temporários (html + imagens)
         try: os.unlink(header_temp.name)
         except: pass
         try: os.unlink(footer_temp.name)
         except: pass
-        for p in _tmp_files:
-            try: os.unlink(p)
-            except Exception: pass
 
     backups_dir = str(getattr(settings, 'JOB_BACKUP_DIR',
                               os.path.join(base_dir, 'jobcard_backups')))
@@ -605,6 +588,7 @@ def _render_jobcard_pdf_to_disk(
         f.write(pdf_bytes)
 
     return True, None
+
 
 
 # ================= RQ Job (executa no worker) =================
