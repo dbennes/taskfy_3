@@ -4256,7 +4256,8 @@ from django.db import close_old_connections   # 👈 AQUI!
 
 def _render_jobcard_pdf_to_disk(job_card_number: str):
     """
-    Renderiza o PDF da JobCard atualizada e grava em jobcard_backups/JobCard_{num}_Rev_{rev}.pdf
+    Renderiza o PDF da JobCard atualizada e grava em:
+      jobcard_backups/JobCard_{num}_Rev_{rev}.pdf
     Retorna (True, None) em sucesso, ou (False, 'erro...') em falha.
     """
     try:
@@ -4264,10 +4265,38 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
     except JobCard.DoesNotExist:
         return (False, "JobCard not found")
 
+    # temporários a serem limpos no finally (logo + watermark + header/footer HTMLs)
+    _tmp_paths = []
+
+    # helpers locais
+    def _file_url(p: str) -> str:
+        return f'file:///{p.replace("\\", "/")}'
+
+    def _to_local_path(field_or_path):
+        base_dir = str(getattr(settings, "BASE_DIR", ""))
+        if hasattr(field_or_path, "path") and field_or_path.path:
+            return field_or_path.path if os.path.exists(field_or_path.path) else None
+        if hasattr(field_or_path, "name") and field_or_path.name:
+            try:
+                if default_storage.exists(field_or_path.name):
+                    return default_storage.path(field_or_path.name)
+            except Exception:
+                return None
+        if isinstance(field_or_path, str) and field_or_path:
+            return field_or_path if os.path.isabs(field_or_path) else os.path.join(base_dir, field_or_path)
+        return None
+
+    def _copy_to_temp(src_path: str) -> tuple[str, str]:
+        ext = os.path.splitext(src_path)[1] or ".png"
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+        with open(src_path, "rb") as s, open(tmp.name, "wb") as d:
+            d.write(s.read())
+        return _file_url(tmp.name), tmp.name
+
     try:
         area_info = Area.objects.filter(area_code=job.location).first() if job.location else None
 
-        # Código de barras (igual ao generate_pdf)
+        # ----- Código de barras -----
         barcode_folder = os.path.join(settings.BASE_DIR, 'static', 'barcodes')
         os.makedirs(barcode_folder, exist_ok=True)
         barcode_filename = f'{job.job_card_number}.png'
@@ -4277,21 +4306,36 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
             code128 = CODE128(job.job_card_number, writer=ImageWriter())
             with open(barcode_path, 'wb') as bf:
                 code128.write(bf, options={'write_text': False})
-        barcode_url = f'file:///{barcode_path.replace("\\", "/")}'
+        barcode_url = _file_url(barcode_path)
 
+        # ----- Dados alocados -----
         allocated_manpowers   = AllocatedManpower.objects.filter(jobcard_number=job_card_number).order_by('task_order')
         allocated_materials   = AllocatedMaterial.objects.filter(jobcard_number=job.job_card_number)
         allocated_tools       = AllocatedTool.objects.filter(jobcard_number=job_card_number)
         allocated_tasks       = AllocatedTask.objects.filter(jobcard_number=job_card_number).order_by('task_order')
         allocated_engineering = AllocatedEngineering.objects.filter(jobcard_number=job.job_card_number)
 
-        image_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', '3.jpg')
-        image_url  = f'file:///{image_path.replace("\\", "/")}'
+        # ----- LOGO (image_path) com cache-buster -----
+        base_dir = str(getattr(settings, "BASE_DIR", ""))  # fallback
+        logo_src = (
+            _to_local_path(getattr(job, "image_1", None)) or
+            _to_local_path(getattr(settings, "PDF_HEADER_LOGO", None)) or
+            os.path.join(base_dir, "static", "assets", "img", "3.jpg")
+        )
+        image_url, tmp_logo = _copy_to_temp(logo_src)
+        _tmp_paths.append(tmp_logo)
 
-        watermark_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', 'utc_vazio.png')
-        watermark_url  = f'file:///{watermark_path.replace("\\", "/")}'
+        # ----- WATERMARK (watermark_url) com cache-buster -----
+        # Se você usa sempre um arquivo fixo (ex.: static/assets/img/utc_vazio.png),
+        # copiar para temp garante refresh ao substituir mantendo o nome.
+        wm_src = os.path.join(settings.BASE_DIR, 'static', 'assets', 'img', 'utc_vazio.png')
+        if os.path.exists(wm_src):
+            watermark_url, tmp_wm = _copy_to_temp(wm_src)
+            _tmp_paths.append(tmp_wm)
+        else:
+            watermark_url = None  # mantém compatível se não existir
 
-        # Limpa referências quebradas de imagens
+        # ----- Limpa referências quebradas (image_1..image_4 do corpo) -----
         updated_fields = []
         for i in range(1, 5):
             field = f'image_{i}'
@@ -4311,7 +4355,7 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
         if updated_fields:
             job.save(update_fields=updated_fields)
 
-        # Monta caminhos file:/// para o template
+        # ----- Monta file:/// para imagens do corpo -----
         image_files = {}
         for i in range(1, 5):
             field = f'image_{i}'
@@ -4319,13 +4363,12 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
             if f:
                 try:
                     if hasattr(f, 'path') and os.path.exists(f.path):
-                        image_files[field] = 'file:///' + f.path.replace('\\', '/')
+                        image_files[field] = _file_url(f.path)
                     elif hasattr(f, 'name') and default_storage.exists(f.name):
                         storage_path = default_storage.path(f.name)
-                        image_files[field] = 'file:///' + storage_path.replace('\\', '/')
-                    elif hasattr(f, 'url'):
-                        # sem request aqui – prefira caminhos file:///
-                        image_files[field] = image_files.get(field)
+                        image_files[field] = _file_url(storage_path)
+                    elif hasattr(f, 'url') and getattr(f, 'url', None):
+                        image_files[field] = f.url
                     else:
                         image_files[field] = None
                 except Exception:
@@ -4335,6 +4378,26 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
 
         half = len(allocated_tools) // 2 if allocated_tools else 0
 
+        # ----- wkhtmltopdf -----
+        def _find_wkhtmltopdf():
+            bin_path = getattr(settings, "WKHTMLTOPDF_BIN", None)
+            if bin_path and os.path.exists(bin_path):
+                return bin_path
+            candidate = os.path.join(str(getattr(settings, "BASE_DIR", "")), "wkhtmltopdf", "bin", "wkhtmltopdf.exe")
+            if os.path.exists(candidate):
+                return candidate
+            for c in [
+                r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe",
+                r"C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe",
+                "/usr/bin/wkhtmltopdf",
+                "/usr/local/bin/wkhtmltopdf",
+            ]:
+                if os.path.exists(c):
+                    return c
+            from shutil import which
+            return which("wkhtmltopdf")
+
+        path_wkhtmltopdf = _find_wkhtmltopdf()
         local_config = None
         try:
             if path_wkhtmltopdf and os.path.exists(path_wkhtmltopdf):
@@ -4342,6 +4405,7 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
         except Exception:
             local_config = None
 
+        # ----- Context (mantém SUAS variáveis image_path e watermark_url) -----
         context = {
             'job': job,
             'allocated_manpowers': allocated_manpowers,
@@ -4351,59 +4415,65 @@ def _render_jobcard_pdf_to_disk(job_card_number: str):
             'allocated_tools_right': allocated_tools[half:],
             'allocated_tasks': allocated_tasks,
             'allocated_engineerings': allocated_engineering,
-            'image_path': image_url,
+            'image_path': image_url,         # usado no <img src="{{ image_path }}">
             'barcode_image': barcode_url,
             'area_info': area_info,
             'image_files': image_files,
-            'watermark_url': watermark_url,
+            'watermark_url': watermark_url,  # usado no <img src="{{ watermark_url }}">
         }
 
+        # ----- Render HTMLs -----
         html_string         = render_to_string('sistema/jobcard_pdf.html', context)
         header_html_string  = render_to_string('sistema/header.html', context)
         footer_html_string  = render_to_string('sistema/footer.html', context)
+
         header_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
         footer_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
         header_temp.write(header_html_string.encode('utf-8'))
         footer_temp.write(footer_html_string.encode('utf-8'))
         header_temp.close(); footer_temp.close()
+        _tmp_paths += [header_temp.name, footer_temp.name]
 
+        # ----- Geração do PDF -----
         try:
             pdf_bytes = pdfkit.from_string(
                 html_string,
                 False,
                 configuration=local_config,
                 options={
-                    'enable-local-file-access': None,
+                    'enable-local-file-access': '',  # precisa ser "truthy"
                     'margin-top': '35mm',
                     'margin-bottom': '30mm',
-                    'header-html': f'file:///{header_temp.name.replace("\\", "/")}',
-                    'footer-html': f'file:///{footer_temp.name.replace("\\", "/")}',
+                    'header-html': _file_url(header_temp.name),
+                    'footer-html': _file_url(footer_temp.name),
                     'header-spacing': '5',
                     'footer-spacing': '5',
                     'quiet': '',
                 }
             )
         except Exception as e:
-            try:
-                os.unlink(header_temp.name); os.unlink(footer_temp.name)
-            except Exception: pass
             return (False, f"wkhtmltopdf error: {e}")
 
-        try:
-            os.unlink(header_temp.name); os.unlink(footer_temp.name)
-        except Exception:
-            pass
-
+        # ----- Persistência do PDF -----
         backups_dir = os.path.join(settings.BASE_DIR, 'jobcard_backups')
         os.makedirs(backups_dir, exist_ok=True)
-        backup_filename = f'JobCard_{job.job_card_number}_Rev_{job.rev}.pdf'
+        rev_tag = (job.rev or "R00").replace("/", "_").replace("\\", "_")
+        backup_filename = f'JobCard_{job.job_card_number}_Rev_{rev_tag}.pdf'
         backup_path     = os.path.join(backups_dir, backup_filename)
         with open(backup_path, 'wb') as f:
             f.write(pdf_bytes)
 
         return (True, None)
+
     except Exception as e:
         return (False, str(e))
+    finally:
+        # limpa todos os temporários criados (logo, watermark, header/footer)
+        for p in _tmp_paths:
+            try:
+                os.unlink(p)
+            except Exception:
+                pass
 
 
 # views.py — inicia uma corrida e devolve run_id + total
@@ -4539,6 +4609,7 @@ def api_regenerate_jobcards_pdfs(request):
 
 
 
+
 @login_required(login_url='login')
 def ajax_tools_for_manpowers(request):
     working_code = request.GET.get('working_code')
@@ -4599,3 +4670,6 @@ def pdf_diag(request):
         info["wkhtmltopdf_version"] = f"ERROR: {e}"
 
     return JsonResponse(info)
+
+
+# ===================== AJAX PARA TOOLS BASED ON MANPOWERS ========================== #
