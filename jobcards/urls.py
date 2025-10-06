@@ -6,6 +6,7 @@ from . import views_schedule, views_documents, views_allocated_manpower, views_s
 from . import views_downloads_jobcards
 from . import views_account
 from . import views_dashboardWorkpack
+from django.views.generic.base import RedirectView
 
 from .views_auth  import TaskfyPasswordChangeView
 
@@ -214,5 +215,12 @@ urlpatterns = [
     path("dashboard/workpack/", allow_groups(views_dashboardWorkpack.dashboard_workpack, roles.PLANNER, roles.PROCUREMENT, roles.WAREHOUSE, roles.VIEWER), name="dashboard_workpack"),
 
     path("jobcard/<str:jobcard_number>/pdf/", views_dashboardWorkpack.jobcard_pdf_view, name="jobcard_pdf"),
+
+    # --- Seu login (oficial) ---
+    path("login/", views.login, name="login"),
+
+    # --- Belt & suspenders: atenda também /accounts/login/ com o MESMO login ---
+    # (assim qualquer lib que aponte pra /accounts/login/ não quebra)
+    path("accounts/login/", views.login, name="accounts_login"),
 
 ]
