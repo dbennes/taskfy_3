@@ -169,7 +169,9 @@
             <thead style="background:#23272e;">
                 <tr>
                     <th>JOBCARD</th>
+                    <th>WORKPACK</th>
                     <th>DISCIPLINE</th>
+                    
                     <th>WORKING CODE</th>
                     <th>START</th>
                     <th>FINISH</th>
@@ -188,7 +190,9 @@
                 {% for obj in jobcards_data %}
                 <tr>
                     <td><span class="fw-semibold">{{ obj.job.job_card_number }}</span></td>
+                    <td>{{ obj.job.workpack_number }}</td>
                     <td>{{ obj.job.discipline }}</td>
+                    
                     <td>{{ obj.job.working_code }}</td>
                     <td>{% if obj.start %}{{ obj.start|date:"d/m/Y" }}{% else %}--{% endif %}</td>
                     <td>{% if obj.finish %}{{ obj.finish|date:"d/m/Y" }}{% else %}--{% endif %}</td>

@@ -185,6 +185,7 @@ MS_GRAPH = {
     "CLIENT_ID": "#",
     "CLIENT_SECRET": "#",
 }
+
 EMAIL_SENDER = "suporte.taskfy@utci.com.br"
 DEFAULT_FROM_EMAIL = "Taskfy <suporte.taskfy@utci.com.br>"
 
@@ -195,3 +196,6 @@ DEFAULT_FROM_EMAIL = "Taskfy <suporte.taskfy@utci.com.br>"
 #   "CLIENT_SECRET": os.getenv("GRAPH_CLIENT_SECRET"),
 # }
 # EMAIL_SENDER = os.getenv("GRAPH_SENDER", "suporte.taskfy@utci.com.br")
+
+SITE_URL = os.getenv("SITE_URL", "http://127.0.0.1:8080").rstrip("/")
+

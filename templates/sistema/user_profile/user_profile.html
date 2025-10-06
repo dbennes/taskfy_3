@@ -668,4 +668,30 @@
   }
 })();
 </script>
+
+<script>
+// === Autoabrir modal de troca de senha via ?openPasswordModal=1 ===
+(function () {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('openPasswordModal') === '1') {
+      const el = document.getElementById('changePasswordModal');
+      if (el) {
+        // Bootstrap 5: cria/recupera instância do modal e mostra
+        const modal = bootstrap.Modal.getOrCreateInstance(el);
+        modal.show();
+
+        // (opcional) remove o parâmetro da URL sem recarregar a página
+        const url = new URL(window.location.href);
+        url.searchParams.delete('openPasswordModal');
+        window.history.replaceState({}, '', url);
+      }
+    }
+  } catch (e) {
+    console.warn('Param openPasswordModal não processado:', e);
+  }
+})();
+</script>
+
+
 {% endblock %}

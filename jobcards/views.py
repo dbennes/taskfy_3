@@ -1300,14 +1300,29 @@ def jobcards_overview(request):
     # Requisição normal: página completa
     return render(request, 'sistema/databases/jobcards_overview.html', context)
 
+
+
+# --------- EXIBIÇÃO DE MATERIAIS BASE --------------- #
+
+from django.db.models import OuterRef, Subquery
+
 def materials_list(request):
-    materials = MaterialBase.objects.all()
+    # Subconsulta correlacionada por job_card_number
+    jc_qs = JobCard.objects.filter(job_card_number=OuterRef('job_card_number'))
 
-    context = {
-        'materials': materials
-    }
+    materials = (
+        MaterialBase.objects
+        .annotate(
+            jc_status=Subquery(jc_qs.values('jobcard_status')[:1]),   # Status "novo" do JobCard
+            jc_status_legacy=Subquery(jc_qs.values('status')[:1]),    # Status "legacy" (se existir no model)
+            jc_rev=Subquery(jc_qs.values('rev')[:1])                  # Revisão do JobCard
+        )
+        .order_by('job_card_number', 'item')
+    )
 
-    return render(request, 'sistema/databases/materials_list.html', context)
+    return render(request, 'sistema/databases/materials_list.html', {'materials': materials})
+
+# --------------------------------------------------- #
 
 def manpower_list(request):
     manpowers = ManpowerBase.objects.all()
@@ -1983,29 +1998,70 @@ def delete_area(request, pk):
 # --------- BAIXAR EXPORTAÇÕES --------- #
 
 
-def export_materials_excel(request):
-    # CAPTURA OS FILTROS ENVIADOS PELO FRONT
-    material = request.GET.get('material', '')
-    status = request.GET.get('status', '')
-    project_code = request.GET.get('project_code', '')
-    global_search = request.GET.get('search', '')
+# imports necessários (ajuste o arquivo conforme seu projeto)
+import pandas as pd
+from django.http import HttpResponse
+from django.db.models import Q, OuterRef, Subquery
 
-    # INICIA A QUERY
-    qs = MaterialBase.objects.all()
+from .models import MaterialBase, JobCard
+
+
+def export_materials_excel(request):
+    """
+    Exporta o banco de materiais em XLSX aplicando os mesmos filtros da tela
+    e incluindo os campos do JobCard logo após o Job Card Number:
+      - jc_status (status "novo" do JobCard)
+      - jc_status_legacy (status legado, se existir no model)
+      - jc_rev (revisão)
+
+    Parâmetros (GET):
+      material      -> filtra Material Segmentation
+      status        -> filtra em jc_status OU jc_status_legacy
+      project_code  -> filtra Project Code
+      search        -> busca global em diversos campos (inclui os anotados do JC)
+    """
+
+    # CAPTURA OS FILTROS ENVIADOS PELO FRONT
+    material = (request.GET.get('material', '') or '').strip()
+    status = (request.GET.get('status', '') or '').strip()
+    project_code = (request.GET.get('project_code', '') or '').strip()
+    global_search = (request.GET.get('search', '') or '').strip()
+
+    # Subconsulta para "juntar" o JobCard por job_card_number
+    jc_qs = JobCard.objects.filter(job_card_number=OuterRef('job_card_number'))
+
+    # Inicia a query de materiais já com as ANOTAÇÕES do JobCard
+    qs = (
+        MaterialBase.objects
+        .annotate(
+            jc_status=Subquery(jc_qs.values('jobcard_status')[:1]),   # status "novo"
+            jc_status_legacy=Subquery(jc_qs.values('status')[:1]),    # status "legacy" (se existir)
+            jc_rev=Subquery(jc_qs.values('rev')[:1])                  # revisão do JC
+        )
+    )
 
     # FILTROS POR CAMPO INDIVIDUAL
     if material:
         qs = qs.filter(material_segmentation__icontains=material)
+
     if status:
-        qs = qs.filter(status_procurement__icontains=status)
+        # Agora o filtro 'status' considera os status do JobCard (novo e legacy)
+        qs = qs.filter(
+            Q(jc_status__icontains=status) |
+            Q(jc_status_legacy__icontains=status)
+        )
+
     if project_code:
         qs = qs.filter(project_code__icontains=project_code)
 
-    # FILTRO GLOBAL (BUSCA EM VÁRIOS CAMPOS)
+    # FILTRO GLOBAL (BUSCA EM VÁRIOS CAMPOS, incluindo os anotados do JC)
     if global_search:
         qs = qs.filter(
             Q(item__icontains=global_search) |
             Q(job_card_number__icontains=global_search) |
+            Q(jc_status__icontains=global_search) |
+            Q(jc_status_legacy__icontains=global_search) |
+            Q(jc_rev__icontains=global_search) |
             Q(working_code__icontains=global_search) |
             Q(discipline__icontains=global_search) |
             Q(tag_jobcard_base__icontains=global_search) |
@@ -2015,14 +2071,23 @@ def export_materials_excel(request):
             Q(unit_req_qty__icontains=global_search) |
             Q(weight_kg__icontains=global_search) |
             Q(comments__icontains=global_search) |
-            Q(status_procurement__icontains=global_search)
-            # Adicione outros campos que queira filtrar no global_search!
+            Q(status_procurement__icontains=global_search) |
+            Q(mr_number__icontains=global_search) |
+            Q(basic_material__icontains=global_search) |
+            Q(nps1__icontains=global_search) |
+            Q(unit__icontains=global_search) |
+            Q(po__icontains=global_search) |
+            Q(reference_documents__icontains=global_search)
         )
 
-    # MONTA O DATAFRAME COM OS CAMPOS QUE QUER EXPORTAR (já com MR Number e Reference Documents!)
+    # ORDENAÇÃO (opcional, pra ficar próximo do que aparece na UI)
+    qs = qs.order_by('job_card_number', 'item')
+
+    # MONTA O DATAFRAME COM OS CAMPOS NA MESMA ORDEM DO HTML:
     data = qs.values(
         'item',
         'job_card_number',
+        'jc_status',            # novo: imediatamente após JC Number
         'working_code',
         'discipline',
         'tag_jobcard_base',
@@ -2033,7 +2098,7 @@ def export_materials_excel(request):
         'comments',
         'sequenc_no_procurement',
         'status_procurement',
-        'mr_number',               # <-- NOVO CAMPO
+        'mr_number',
         'basic_material',
         'description',
         'project_code',
@@ -2041,21 +2106,27 @@ def export_materials_excel(request):
         'qty',
         'unit',
         'po',
-        'reference_documents'      # <-- NOVO CAMPO
+        'reference_documents'
     )
 
-    df = pd.DataFrame(list(data))
+    df = pd.DataFrame(list(data)).fillna('')
 
-    # FORMATAÇÃO NUMÉRICA: duas casas, vírgula
+    # FORMATAÇÃO NUMÉRICA: duas casas, vírgula (mantém compatível com seu padrão atual)
     for col in ['jobcard_required_qty', 'weight_kg', 'qty']:
         if col in df.columns:
-            df[col] = df[col].apply(lambda x: '{:.2f}'.format(x).replace('.', ',') if pd.notnull(x) else '')
+            df[col] = df[col].apply(
+                lambda x: '{:.2f}'.format(float(x)).replace('.', ',') if str(x).strip() != '' else ''
+            )
 
     # GERA O EXCEL PARA DOWNLOAD
-    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
     response['Content-Disposition'] = 'attachment; filename=materials.xlsx'
+    # Observação: requer openpyxl/xlsxwriter no ambiente
     df.to_excel(response, index=False)
     return response
+
 
 
 def export_manpower_excel (request):
@@ -3249,7 +3320,8 @@ def jobcards_planning_list(request):
         jobcards = jobcards.filter(
             Q(job_card_number__icontains=search) |
             Q(discipline__icontains=search) |
-            Q(working_code__icontains=search)
+            Q(working_code__icontains=search) |
+            Q(workpack_number__icontains=search)
         )
 
     # Paginação

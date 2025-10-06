@@ -22,7 +22,6 @@
         </div>
     </div>
 
-
     <div class="d-flex flex-wrap align-items-center gap-1">
         <div class="d-flex align-items-center gap-1 p-2 border rounded" style="font-size: 9px;">
             <label class="mb-0 small">Show</label>
@@ -38,7 +37,7 @@
         <form id="filterForm" class="d-flex flex-wrap align-items-center gap-1 p-2 border rounded">
             <input type="text" id="filterMaterial" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Material">
             <input type="text" id="filterProjectCode" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="PMTO">
-            <input type="text" id="filterStatus" class="form-control form-control-sm" style="font-size:10px; width: 100px;" placeholder="Status">
+            <input type="text" id="filterStatus" class="form-control form-control-sm" style="font-size:10px; width: 130px;" placeholder="Status (JC/Legacy)">
             <button style="font-size: 9px" type="button" id="applyFilters" class="btn btn-apply btn-sm">Apply</button>
         </form>
         <div class="d-flex align-items-center gap-1 p-2 border rounded">
@@ -49,64 +48,73 @@
             <button type="button" class="btn btn-success" onclick="exportarExcelDoBanco()">
                 Export Database
             </button>
-
         </div>
     </div>
 
     <div class="table-responsive mt-2">
         <table id="materialsTable" class="table table-hover table-sm w-100 compact-table table-bordered-custom">
-                <thead class="table-light text-center table-header">
-                    <tr>
-                        <th>Item</th>
-                        <th>Job Card Number</th>
-                        <th>Working Code</th>
-                        <th>Discipline</th>
-                        <th>Tag JobCard Base</th>
-                        <th>JobCard Required Qty</th>
-                        <th>Unit Req. Qty</th>
-                        <th>Weight (Kg)</th>
-                        <th>Material Segmentation</th>
-                        <th>Comments</th>
-                        <th>Sequenc. Nº Procurement</th>
-                        <th>Status Procurement</th>
-                        <th>MR Number</th>
-                        <th>Basic Material</th>
-                        <th>Description</th>
-                        <th>Project Code</th>
-                        <th>NPS 1</th>
-                        <th>Qty</th>
-                        <th>Unit</th>
-                        <th>PO</th>
-                        <th>Reference Documents</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for mat in materials %}
-                    <tr>
-                        <td>{{ mat.item }}</td>
-                        <td>{{ mat.job_card_number }}</td>
-                        <td>{{ mat.working_code }}</td>
-                        <td>{{ mat.discipline }}</td>
-                        <td>{{ mat.tag_jobcard_base }}</td>
-                        <td>{{ mat.jobcard_required_qty|floatformat:2 }}</td>
-                        <td>{{ mat.unit_req_qty }}</td>
-                        <td>{{ mat.weight_kg|floatformat:2 }}</td>
-                        <td>{{ mat.material_segmentation }}</td>
-                        <td>{{ mat.comments }}</td>
-                        <td>{{ mat.sequenc_no_procurement }}</td>
-                        <td>{{ mat.status_procurement }}</td>
-                        <td>{{ mat.mr_number }}</td>
-                        <td>{{ mat.basic_material }}</td>
-                        <td>{{ mat.description }}</td>
-                        <td>{{ mat.project_code }}</td>
-                        <td>{{ mat.nps1 }}</td>
-                        <td>{{ mat.qty|floatformat:2 }}</td>
-                        <td>{{ mat.unit }}</td>
-                        <td>{{ mat.po }}</td>
-                        <td>{{ mat.reference_documents }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+            <thead class="table-light text-center table-header">
+                <tr>
+                    <th>Item</th>
+                    <th>Job Card Number</th>
+                    <!-- Novas colunas imediatamente após o JC Number -->
+                    <th>JobCard Status</th>
+                    <th>JC Status (Legacy)</th>
+                    <th>JC Rev</th>
+                    <!-- Continua -->
+                    <th>Working Code</th>
+                    <th>Discipline</th>
+                    <th>Tag JobCard Base</th>
+                    <th>JobCard Required Qty</th>
+                    <th>Unit Req. Qty</th>
+                    <th>Weight (Kg)</th>
+                    <th>Material Segmentation</th>
+                    <th>Comments</th>
+                    <th>Sequenc. Nº Procurement</th>
+                    <th>Status Procurement</th>
+                    <th>MR Number</th>
+                    <th>Basic Material</th>
+                    <th>Description</th>
+                    <th>Project Code</th>
+                    <th>NPS 1</th>
+                    <th>Qty</th>
+                    <th>Unit</th>
+                    <th>PO</th>
+                    <th>Reference Documents</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mat in materials %}
+                <tr>
+                    <td>{{ mat.item }}</td>
+                    <td>{{ mat.job_card_number }}</td>
+                    <!-- Dados anotados do JobCard -->
+                    <td>{{ mat.jc_status|default:"—" }}</td>
+                    <td>{{ mat.jc_status_legacy|default:"—" }}</td>
+                    <td>{{ mat.jc_rev|default:"—" }}</td>
+                    <!-- Continua -->
+                    <td>{{ mat.working_code }}</td>
+                    <td>{{ mat.discipline }}</td>
+                    <td>{{ mat.tag_jobcard_base }}</td>
+                    <td>{{ mat.jobcard_required_qty|floatformat:2 }}</td>
+                    <td>{{ mat.unit_req_qty }}</td>
+                    <td>{{ mat.weight_kg|floatformat:2 }}</td>
+                    <td>{{ mat.material_segmentation }}</td>
+                    <td>{{ mat.comments }}</td>
+                    <td>{{ mat.sequenc_no_procurement }}</td>
+                    <td>{{ mat.status_procurement }}</td>
+                    <td>{{ mat.mr_number }}</td>
+                    <td>{{ mat.basic_material }}</td>
+                    <td>{{ mat.description }}</td>
+                    <td>{{ mat.project_code }}</td>
+                    <td>{{ mat.nps1 }}</td>
+                    <td>{{ mat.qty|floatformat:2 }}</td>
+                    <td>{{ mat.unit }}</td>
+                    <td>{{ mat.po }}</td>
+                    <td>{{ mat.reference_documents }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
 </div>
@@ -156,7 +164,7 @@
   </div>
 </div>
 
-<!-- Modal de erro -->
+<!-- Modal de erro/sucesso -->
 <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -164,16 +172,13 @@
         <h5 class="modal-title" id="errorModalLabel">Import Error</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body" id="errorModalBody">
-        <!-- The error message will be placed here -->
-      </div>
+      <div class="modal-body" id="errorModalBody"></div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
 </div>
-
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
@@ -185,20 +190,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
-<script>
 
+<script>
     function exportarExcelDoBanco() {
-        // Pega os valores dos filtros dos campos da tabela
         var material = $('#filterMaterial').val() || '';
         var status = $('#filterStatus').val() || '';
         var projectCode = $('#filterProjectCode').val() || '';
         var globalSearch = $('#globalSearch').val() || '';
-        // Constrói a URL com os filtros aplicados
+
         var url = '/export_materials_excel/?material=' + encodeURIComponent(material)
                 + '&status=' + encodeURIComponent(status)
                 + '&project_code=' + encodeURIComponent(projectCode)
                 + '&search=' + encodeURIComponent(globalSearch);
-        // Faz download
         window.open(url, '_blank');
     }
 
@@ -215,9 +218,15 @@
         table.buttons().container().appendTo('#customButtons');
 
         $('#applyFilters').click(function () {
-            table.column(8).search($('#filterMaterial').val());
-            table.column(15).search($('#filterProjectCode').val());
-            table.column(11).search($('#filterStatus').val());
+            // Índices após inserir 3 colunas (JC Status, JC Status Legacy, JC Rev)
+            table.column(11).search($('#filterMaterial').val());     // Material Segmentation
+            table.column(18).search($('#filterProjectCode').val());  // Project Code
+
+            // Status: aplica em JC Status (2) e Legacy (3)
+            const st = $('#filterStatus').val();
+            table.column(2).search(st);
+            table.column(3).search(st);
+
             table.draw();
         });
 
@@ -230,6 +239,7 @@
         });
     });
 </script>
+
 <style>
     .compact-table {
         table-layout: auto !important;
@@ -316,10 +326,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script>
 function baixarModeloMaterialBase() {
-    // Cabeçalho do seu MaterialBase (ajuste a ordem se quiser):
     const cabecalho = [
         "job_card_number",
         "working_code",
@@ -332,7 +340,7 @@ function baixarModeloMaterialBase() {
         "comments",
         "sequenc_no_procurement",
         "status_procurement",
-        "mr_number",  // <- ALTERADO
+        "mr_number",
         "basic_material",
         "description",
         "project_code",
@@ -340,7 +348,7 @@ function baixarModeloMaterialBase() {
         "qty",
         "unit",
         "po",
-        "reference_documents"  // <- NOVO CAMPO
+        "reference_documents"
     ];
 
     const exemplo = [
@@ -355,7 +363,7 @@ function baixarModeloMaterialBase() {
         "Sem comentários",
         "SEQ-01",
         "Pendente",
-        "MR-10",             // <- EXEMPLO PARA MR NUMBER
+        "MR-10",
         "Aço Carbono",
         "Parafuso M8x40 Zincado",
         "PC-21",
@@ -363,19 +371,16 @@ function baixarModeloMaterialBase() {
         "10",
         "kg",
         "PO123456",
-        "DOC-ENG-001, DOC-ENG-002" // <- EXEMPLO DE REFERENCIA
+        "DOC-ENG-001, DOC-ENG-002"
     ];
 
-
-    const ws_data = [cabecalho, exemplo]; // Cabeçalho + linha de exemplo
+    const ws_data = [cabecalho, exemplo];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Modelo");
-
     XLSX.writeFile(wb, "modelo_material_base.xlsx");
 }
 </script>
-
 
 <!-- JAVASCRIPT PARA MANDAR VIA AJAX -->
 <script>
@@ -404,8 +409,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'duplicate') {
-                // Mostra modal de confirmação
-                formDataCache = formData; // salva para reutilizar
+                formDataCache = formData;
                 $('#importModal').modal('hide');
                 setTimeout(function() {
                     $('#confirmReplaceModal').modal('show');
@@ -422,7 +426,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Ao confirmar sobrescrever
     document.getElementById('confirmOverwriteBtn').onclick = function() {
         if (!formDataCache) return;
         formDataCache.append('overwrite', '1');
@@ -432,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(response => response.json())
         .then(data => {
-            formDataCache = null; // <--- Limpa aqui!
+            formDataCache = null;
             $('#confirmReplaceModal').modal('hide');
             if (data.status === 'ok') {
                 showSuccess("Materials updated successfully!", true);
@@ -451,16 +454,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function showSuccess(message, reload) {
-        // Usa o mesmo modal de erro mas com cor verde (ou crie outro modal, se quiser separar)
         document.getElementById('errorModalLabel').innerText = "Success";
         document.getElementById('errorModalBody').innerText = message;
-        // Troca cor
         let header = document.querySelector('#errorModal .modal-header');
         if(header){
             header.classList.remove('bg-danger');
-            header.classList.add('bg-success');
-            header.classList.remove('text-white');
-            header.classList.add('text-white');
+            header.classList.add('bg-success', 'text-white');
         }
         $('#errorModal').modal('show');
         if (reload) {
@@ -468,21 +467,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.location.reload();
             }, 1800);
         }
-        // Volta para vermelho para outros erros:
         $('#errorModal').on('hidden.bs.modal', function () {
             document.getElementById('errorModalLabel').innerText = "Import Error";
             if(header){
                 header.classList.remove('bg-success');
                 header.classList.add('bg-danger');
             }
-            // Remove evento para não acumular
             $(this).off('hidden.bs.modal');
         });
     }
 });
 </script>
-
-
-
-
 {% endblock %}

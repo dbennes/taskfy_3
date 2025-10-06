@@ -1,4 +1,5 @@
 from django import template
+from django.conf import settings
 
 register = template.Library()
 
@@ -64,3 +65,13 @@ def intcomma0(value):
     if n is None:
         return value
     return f"{int(round(n)):,}"
+
+@register.simple_tag
+def site_url():
+    """
+    Uso no template:
+      {% load dict_extras %}
+      {% site_url as HOST %}
+      <a href="{{ HOST }}/...">...</a>
+    """
+    return getattr(settings, "SITE_URL", "").rstrip("/")
