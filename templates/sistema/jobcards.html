@@ -20,7 +20,7 @@
     <div class="card-body">
       <!-- Filtros -->
       <form method="get" class="row align-items-end mb-3" style="font-size:13px">
-        <div class="col-md-2">
+        <div class="col-md-1">
           <label for="itemsPerPage" class="form-label">Items per page:</label>
           <select id="itemsPerPage" name="items_per_page" class="form-select" style="font-size:13px">
             <option value="5"   {% if items_per_page == 5 %}selected{% endif %}>5</option>
@@ -32,6 +32,17 @@
           </select>
         </div>
 
+        <!-- Filtro Discipline -->
+        <div class="col-md-2">
+          <label for="discipline" class="form-label">Discipline:</label>
+          <select id="discipline" name="discipline" class="form-select" style="font-size:13px">
+            <option value="">All</option>
+            {% for d in disciplines %}
+              <option value="{{ d }}" {% if discipline == d %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
         <div class="col-md-3">
           <label for="filterInput" class="form-label">Search (global):</label>
           <input style="font-size:13px" type="text" id="filterInput" name="search"
@@ -40,7 +51,7 @@
         </div>
 
         <!-- Filtro System -->
-        <div class="col-md-2">
+        <div class="col-md-1">
           <label for="system" class="form-label">System:</label>
           <select id="system" name="system" class="form-select" style="font-size:13px">
             <option value="">All</option>

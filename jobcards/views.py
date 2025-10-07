@@ -549,11 +549,12 @@ def jobcards_list(request):
     qs = JobCard.objects.all()
 
     # parâmetros
-    search        = (request.GET.get('search') or '').strip()
-    system_param  = (request.GET.get('system') or '').strip()
-    start_date_s  = request.GET.get('start_date', '')
-    end_date_s    = request.GET.get('end_date', '')
-    items_s       = request.GET.get('items_per_page', '10')
+    search          = (request.GET.get('search') or '').strip()
+    system_param    = (request.GET.get('system') or '').strip()
+    discipline_param= (request.GET.get('discipline') or '').strip()  # << NOVO
+    start_date_s    = request.GET.get('start_date', '')
+    end_date_s      = request.GET.get('end_date', '')
+    items_s         = request.GET.get('items_per_page', '10')
 
     # busca global (todos os campos)
     if search:
@@ -562,6 +563,10 @@ def jobcards_list(request):
     # filtro System (match exato, case-insensitive)
     if system_param:
         qs = qs.filter(system__iexact=system_param)
+
+    # filtro Discipline (match exato, case-insensitive)  << NOVO
+    if discipline_param:
+        qs = qs.filter(discipline__iexact=discipline_param)
 
     # range de datas (start, finish, date_prepared, date_approved)
     def parse_input_date(s):
@@ -613,19 +618,25 @@ def jobcards_list(request):
     except Exception:
         available_pdfs = set()
 
-    # lista de Systems para o select (distintos, não vazios)
+    # listas distintas para selects (filtradas e ordenadas)
     systems_qs = JobCard.objects.values_list('system', flat=True).distinct()
-    systems = sorted({s for s in systems_qs if (s or '').strip()})
+    systems = sorted({(s or '').strip() for s in systems_qs if (s or '').strip()})
+
+    # << NOVO: disciplinas distintas diretamente do JobCard
+    disciplines_qs = JobCard.objects.values_list('discipline', flat=True).distinct()
+    disciplines = sorted({(d or '').strip() for d in disciplines_qs if (d or '').strip()})
 
     context = {
         'jobcards': jobcards_page,
         'search': search,
         'system': system_param,
+        'discipline': discipline_param,     # << NOVO
         'start_date': start_date_s,
         'end_date': end_date_s,
         'items_per_page': items_per_page,
         'available_pdfs': available_pdfs,
         'systems': systems,
+        'disciplines': disciplines,         # << NOVO
     }
     return render(request, 'sistema/jobcards.html', context)
 
