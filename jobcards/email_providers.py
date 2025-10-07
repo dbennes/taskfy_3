@@ -22,22 +22,82 @@ def _addr(a):
 
 def _mk_attachments(attachments):
     """
-    attachments: lista de tuplas (nome, conteudo_bytes|str, mimetype_opcional)
+    Converte anexos para o formato do Microsoft Graph.
+    Aceita:
+      - dict com chaves: name, contentBytes|content_bytes (opcional: contentType|content_type, isInline|is_inline, contentId|content_id)
+      - tupla/lista:
+          (name, bytes|str, [content_type])                      # comum
+          (name, bytes|str, content_type, is_inline, content_id) # inline
     """
     out = []
     for att in (attachments or []):
-        if not isinstance(att, (list, tuple)) or len(att) not in (2,3): 
+        # ---- Dict (recomendado p/ inline) ----
+        if isinstance(att, dict):
+            name = att.get("name")
+            cbytes = att.get("contentBytes") or att.get("content_bytes")
+            ctype  = att.get("contentType") or att.get("content_type") or (mimetypes.guess_type(name or "")[0] or "application/octet-stream")
+            is_inline = att.get("isInline") or att.get("is_inline") or False
+            cid = att.get("contentId") or att.get("content_id")
+
+            # contentBytes pode vir já em base64 ou bytes/str
+            if cbytes and not isinstance(cbytes, str):
+                if isinstance(cbytes, bytes):
+                    cbytes = base64.b64encode(cbytes).decode("ascii")
+                else:
+                    # str "normal" -> bytes -> base64
+                    cbytes = base64.b64encode(str(cbytes).encode("utf-8")).decode("ascii")
+
+            node = {
+                "@odata.type": "#microsoft.graph.fileAttachment",
+                "name": name or "attachment",
+                "contentType": ctype,
+                "contentBytes": cbytes or "",
+            }
+            if is_inline:
+                node["isInline"] = True
+            if cid:
+                node["contentId"] = cid
+            out.append(node)
             continue
-        name, content = att[0], att[1]
-        ctype = att[2] if len(att)==3 and att[2] else (mimetypes.guess_type(name)[0] or "application/octet-stream")
-        if isinstance(content, str):
-            content = content.encode("utf-8")
-        out.append({
-            "@odata.type": "#microsoft.graph.fileAttachment",
-            "name": name,
-            "contentType": ctype,
-            "contentBytes": base64.b64encode(content).decode("ascii"),
-        })
+
+        # ---- Tupla/lista ----
+        if isinstance(att, (list, tuple)):
+            # formatos suportados:
+            # (name, content) | (name, content, content_type) | (name, content, content_type, is_inline, content_id)
+            name = att[0]
+            content = att[1]
+            ctype = None
+            is_inline = False
+            cid = None
+
+            if len(att) >= 3 and att[2]:
+                ctype = att[2]
+            if len(att) >= 4:
+                is_inline = bool(att[3])
+            if len(att) >= 5:
+                cid = att[4]
+
+            if not ctype:
+                ctype = mimetypes.guess_type(name)[0] or "application/octet-stream"
+
+            if isinstance(content, str):
+                content = content.encode("utf-8")
+
+            node = {
+                "@odata.type": "#microsoft.graph.fileAttachment",
+                "name": name,
+                "contentType": ctype,
+                "contentBytes": base64.b64encode(content).decode("ascii"),
+            }
+            if is_inline:
+                node["isInline"] = True
+            if cid:
+                node["contentId"] = cid
+
+            out.append(node)
+            continue
+
+        # outros tipos: ignora
     return out
 
 def send_via_graph(

@@ -99,6 +99,13 @@ import csv
 from typing import List
 from django.db import models as djm
 
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.conf import settings
+from django.urls import reverse, NoReverseMatch
+
+# - PARTE DA INDEX DO SISTEMA
+def index(request):
+    return render(request, 'index.html')
 
 # - PERMISSIONAMENTO POR GRUPO
 def group_required(group_name):
@@ -111,25 +118,63 @@ path_wkhtmltopdf = os.path.join(settings.BASE_DIR, 'wkhtmltopdf', 'bin', 'wkhtml
 config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
 
 # - PARTE DA INDEX DO SISTEMA
-def index(request):
-    return render(request, 'index.html')
+def _is_safe_next(target_url: str, request) -> bool:
+    """
+    Garante que o 'next' é seguro:
+    - Mesmo host
+    - HTTPS se a requisição for HTTPS
+    - Não aponte para as rotas de login (evita loop)
+    """
+    if not target_url:
+        return False
 
-# - PARTE DO LOGIN DO SISTEMA
+    # evita loop para as rotas de login
+    login_urls = []
+    try:
+        login_urls.append(reverse('login'))
+    except NoReverseMatch:
+        pass
+    try:
+        login_urls.append(reverse('accounts_login'))
+    except NoReverseMatch:
+        pass
+    if any(target_url.startswith(u) for u in login_urls):
+        return False
+
+    return url_has_allowed_host_and_scheme(
+        target_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    )
+
 def login(request):
+    # Captura o next (GET tem prioridade quando chegou redirecionado por @login_required)
+    next_url = request.GET.get('next') or request.POST.get('next') or ''
+
+    # Se já está autenticado, respeita o next seguro, senão manda para dashboard
+    if request.user.is_authenticated:
+        if _is_safe_next(next_url, request):
+            return redirect(next_url)
+        return redirect('dashboard')
+
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        username = (request.POST.get('username') or '').strip()
+        password = request.POST.get('password') or ''
 
         user = authenticate(request, username=username, password=password)
-
         if user is not None:
             auth_login(request, user)
-            return redirect('dashboard')  # redireciona para a index
-        else:
-            return render(request, 'login.html', {'erro': 'Login Inválido'})
 
-    # Se não for POST, retorna a página de login normalmente
-    return render(request, 'login.html')
+            # Após logar, respeita o next seguro
+            if _is_safe_next(next_url, request):
+                return redirect(next_url)
+            return redirect('dashboard')
+
+        # Credenciais inválidas → renderiza com erro e mantém o next
+        return render(request, 'login.html', {'erro': 'Login Inválido', 'next': next_url})
+
+    # GET normal → renderiza login e injeta o next (se houver)
+    return render(request, 'login.html', {'next': next_url})
 
 # - PARTE DO DASHBOARD
 

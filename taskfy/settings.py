@@ -200,6 +200,6 @@ DEFAULT_FROM_EMAIL = "Taskfy <suporte.taskfy@utci.com.br>"
 SITE_URL = os.getenv("SITE_URL", "http://127.0.0.1:8080").rstrip("/")
 
 # === Auth redirects ===
-LOGIN_URL = "/login/"
-LOGIN_REDIRECT_URL = "/"
-LOGOUT_REDIRECT_URL = "/"
+LOGIN_URL = 'login'             # usa o nome da rota, não string absoluta
+LOGIN_REDIRECT_URL = 'login'
+LOGOUT_REDIRECT_URL = 'login'

@@ -6,7 +6,6 @@ from django.db.models import Count
 from django.http import HttpResponse
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
-from django.conf import settings
 import csv, json
 
 from .models import (
@@ -16,9 +15,6 @@ from .models import (
     DocumentoControle, DocumentoRevisaoAlterada, WarehouseStock, WarehousePiece, DailyFieldReport
 )
 
-from django.contrib import admin, messages
-from django.contrib.auth import get_user_model
-from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from .utils.account_email import send_profile_change_password_email
 
 User = get_user_model()
@@ -279,28 +275,54 @@ class WarehousePieceAdmin(SafeBasicAdmin):
 
 
 # ===============================
-# Usuários — ação de reenviar boas-vindas
+# Usuários — ação de reenviar boas-vindas / troca de senha
 # ===============================
 @admin.action(description="Enviar e-mail de troca de senha (Profile)")
 def send_profile_change_password(modeladmin, request, queryset):
-    ok, fail = 0, 0
+    """
+    Tolerante ao retorno da função de e-mail:
+    - bool  -> interpreta como (bool, "")
+    - (bool, detail) -> usa ambos
+    Captura exceções para não derrubar o Admin.
+    """
+    ok = fail = 0
+    problems = []
+
     for u in queryset:
-        sent, detail = send_profile_change_password_email(u)
+        try:
+            result = send_profile_change_password_email(u)
+            if isinstance(result, tuple):
+                sent, detail = result
+            else:
+                sent, detail = bool(result), ""
+        except Exception as e:
+            sent, detail = False, str(e)
+
         if sent:
             ok += 1
         else:
             fail += 1
-            messages.warning(request, f"{u.username}: {detail}")
+            problems.append(f"{getattr(u, 'username', u)} <{getattr(u, 'email', 'sem-email')}>: {detail or 'erro desconhecido'}")
+
     if ok:
-        messages.success(request, f"E-mails enviados: {ok}")
+        messages.success(request, f"✅ E-mails enviados: {ok}")
     if fail:
-        messages.error(request, f"Falhas: {fail}")
+        messages.error(request, f"❌ Falhas: {fail}")
+        if problems:
+            preview = "<br>".join(problems[:10])
+            messages.error(
+                request,
+                format_html("Detalhes (até 10):<br><pre style='white-space:pre-wrap'>{}</pre>", preview)
+            )
+
 
 class UserAdmin(DjangoUserAdmin):
     actions = [send_profile_change_password]
+
 
 try:
     admin.site.unregister(User)
 except admin.sites.NotRegistered:
     pass
+
 admin.site.register(User, UserAdmin)

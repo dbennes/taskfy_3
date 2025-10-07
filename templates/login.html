@@ -3,13 +3,8 @@
 
 {% block content %}
   <style>
-    /* zera margem/padding de toda a página */
-    html, body {
-      margin: 0;
-      padding: 0;
-    }
+    html, body { margin: 0; padding: 0; }
 
-    /* Aumenta a largura máxima do card */
     .login-card {
       max-width: 350px;
       min-height: 450px;
@@ -20,7 +15,6 @@
       overflow: hidden;
     }
 
-    /* Fundo da coluna 2 */
     .login-bg {
       background: url("{% static 'assets/img/fpso2.png' %}") no-repeat center center;
       background-size: cover;
@@ -44,6 +38,8 @@
     .dot-red    { background: #cbd5e1; }
     .dot-yellow { background: #a1a1aa; }
     .dot-green  { background: #71717a; }
+
+    .login-alert { border-radius: 10px; padding: 8px 12px; }
   </style>
 
   <section class="vh-100 m-0 p-0">
@@ -60,8 +56,8 @@
               <span class="dot dot-yellow"></span>
               <span class="dot dot-green"></span>
             </div>
-            
-            <div class="card-body d-flex flex-column align-items-center justify-content-center px-4" >
+
+            <div class="card-body d-flex flex-column align-items-center justify-content-center px-4">
 
               <!-- Ícone em vez de logo -->
               <div class="mb-4">
@@ -69,31 +65,49 @@
               </div>
 
               <!-- Título -->
-              <h5 class="text-light mb-4 fw-light">Sign in to your account</h5>
+              <h5 class="text-light mb-3 fw-light">Sign in to your account</h5>
+
+              <!-- Alerts -->
+              {% if erro %}
+                <div class="alert alert-danger login-alert w-100 py-2 mb-3">{{ erro }}</div>
+              {% endif %}
+              {% if messages %}
+                {% for message in messages %}
+                  <div class="alert alert-{{ message.tags|default:'info' }} login-alert w-100 py-2 mb-3">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
 
               <!-- Formulário -->
-              <form method="POST" class="w-100" >{% csrf_token %}
+              <form method="POST" action="{% url 'login' %}" class="w-100" autocomplete="off">
+                {% csrf_token %}
+                <!-- mantém o redirecionamento pós-login -->
+                <input type="hidden" name="next" value="{{ next|default:'' }}">
+
                 <div class="mb-3">
                   <label for="id_username" class="form-label text-light small">Email</label>
                   <input id="id_username" type="email" name="username"
-                    class="form-control form-control-sm bg-transparent text-light border-0 border-bottom"
-                    placeholder="you@example.com">
+                         class="form-control form-control-sm bg-transparent text-light border-0 border-bottom"
+                         placeholder="you@example.com" autocomplete="username" required>
                 </div>
+
                 <div class="mb-3">
                   <label for="id_password" class="form-label text-light small">Password</label>
                   <input id="id_password" type="password" name="password"
-                    class="form-control form-control-sm bg-transparent text-light border-0 border-bottom"
-                    placeholder="••••••••">
+                         class="form-control form-control-sm bg-transparent text-light border-0 border-bottom"
+                         placeholder="••••••••" autocomplete="current-password" required>
                 </div>
+
                 <div class="d-flex justify-content-between align-items-center mb-4">
                   <div class="form-check">
-                    <input style="font-size:12x" class="form-check-input" type="checkbox" id="remember" name="remember">
-                    <label style="font-size:12px" class="form-check-label text-light small" for="remember">Remember me</label>
+                    <input class="form-check-input" type="checkbox" id="remember" name="remember">
+                    <label class="form-check-label text-light small" for="remember" style="font-size:12px">Remember me</label>
                   </div>
-                  <a href="#" class="text-light small text-decoration-none " style="font-size:10px">Forgot password?</a>
+                  <a href="{% url 'password_reset' %}" class="text-light small text-decoration-none" style="font-size:10px">
+                    Forgot password?
+                  </a>
                 </div>
-                <button  type="submit"
-                  class="btn btn-outline-light btn-sm w-100 rounded-pill fw-semibold">
+
+                <button type="submit" class="btn btn-outline-light btn-sm w-100 rounded-pill fw-semibold">
                   Sign in
                 </button>
               </form>

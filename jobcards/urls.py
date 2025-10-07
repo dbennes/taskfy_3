@@ -19,6 +19,11 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('login/', views.login, name='login'),
 
+    # === AUTH (mantenha ANTES do include para ter precedência) ===
+    path('accounts/login/', views.login, name='accounts_login'),        # aponta para o MESMO view
+    path('accounts/password_change/', TaskfyPasswordChangeView.as_view(), name='password_change'),
+    path('accounts/', include('django.contrib.auth.urls')),             # reset/confirm etc. (fica por último)
+
     # ===== HTML BÁSICO =====
     path('dashboard/',     allow_groups(views.dashboard,     roles.PLANNER, roles.PROCUREMENT, roles.WAREHOUSE, roles.VIEWER), name='dashboard'),
     path('jobcards_list/', allow_groups(views.jobcards_list, roles.PLANNER, roles.PROCUREMENT, roles.WAREHOUSE, roles.VIEWER), name='jobcards_list'),
@@ -198,7 +203,7 @@ urlpatterns = [
 
 
     # ===== MUDAR A SENHA DO SISTEMA =====
-    path("account/profile/", views_account.user_profile, name="user_profile"),
+    path("account/profile/", allow_groups(views_account.user_profile, roles.PLANNER, roles.PROCUREMENT, roles.WAREHOUSE, roles.VIEWER), name="user_profile"),
     path("account/api/change-password/", views_account.api_change_password, name="api_change_password"),
 
 

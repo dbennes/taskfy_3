@@ -4,12 +4,9 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from ..email_providers import send_via_graph
+from .email_inline import build_inline_attachment
 
 def send_profile_change_password_email(user):
-    """
-    Envia e-mail de troca de senha para 1 usuário.
-    Mantido igual ao seu, apenas retornando bool.
-    """
     ctx = {
         "user": user,
         "base_url": getattr(settings, "BASE_URL", ""),
@@ -18,20 +15,25 @@ def send_profile_change_password_email(user):
     html = render_to_string("mail/change_password.html", ctx)
     text = strip_tags(html)
 
+    # Anexa a imagem como inline (CID = taskfy-mascot)
+    attachments = []
+    masc = build_inline_attachment("assets/img/email/masc-3.png", cid="taskfy-mascot", name="masc-3.png")
+    if masc:
+        attachments.append(masc)
+
     ok, msg = send_via_graph(
         subject="TASKFY — Password Reset",
         text_body=text,
         html_body=html,
-        to_list=[user.email],      # <- individual
+        to_list=[user.email],
         bcc_list=[],
         cc_list=[],
         reply_to=None,
         sender=getattr(settings, "EMAIL_SENDER", None),
-        attachments=None,
+        attachments=attachments,     # <<<<<< importante
         save_to_sent=True,
     )
     if not ok and settings.DEBUG:
-        # deixe levantar para ver a causa em dev
         raise RuntimeError(msg)
     return ok
 

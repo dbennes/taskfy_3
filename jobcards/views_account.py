@@ -9,7 +9,7 @@ from django.shortcuts import render, redirect
 
 from .forms import ProfileForm, CustomPasswordChangeForm  # <-- seus forms
 
-@login_required
+@login_required(login_url='login')
 def user_profile(request):
     """
     Página de Profile:
@@ -39,7 +39,7 @@ def user_profile(request):
     return render(request, "sistema/user_profile/user_profile.html", context)
 
 
-@login_required
+@login_required(login_url='login')
 def api_change_password(request):
     """
     Troca de senha via AJAX.
