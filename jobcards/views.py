@@ -198,7 +198,7 @@ def dashboard(request):
     qs_active = JobCard.objects.exclude(CANCEL_Q)
 
     # Totais principais (somente ativos)
-    total_jobcards   = qs_active.count()
+    total_jobcards    = qs_active.count()
     not_checked_count = qs_active.filter(jobcard_status=STATUS_NO).count()
     checked_count     = total_jobcards - not_checked_count
 
@@ -213,9 +213,9 @@ def dashboard(request):
     )
 
     # Disciplinas (por discipline_code) - só ativas
-    codigos = list(qs_active.values_list('discipline_code', flat=True).distinct().order_by('discipline_code'))
-    labels_total = codigos
-    data_total   = [qs_active.filter(discipline_code=cod).count() for cod in codigos]
+    codigos       = list(qs_active.values_list('discipline_code', flat=True).distinct().order_by('discipline_code'))
+    labels_total  = codigos
+    data_total    = [qs_active.filter(discipline_code=cod).count() for cod in codigos]
 
     # NÃO CHECKED por disciplina (só ativas)
     not_checked_qs = (
@@ -226,7 +226,6 @@ def dashboard(request):
     data_not_checked   = [r['count'] for r in not_checked_qs]
 
     # AWP (só ativas)
-    from collections import defaultdict
     awp_data = defaultdict(lambda: defaultdict(list))
     for jc in qs_active.order_by('system', 'workpack_number', 'job_card_number'):
         if jc.system and jc.workpack_number:
@@ -243,17 +242,17 @@ def dashboard(request):
     alerta_count = jobcards_incompletos.count()
 
     # Áreas (só ativas)
-    area_qs = qs_active.values('location').annotate(count=Count('id')).order_by('location')
+    area_qs     = qs_active.values('location').annotate(count=Count('id')).order_by('location')
     labels_areas = [x['location'] or '—' for x in area_qs]
     data_areas   = [x['count'] for x in area_qs]
 
     # Mini métricas (só ativas)
-    level_xx_count                = qs_active.exclude(level__iexact='XX').count()
-    activity_to_be_verified_count = qs_active.exclude(activity_id__iexact='to be verified').count()
-    start_1900_count              = qs_active.exclude(start=date(1900, 1, 1)).count()
-    finish_1900_count             = qs_active.exclude(finish=date(1900, 1, 1)).count()
-    system_to_be_verified_count   = qs_active.exclude(system__iexact='to be verified').count()
-    subsystem_to_be_verified_count= qs_active.exclude(subsystem__iexact='to be verified').count()
+    level_xx_count                 = qs_active.exclude(level__iexact='XX').count()
+    activity_to_be_verified_count  = qs_active.exclude(activity_id__iexact='to be verified').count()
+    start_1900_count               = qs_active.exclude(start=date(1900, 1, 1)).count()
+    finish_1900_count              = qs_active.exclude(finish=date(1900, 1, 1)).count()
+    system_to_be_verified_count    = qs_active.exclude(system__iexact='to be verified').count()
+    subsystem_to_be_verified_count = qs_active.exclude(subsystem__iexact='to be verified').count()
 
     # ===== Contagens CUMULATIVAS por estágio =====
     preliminary_checked_count = qs_active.filter(jobcard_status__in=STAGE_PRE_OR_MORE).count()
@@ -275,7 +274,7 @@ def dashboard(request):
     # Ordem visual de disciplinas
     discipline_order = [
         'LOGISTIC','SCAFFOLDING','STRUCTURAL','MECHANICAL','PIPING','TIE-IN',
-        'HVAC','INSTRUMENTATION & AUTOMATION','ELECTRICAL','TELECOM','PAINTING', 'COMMISSIONING',
+        'HVAC','INSTRUMENTATION & AUTOMATION','ELECTRICAL','TELECOM','PAINTING','COMMISSIONING',
     ]
 
     # ===== Discipline summary (cumulativo >= PRELIMINARY) =====
@@ -284,15 +283,15 @@ def dashboard(request):
         total   = qs_active.filter(discipline=d['discipline']).count()
         checked = qs_active.filter(discipline=d['discipline'],
                                    jobcard_status__in=STAGE_PRE_OR_MORE).count()
-        percent = (checked / total * 100) if total else 0
+        percent = (checked / total * 100) if total else 0.0
         discipline_summary.append({
             'discipline': d['discipline'],
             'total_jobcard': total,
-            'total_checked': checked,     # cumulativo
+            'total_checked': checked,
             'percent_checked': percent,
         })
 
-    # Ordena/”preenche” conforme ordem fixa
+    # Ordena conforme ordem fixa (preenche zeros p/ faltantes)
     disc_dict = {d['discipline']: d for d in discipline_summary}
     discipline_summary_sorted = []
     for name in discipline_order:
@@ -307,49 +306,51 @@ def dashboard(request):
 
     area_summary = []
     for area_code in sorted(area_groups):
-        codes = [a.area_code for a in area_groups[area_code]]
+        codes   = [a.area_code for a in area_groups[area_code]]
         total   = qs_active.filter(location__in=codes).count()
         checked = qs_active.filter(location__in=codes,
                                    jobcard_status__in=STAGE_PRE_OR_MORE).count()
-        percent = (checked / total * 100) if total else 0
+        percent = (checked / total * 100) if total else 0.0
         area_obj = Area.objects.filter(area_code=area_code).order_by('pk').first()
         area_summary.append({
             'area_code': area_code,
             'area_description': area_obj.location if area_obj else '',
             'total_jobcard': total,
-            'total_checked': checked,     # cumulativo
+            'total_checked': checked,
             'percent_checked': percent,
         })
 
     # ===== Workpack summary (cumulativo >= PRELIMINARY) =====
     workpack_summary = []
-    for w in (qs_active.exclude(workpack_number__isnull=True)
-                     .exclude(workpack_number__exact='')
-                     .values('workpack_number').distinct()):
+    distinct_workpacks = (qs_active
+                          .exclude(workpack_number__isnull=True)
+                          .exclude(workpack_number__exact='')
+                          .values('workpack_number').distinct())
+    for w in distinct_workpacks:
         wp = w['workpack_number']
         total   = qs_active.filter(workpack_number=wp).count()
         checked = qs_active.filter(workpack_number=wp,
                                    jobcard_status__in=STAGE_PRE_OR_MORE).count()
-        percent = (checked / total * 100) if total else 0
+        percent = (checked / total * 100) if total else 0.0
         workpack_summary.append({
             'workpack': wp,
             'total_jobcard': total,
-            'total_checked': checked,     # cumulativo
+            'total_checked': checked,
             'percent_checked': percent,
         })
 
-    # Totais/percentuais
-    workpack_total_jobcard = sum(w['total_jobcard'] for w in workpack_summary)
-    workpack_total_checked = sum(w['total_checked'] for w in workpack_summary)
-    workpack_percent_checked = (workpack_total_checked / workpack_total_jobcard * 100) if workpack_total_jobcard else 0
+    # Totais/percentuais globais
+    workpack_total_jobcard   = sum(w['total_jobcard'] for w in workpack_summary)
+    workpack_total_checked   = sum(w['total_checked'] for w in workpack_summary)
+    workpack_percent_checked = (workpack_total_checked / workpack_total_jobcard * 100) if workpack_total_jobcard else 0.0
 
-    discipline_total_jobcard = sum(d['total_jobcard'] for d in discipline_summary_sorted)
-    discipline_total_checked = sum(d['total_checked'] for d in discipline_summary_sorted)
-    discipline_percent_checked = (discipline_total_checked / discipline_total_jobcard * 100) if discipline_total_jobcard else 0
+    discipline_total_jobcard   = sum(d['total_jobcard'] for d in discipline_summary_sorted)
+    discipline_total_checked   = sum(d['total_checked'] for d in discipline_summary_sorted)
+    discipline_percent_checked = (discipline_total_checked / discipline_total_jobcard * 100) if discipline_total_jobcard else 0.0
 
-    area_total_jobcard = sum(a['total_jobcard'] for a in area_summary)
-    area_total_checked = sum(a['total_checked'] for a in area_summary)
-    area_percent_checked = (area_total_checked / area_total_jobcard * 100) if area_total_jobcard else 0
+    area_total_jobcard   = sum(a['total_jobcard'] for a in area_summary)
+    area_total_checked   = sum(a['total_checked'] for a in area_summary)
+    area_percent_checked = (area_total_checked / area_total_jobcard * 100) if area_total_jobcard else 0.0
 
     # ===== Gráfico: PRELIMINARY per day (usar o carimbo, não o status atual) =====
     checked_daily = (
@@ -370,83 +371,149 @@ def dashboard(request):
     jobcards = qs_active.all()[:20]
 
     # PDFs disponíveis
-    backups_dir = os.path.join(settings.BASE_DIR, 'jobcard_backups')
-    available_pdfs = {f for f in os.listdir(backups_dir) if f.endswith('.pdf')}
+    backups_dir     = os.path.join(settings.BASE_DIR, 'jobcard_backups')
+    available_pdfs  = {f for f in os.listdir(backups_dir) if f.endswith('.pdf')} if os.path.isdir(backups_dir) else set()
 
     # Percentuais (cada estágio sozinho e cumulativo)
     preliminary_percent = f"{(preliminary_checked_count / total_jobcards * 100):.2f}" if total_jobcards else "0.00"
-    planning_percent    = f"{(planning_checked_count / total_jobcards * 100):.2f}" if total_jobcards else "0.00"
-    offshore_percent    = f"{(offshore_checked_count / total_jobcards * 100):.2f}" if total_jobcards else "0.00"
+    planning_percent    = f"{(planning_checked_count    / total_jobcards * 100):.2f}" if total_jobcards else "0.00"
+    offshore_percent    = f"{(offshore_checked_count    / total_jobcards * 100):.2f}" if total_jobcards else "0.00"
     approved_percent    = f"{(approved_to_execute_count / total_jobcards * 100):.2f}" if total_jobcards else "0.00"
 
+    # ======================================================================
+    # ===============  NOVAS TABELAS: APENAS PRE/TAM 2026  =================
+    # ======================================================================
+    WORKPACK_FILTER = (
+        Q(workpack_number__icontains='PRE TAM 2026') |
+        Q(workpack_number__icontains='TAM 2026')
+    )
+    qs_tam = qs_active.filter(WORKPACK_FILTER)
+
+    # ---- Discipline summary (PRE/TAM 2026; cumulativo >= PRELIMINARY)
+    discipline_summary_tam = []
+    for d in qs_tam.values('discipline').distinct():
+        disc_name = d['discipline']
+        total_t   = qs_tam.filter(discipline=disc_name).count()
+        checked_t = qs_tam.filter(discipline=disc_name,
+                                  jobcard_status__in=STAGE_PRE_OR_MORE).count()
+        percent_t = (checked_t / total_t * 100) if total_t else 0.0
+        discipline_summary_tam.append({
+            'discipline': disc_name,
+            'total_jobcard': total_t,
+            'total_checked': checked_t,
+            'percent_checked': percent_t,
+        })
+
+    # Ordena pela mesma ordem fixa
+    disc_dict_tam = {d['discipline']: d for d in discipline_summary_tam}
+    discipline_summary_tam_sorted = []
+    for name in discipline_order:
+        discipline_summary_tam_sorted.append(disc_dict_tam.get(name, {
+            'discipline': name, 'total_jobcard': 0, 'total_checked': 0, 'percent_checked': 0.0
+        }))
+
+    discipline_total_jobcard_tam   = sum(d['total_jobcard'] for d in discipline_summary_tam_sorted)
+    discipline_total_checked_tam   = sum(d['total_checked'] for d in discipline_summary_tam_sorted)
+    discipline_percent_checked_tam = (discipline_total_checked_tam / discipline_total_jobcard_tam * 100) if discipline_total_jobcard_tam else 0.0
+
+    # ---- Area summary (PRE/TAM 2026; cumulativo >= PRELIMINARY)
+    area_summary_tam = []
+    for area_code in sorted(area_groups):
+        codes    = [a.area_code for a in area_groups[area_code]]
+        total_a  = qs_tam.filter(location__in=codes).count()
+        checked_a= qs_tam.filter(location__in=codes, jobcard_status__in=STAGE_PRE_OR_MORE).count()
+        percent_a= (checked_a / total_a * 100) if total_a else 0.0
+        area_obj = Area.objects.filter(area_code=area_code).order_by('pk').first()
+        area_summary_tam.append({
+            'area_code': area_code,
+            'area_description': area_obj.location if area_obj else '',
+            'total_jobcard': total_a,
+            'total_checked': checked_a,
+            'percent_checked': percent_a,
+        })
+
+    area_total_jobcard_tam   = sum(a['total_jobcard'] for a in area_summary_tam)
+    area_total_checked_tam   = sum(a['total_checked'] for a in area_summary_tam)
+    area_percent_checked_tam = (area_total_checked_tam / area_total_jobcard_tam * 100) if area_total_jobcard_tam else 0.0
+    # ======================================================================
+
     context = {
-        'total_jobcards': total_jobcards,
+        'total_jobcards'  : total_jobcards,
         'not_checked_count': not_checked_count,
-        'checked_count': checked_count,
+        'checked_count'   : checked_count,
 
         'jobcards_with_material': jobcards_with_material,
 
         'labels_not_checked': labels_not_checked,
-        'data_not_checked': data_not_checked,
+        'data_not_checked'  : data_not_checked,
 
         'labels_total': labels_total,
-        'data_total': data_total,
+        'data_total'  : data_total,
 
-        'awp_data': awp_data,
-        'jobcards_incompletos': jobcards_incompletos,
-        'alerta_count': alerta_count,
+        'awp_data'             : awp_data,
+        'jobcards_incompletos' : jobcards_incompletos,
+        'alerta_count'         : alerta_count,
 
         'labels_areas': labels_areas,
-        'data_areas': data_areas,
+        'data_areas'  : data_areas,
 
-        'level_xx_count': level_xx_count,
-        'activity_to_be_verified_count': activity_to_be_verified_count,
-        'start_1900_count': start_1900_count,
-        'finish_1900_count': finish_1900_count,
-        'system_to_be_verified_count': system_to_be_verified_count,
+        'level_xx_count'                : level_xx_count,
+        'activity_to_be_verified_count' : activity_to_be_verified_count,
+        'start_1900_count'              : start_1900_count,
+        'finish_1900_count'             : finish_1900_count,
+        'system_to_be_verified_count'   : system_to_be_verified_count,
         'subsystem_to_be_verified_count': subsystem_to_be_verified_count,
 
         # >>> CUMULATIVOS <<<
         'preliminary_checked_count': preliminary_checked_count,
-        'planning_checked_count': planning_checked_count,
-        'offshore_checked_count': offshore_checked_count,
-        'approved_to_execute_count': approved_to_execute_count,  # opcional
-        'finalized_count': finalized_count,
+        'planning_checked_count'   : planning_checked_count,
+        'offshore_checked_count'   : offshore_checked_count,
+        'approved_to_execute_count': approved_to_execute_count,
+        'finalized_count'          : finalized_count,
 
-        'discipline_legend': discipline_legend,
+        'discipline_legend'      : discipline_legend,
         'engineering_synced_docs': engineering_synced_docs,
 
         'preliminary_percent': preliminary_percent,
-        'planning_percent': planning_percent,
-        'offshore_percent': offshore_percent,
-        'approved_percent': approved_percent,
+        'planning_percent'   : planning_percent,
+        'offshore_percent'   : offshore_percent,
+        'approved_percent'   : approved_percent,
 
-        'discipline_summary': discipline_summary_sorted,
-        'area_summary': area_summary,
-        'workpack_summary': workpack_summary,
+        'discipline_summary'      : discipline_summary_sorted,
+        'area_summary'            : area_summary,
+        'workpack_summary'        : workpack_summary,
 
-        'workpack_total_jobcard': workpack_total_jobcard,
-        'workpack_total_checked': workpack_total_checked,
+        'workpack_total_jobcard'  : workpack_total_jobcard,
+        'workpack_total_checked'  : workpack_total_checked,
         'workpack_percent_checked': workpack_percent_checked,
 
-        'discipline_total_jobcard': discipline_total_jobcard,
-        'discipline_total_checked': discipline_total_checked,
+        'discipline_total_jobcard'  : discipline_total_jobcard,
+        'discipline_total_checked'  : discipline_total_checked,
         'discipline_percent_checked': discipline_percent_checked,
 
-        'area_total_jobcard': area_total_jobcard,
-        'area_total_checked': area_total_checked,
+        'area_total_jobcard'  : area_total_jobcard,
+        'area_total_checked'  : area_total_checked,
         'area_percent_checked': area_percent_checked,
 
-        'checked_days': checked_days,
+        'checked_days'  : checked_days,
         'checked_counts': checked_counts,
 
         'recent_checked_jobcards': recent_checked_jobcards,
-        'available_pdfs': available_pdfs,
-        'jobcards': jobcards,
+        'available_pdfs'        : available_pdfs,
+        'jobcards'              : jobcards,
+
+        # === NOVOS CONTEXTOS (apenas PRE/TAM 2026) ===
+        'discipline_summary_tam'      : discipline_summary_tam_sorted,
+        'discipline_total_jobcard_tam': discipline_total_jobcard_tam,
+        'discipline_total_checked_tam': discipline_total_checked_tam,
+        'discipline_percent_checked_tam': discipline_percent_checked_tam,
+
+        'area_summary_tam'      : area_summary_tam,
+        'area_total_jobcard_tam': area_total_jobcard_tam,
+        'area_total_checked_tam': area_total_checked_tam,
+        'area_percent_checked_tam': area_percent_checked_tam,
     }
     return render(request, 'sistema/dashboard.html', context)
-
-
 
 
 # views.py

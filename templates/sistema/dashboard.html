@@ -3,280 +3,84 @@
 
 {% block content %}
 <style>
-body, .container-fluid {
-  background: #f7f8fa !important;
-}
-.dashboard-row {
-  display: flex;
-  flex-wrap: wrap;
-  margin: 0 -8px;
-}
+body, .container-fluid { background: #f7f8fa !important; }
+.dashboard-row { display: flex; flex-wrap: wrap; margin: 0 -8px; }
 .dashboard-card {
-  flex: 1 1 25%;
-  min-width: 90px;
-  margin: 0 8px 18px 8px;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.07);
-  padding: 28px 22px 22px 32px;
-  min-height: 130px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
+  flex: 1 1 25%; min-width: 90px; margin: 0 8px 18px 8px; background: #fff;
+  border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.07); padding: 28px 22px 22px 32px;
+  min-height: 130px; position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
   transition: box-shadow .15s, transform .12s;
 }
-.dashboard-card.selected {
-  background: #23272e;
-  color: #fff !important;
-  box-shadow: 0 2px 24px 0 rgba(40,40,50,0.12);
-}
-.dashboard-card .card-icon {
-  position: absolute;
-  top: 18px;
-  right: 24px;
-  font-size: 26px;
-  color: #d8dbe7;
-  opacity: .85;
-}
-.dashboard-card.selected .card-icon {
-  color: #fff;
-  opacity: .98;
-}
-.dashboard-card .metric {
-  font-size: 2.3rem;
-  font-weight: bold;
-  margin-bottom: 4px;
-  margin-top: 10px;
-  letter-spacing: -1px;
-}
-.dashboard-card.selected .metric,
-.dashboard-card.selected .desc {
-  color: #fff;
-}
-.dashboard-card .desc {
-  font-size: 1.05rem;
-  font-weight: 600;
-  opacity: 0.92;
-  letter-spacing: .02em;
-}
+.dashboard-card.selected { background: #23272e; color: #fff !important; box-shadow: 0 2px 24px 0 rgba(40,40,50,0.12); }
+.dashboard-card .card-icon { position: absolute; top: 18px; right: 24px; font-size: 26px; color: #d8dbe7; opacity: .85; }
+.dashboard-card.selected .card-icon { color: #fff; opacity: .98; }
+.dashboard-card .metric { font-size: 2.3rem; font-weight: bold; margin-bottom: 4px; margin-top: 10px; letter-spacing: -1px; }
+.dashboard-card .desc { font-size: 1.05rem; font-weight: 600; opacity: 0.92; letter-spacing: .02em; }
 @media (max-width: 991px) {
-  .dashboard-card { flex-basis: 48%; min-width: 180px;}
+  .dashboard-card { flex-basis: 48%; min-width: 180px; }
   .dashboard-row { margin: 0 -4px; }
-  .dashboard-card { margin: 0 4px 12px 4px;}
+  .dashboard-card { margin: 0 4px 12px 4px; }
 }
 @media (max-width: 600px) {
   .dashboard-card { flex-basis: 100%; min-width: 0; }
-  .dashboard-row { flex-direction: column;}
+  .dashboard-row { flex-direction: column; }
 }
 
-.dashboard-section-title {
-  font-size: 1.18rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  margin-bottom: 12px;
-  color: #232323;
-}
-.dashboard-graph-card {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
-  border: none;
-  padding: 20px 18px 10px 20px;
-  min-height: 240px;
-  margin-bottom: 8px;
-}
-.chart-title {
-  font-weight: 600;
-  color: #232323;
-  font-size: 1rem;
-  margin-bottom: 8px;
-  letter-spacing: 0.01em;
-}
-.modern-alert-badge {
-  background: #879aff96;
-  color: #3b3a39;
-  border-radius: 5px;
-  padding: 3px 10px;
-  font-size: 0.97em;
-  font-weight: 600;
-  display: inline-block;
-  margin-bottom: 6px;
-  letter-spacing: 0.02em;
-}
-.modern-table th, .modern-table td { font-size: 0.97em; padding: 3px 7px; }
-.modern-table { margin-bottom: 2px;}
-.modern-table thead th {
-  border: none;
-  background: #f4f5f8;
-  font-weight: 600;
-  color: #232323;
-  font-size: .97em;
-}
-.modern-table td {
-  background: transparent !important;
-}
-.text-muted {
-  color: #b8bcc3 !important;
-  opacity: .96;
-}
-
-.dashboard-card.mini-card {
-  padding: 2px 14px 10px 18px;
-  min-height: 50px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-}
-
-.dashboard-card.mini-card .metric {
-  font-size: 1.4rem;
-  margin-bottom: 2px;
-}
-
-.dashboard-card.mini-card .desc {
-  font-size: 0.85rem;
-  opacity: 0.9;
-}
-
-.dashboard-card.mini-card .card-icon {
-  font-size: 18px;
-  top: 12px;
-  right: 16px;
-}
+.dashboard-card.mini-card { padding: 2px 14px 10px 18px; min-height: 50px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+.dashboard-card.mini-card .metric { font-size: 1.4rem; margin-bottom: 2px; }
+.dashboard-card.mini-card .desc { font-size: 0.85rem; opacity: 0.9; }
+.dashboard-card.mini-card .card-icon { font-size: 18px; top: 12px; right: 16px; }
 
 .dashboard-card.dashboard-mini {
-  background: #fff;
-  border-radius: 12px;
-  min-height: 68px;
-  padding: 14px 10px 10px 16px;
-  margin-bottom: 0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
+  background: #fff; border-radius: 12px; min-height: 68px; padding: 14px 10px 10px 16px; margin-bottom: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
 }
-
-.dashboard-card.dashboard-mini .metric {
-  font-size: 1.27rem;
-  font-weight: 700;
-  margin-bottom: 4px;
-  margin-top: 3px;
-  letter-spacing: -0.5px;
-  color: #23272e;
-  line-height: 1.1;
-}
-
-.dashboard-card.dashboard-mini .desc {
-  font-size: 0.91rem;
-  font-weight: 500;
-  opacity: 0.92;
-  margin-bottom: 0;
-  color: #5c5e66;
-  line-height: 1.12;
-  margin-top: 1px;
-}
-
-.dashboard-card.dashboard-mini .card-icon {
-  position: absolute;
-  top: 14px;
-  right: 13px;
-  font-size: 18px;
-  color: #c9ced6;
-  opacity: 0.83;
-  pointer-events: none;
-}
-
+.dashboard-card.dashboard-mini .metric { font-size: 1.27rem; font-weight: 700; margin-bottom: 4px; margin-top: 3px; letter-spacing: -0.5px; color: #23272e; line-height: 1.1; }
+.dashboard-card.dashboard-mini .desc { font-size: 0.91rem; font-weight: 500; opacity: 0.92; margin-bottom: 0; color: #5c5e66; line-height: 1.12; margin-top: 1px; }
+.dashboard-card.dashboard-mini .card-icon { position: absolute; top: 14px; right: 13px; font-size: 18px; color: #c9ced6; opacity: 0.83; pointer-events: none; }
 @media (max-width: 1200px) {
-  .dashboard-card.dashboard-mini {
-    min-height: 60px;
-    padding: 10px 7px 7px 12px;
-  }
+  .dashboard-card.dashboard-mini { min-height: 60px; padding: 10px 7px 7px 12px; }
   .dashboard-card.dashboard-mini .metric { font-size: 1.05rem; }
   .dashboard-card.dashboard-mini .desc { font-size: 0.79rem; }
   .dashboard-card.dashboard-mini .card-icon { font-size: 15px; top: 10px; right: 10px; }
 }
-
 @media (max-width: 767px) {
-  .dashboard-card.dashboard-mini {
-    min-height: 50px;
-    padding: 7px 6px 6px 9px;
-  }
+  .dashboard-card.dashboard-mini { min-height: 50px; padding: 7px 6px 6px 9px; }
   .dashboard-card.dashboard-mini .metric { font-size: 0.99rem; }
   .dashboard-card.dashboard-mini .desc { font-size: 0.72rem; }
   .dashboard-card.dashboard-mini .card-icon { font-size: 13px; top: 8px; right: 8px; }
 }
 
-.dashboard-card.selected {
-  background: #23272e !important;
-  color: #fff !important;
-  box-shadow: 0 2px 24px 0 rgba(40,40,50,0.12);
-}
+.dashboard-card.selected { background: #23272e !important; color: #fff !important; box-shadow: 0 2px 24px 0 rgba(40,40,50,0.12); }
+.dashboard-card.selected .metric, .dashboard-card.selected .desc, .dashboard-card.selected .card-icon { color: #fff !important; }
 
-.dashboard-card.selected .metric,
-.dashboard-card.selected .desc {
-  color: #fff !important;
-}
+/* Torna tbody scrollável e thead fixo (caso necessário) */
+.table-scroll-wrapper { width: 100%; overflow: hidden; }
+.table-scroll { display: block; max-height: 175px; overflow-y: auto; width: 100%; }
+.table-scroll thead, .table-scroll tbody tr { display: table; width: 100%; table-layout: fixed; }
+.table-scroll thead { width: 100%; position: sticky; top: 0; z-index: 2; background: #f7f8fa; }
+.table-scroll tbody { display: block; width: 100%; }
 
-.dashboard-card.selected .card-icon {
-  color: #fff !important;
-  opacity: 0.97;
-}
+#datatablesRevisoes th, #datatablesRevisoes td { font-size: 0.97em; padding: 5px 8px; vertical-align: middle; }
 
+/* ===== Helpers para igualar alturas ===== */
+.equal-row { display: flex; flex-wrap: wrap; align-items: stretch; }
+.equal-row > [class^="col-"], .equal-row > [class*=" col-"] { display: flex; }
+.equal-card { display: flex; flex-direction: column; width: 100%; height: 100%; }
+.equal-card .card-body { flex: 1 1 auto; display: flex; flex-direction: column; }
 
+/* Chart ocupa toda a altura disponível dentro do card */
+.chart-box { position: relative; flex: 1 1 auto; min-height: 300px; }
+.chart-box canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
 
-
-</style>
-
-<style>
-/* Torna tbody scrollável e thead fixo */
-.table-scroll-wrapper {
-  width: 100%;
-  overflow: hidden;
-}
-.table-scroll {
-  display: block;
-  max-height: 175px; /* ajuste a altura do scroll! */
-  overflow-y: auto;
-  width: 100%;
-}
-.table-scroll thead,
-.table-scroll tbody tr {
-  display: table;
-  width: 100%;
-  table-layout: fixed;
-}
-.table-scroll thead {
-  width: 100%;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: #f7f8fa;
-}
-.table-scroll tbody {
-  display: block;
-  width: 100%;
-}
-
-</style>
-
-
-
-<style>
-#datatablesRevisoes th, #datatablesRevisoes td {
-    font-size: 0.97em;
-    padding: 5px 8px;
-    vertical-align: middle;
-}
-@media (max-width: 991px) {
-    .card.mb-4 { max-width: 98vw; }
-}
+/* ===== Fix para “Recent Document Revisions” ===== */
+.revisions-body { max-height: 190px; overflow-y: auto; }
+.table-fixed { table-layout: fixed; width: 100%; }
+.table-fixed th, .table-fixed td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 
 <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.js"></script>
 <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.min.css">
-
 
 <div class="container-fluid">
 
@@ -328,21 +132,6 @@ body, .container-fluid {
         <i class="fas fa-anchor card-icon"></i>
       </div>
     </div>
-    
-     <!--<div class="col">
-      <div class="dashboard-card dashboard-mini" style="position:relative;">
-        <span class="metric">
-          {{ approved_to_execute_count }}
-          <span style="font-size: 12px; color: #a7a7a7"> / {{ total_jobcards }}</span>
-        </span>
-       <span class="desc" style="font-size: 12px">Released for Execution</span>
-          <span style="position:absolute; right:48px; top:18px; font-size: 13px; color: #79a7f7; font-weight: 600;">
-            {{ approved_percent }}%
-        </span>
-        <i class="fas fa-thumbs-up card-icon"></i>
-      </div>
-    </div>-->
-  
   </div>
 
   <!-- SEGUNDA LINHA: MINI CARDS -->
@@ -389,7 +178,7 @@ body, .container-fluid {
     </div>
   </div>
 
-  <!-- TERCEIRA LINHA: TABELAS DE DISCIPLINA E ÁREA -->
+  <!-- TERCEIRA LINHA: TABELAS DE DISCIPLINA E ÁREA (GERAL) -->
   <div class="row g-3">
     <div class="col-md-6">
       <div class="card shadow-sm">
@@ -501,149 +290,230 @@ body, .container-fluid {
   </div>
   <br/>
 
-  <div class="row g-3 align-items-stretch" style="min-height: 350px;">
-    
+  <!-- QUARTA LINHA: GRÁFICO + RECENTLY (ALTURAS IGUAIS) -->
+  <div class="row g-3 equal-row" style="min-height: 350px;">
     <!-- Gráfico -->
-    <div class="col-7 h-100">
-        <div class="card shadow mb-3 h-100" style="border-radius: 18px;">
-            <div class="d-flex align-items-center justify-content-between"
-                style="background: #f7f8fa; min-height: 44px; padding: 10px 18px 7px 16px; border-top-left-radius: 18px; border-top-right-radius: 18px;">
-                <div style="font-size: 13px; font-weight: 600; color: #272626ff; letter-spacing: .01em; margin-bottom:0;">
-                    Preliminary Jobcard Checked per Day
-                </div>
-                <div class="d-flex align-items-center gap-1">
-                    <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
-                    <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
-                    <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
-                </div>
-            </div>
-            <div class="card-body h-100 d-flex flex-column justify-content-center">
-                <canvas id="jobcardCheckedLine" style="width:100%; min-height:292px;"></canvas>
-            </div>
+    <div class="col-7">
+      <div class="card shadow h-100 equal-card" style="border-radius: 18px;">
+        <div class="d-flex align-items-center justify-content-between"
+             style="background: #f7f8fa; min-height: 44px; padding: 10px 18px 7px 16px; border-top-left-radius: 18px; border-top-right-radius: 18px;">
+          <div style="font-size: 13px; font-weight: 600; color: #272626ff; letter-spacing: .01em; margin-bottom:0;">
+            Preliminary Jobcard Checked per Day
+          </div>
+          <div class="d-flex align-items-center gap-1">
+            <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
+            <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
+            <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
+          </div>
         </div>
-    </div>
-    <!-- Tabela -->
-    <div class="col-5 h-100">
-        <div class="card shadow mb-3 h-100" style="border-radius: 18px;">
-            <div class="d-flex align-items-center justify-content-between"
-                style="background: #f7f8fa; min-height: 44px; padding: 10px 18px 7px 16px; border-top-left-radius: 18px; border-top-right-radius: 18px; border-bottom:1px solid #f2f3f7;">
-                <div>
-                    <span style="font-weight:600;font-size:13px; color: #272626ff;">
-                        Recently Checked JobCards
-                    </span>
-                </div>
-                <div class="d-flex align-items-center gap-1">
-                    <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
-                    <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
-                    <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
-                </div>
-            </div>
-            <div class="card-body p-0 h-100 d-flex flex-column justify-content-center">
-                <div class="table-responsive" style="border-radius: 14px; overflow:hidden; border: 1px solid #eef0f7; background:#fff; margin:12px;">
-                    <table class="table mb-0 table-hover align-middle" style="background: #fff;">
-                        <thead style="background:#f7f8fa;">
-                            <tr>
-                                <th style="font-size:10px;">#</th>
-                                <th style="font-size:10px;">JobCard</th>
-                                <th style="font-size:10px;">Checked By</th>
-                                <th style="font-size:10px;">Checked At</th>
-                                <th style="font-size:10px;"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for jc in recent_checked_jobcards %}
-                            <tr>
-                                <td style="font-size:15px;">
-                                    <span class="rounded-circle d-inline-block" style="width:34px;height:34px;background: #4b4b4b54;overflow:hidden;vertical-align:middle;text-align:center;line-height:34px;">
-                                        <i class="fa fa-user" style="color: #ffffffff;font-size:16px;"></i>
-                                    </span>
-                                </td>
-                                <td style="font-size:9px;">
-                                    <span style="font-weight:500;">{{ jc.job_card_number }}</span><br>
-                                    <span style="font-size:9px;color: #737c95;">{{ jc.job_card_description|truncatechars:32 }}</span>
-                                </td>
-                                <td style="font-size:9px;">
-                                    <span style="font-weight:500;">{{ jc.checked_preliminary_by }}</span>
-                                </td>
-                                <td style="font-size:9px;">
-                                    <span style="color:#4953a7;font-weight:500;">
-                                        {{ jc.checked_preliminary_at|date:"M d, H:i" }}
-                                    </span>
-                                </td>
-                               <td>
-                                  {% with 'JobCard_'|add:jc.job_card_number|add:'_Rev_'|add:jc.rev|add:'.pdf' as pdf_filename %}
-                                      {% if pdf_filename in available_pdfs %}
-                                          <a href="/jobcard_backups/{{ pdf_filename }}" target="_blank"
-                                            class="btn btn-sm rounded-circle d-flex align-items-center justify-content-center"
-                                            style="background: rgba(167, 167, 167, 0.08); color: #d66f6b; width:36px;height:36px;"
-                                            title="Visualizar PDF">
-                                              <i class="fa fa-file-pdf" style="font-size:16px;"></i>
-                                          </a>
-                                      {% else %}
-                                          <span class="btn btn-sm rounded-circle d-flex align-items-center justify-content-center"
-                                                style="background: #e2e3e5; color:#bababa;width:36px;height:36px; cursor: not-allowed;"
-                                                title="PDF não disponível">
-                                              <i class="fa fa-file-pdf" style="font-size:16px;"></i>
-                                          </span>
-                                      {% endif %}
-                                  {% endwith %}
-                              </td>
-
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center py-4" style="color:#b2b5bc;">No JobCards checked yet.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-
-
-
-  
-
-  <!--
-  <div class="row gx-4 align-items-stretch mt-3" style="min-height: 360px;">
-     Coluna Gráficos 
-    <div class="col-lg-5 d-flex flex-column gap-3" style="min-height: 360px;">
-      <div class="dashboard-graph-card flex-fill mb-0">
-        <div class="chart-title mb-2">JobCards per Area</div>
-        <div style="position: relative; height:210px;">
-          <canvas id="areaBar"></canvas>
-        </div>
-      </div>
-    </div>
-
-      Coluna 3D Viewer
-    <div class="col-lg-7 d-flex flex-column">
-      <div class="card flex-fill mb-0"
-        style="background:#fff; border-radius:16px; box-shadow:0 2px 8px #0001; display:flex; flex-direction:column; height: 100%;">
-          <div class="card-body p-0" style="flex:1 1 auto; min-height:0; overflow:hidden; height: 100%;">
-
-           
-            <div id="viewerContainer" style="width:100%; height:100%; border-radius:10px; background:#151c22; min-height:0;">
-             <img class="" src="{% static 'assets/img/image.png' %}" alt="Logo" style="width: 100%; border-radius:16px; height: 100%"/> 
-
-
+        <div class="card-body">
+          <div class="chart-box">
+            <canvas id="jobcardCheckedLine"></canvas>
           </div>
         </div>
       </div>
-    </div> -->
-  </div> 
+    </div>
 
-  <!-- TABELAS RECENTES E ENGENHARIA -->
+    <!-- Recently -->
+    <div class="col-5">
+      <div class="card shadow h-100 equal-card" style="border-radius: 18px;">
+        <div class="d-flex align-items-center justify-content-between"
+             style="background: #f7f8fa; min-height: 44px; padding: 10px 18px 7px 16px; border-top-left-radius: 18px; border-top-right-radius: 18px; border-bottom:1px solid #f2f3f7;">
+          <div>
+            <span style="font-weight:600; font-size:13px; color: #272626ff;">
+              Recently Checked JobCards
+            </span>
+          </div>
+          <div class="d-flex align-items-center gap-1">
+            <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
+            <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
+            <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
+          </div>
+        </div>
+        <div class="card-body p-0 d-flex">
+          <div class="table-responsive revisions-body" style="border-radius: 14px; overflow:hidden; border: 1px solid #eef0f7; background:#fff; margin:12px; width:96%;">
+            <table class="table mb-0 table-hover align-middle table-fixed" id="table-recently">
+              <thead style="background:#f7f8fa;">
+                <tr>
+                  <th style="width: 8%; font-size: 10px;">#</th>
+                  <th style="width: 32%; font-size: 10px">JobCard</th>
+                  <th style="width: 26%; font-size: 10px">Checked By</th>
+                  <th style="width: 22%; font-size: 10px">Checked At</th>
+                  <th style="width: 12%; font-size: 10px "></th>
+                </tr>
+              </thead>
+              <tbody id="tbody-recently">
+                {% for jc in recent_checked_jobcards %}
+                <tr>
+                  <td>
+                    <span class="rounded-circle d-inline-block" style="width:28px;height:28px;background:#4b4b4b54;overflow:hidden;vertical-align:middle;text-align:center;line-height:28px;">
+                      <i class="fa fa-user" style="color:#fff;font-size:13px;"></i>
+                    </span>
+                  </td>
+                  <td>
+                    <div style="font-weight:500; font-size:11px;">{{ jc.job_card_number }}</div>
+                    <div style="font-size:10px;color:#737c95;">{{ jc.job_card_description|truncatechars:32 }}</div>
+                  </td>
+                  <td style="font-size:11px;">{{ jc.checked_preliminary_by }}</td>
+                  <td style="font-size:11px; color:#4953a7; font-weight:500;">
+                    {{ jc.checked_preliminary_at|date:"M d, H:i" }}
+                  </td>
+                  <td class="text-center">
+                    {% with 'JobCard_'|add:jc.job_card_number|add:'_Rev_'|add:jc.rev|add:'.pdf' as pdf_filename %}
+                      {% if pdf_filename in available_pdfs %}
+                        <a href="/jobcard_backups/{{ pdf_filename }}" target="_blank"
+                           class="btn btn-sm rounded-circle d-flex align-items-center justify-content-center"
+                           style="background: rgba(167, 167, 167, 0.08); color: #d66f6b; width:32px;height:32px;"
+                           title="Visualizar PDF">
+                          <i class="fa fa-file-pdf" style="font-size:15px;"></i>
+                        </a>
+                      {% else %}
+                        <span class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
+                              style="background:#e2e3e5;color:#bababa;width:32px;height:32px;cursor:not-allowed;"
+                              title="PDF não disponível">
+                          <i class="fa fa-file-pdf" style="font-size:15px;"></i>
+                        </span>
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center py-4" style="color:#b2b5bc;">No JobCards checked yet.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUINTA LINHA (NOVA): TABELAS PRE & TAM 2026 (ALTURAS IGUAIS) -->
+  <div class="row g-3 mt-1 equal-row">
+    <!-- DISCIPLINE -->
+    <div class="col-md-6">
+      <div class="card shadow-sm h-100 equal-card">
+        <div class="d-flex align-items-center justify-content-between"
+             style="background:#f7f8fa; min-height:46px; padding:10px 18px 7px 16px;">
+          <div style="font-size:13px; font-weight:600; color:#272626ff; letter-spacing:.01em; margin-bottom:0;">
+            Jobcard Checking per Discipline — <span style="color:#6b7280">PRE & TAM 2026</span>
+          </div>
+          <div class="d-flex align-items-center gap-1">
+            <span style="width:11px;height:11px;background:#ff5f57;border-radius:50%;display:inline-block;box-shadow:0 1.5px 6px #fee0e2;"></span>
+            <span style="width:11px;height:11px;background:#febc2e;border-radius:50%;display:inline-block;box-shadow:0 1.5px 6px #fff6e2;"></span>
+            <span style="width:11px;height:11px;background:#28c840;border-radius:50%;display:inline-block;box-shadow:0 1.5px 6px #e6ffe7;"></span>
+          </div>
+        </div>
+        <div class="card-body p-2 d-flex flex-column">
+          <div class="table-responsive" style="flex:1 1 auto;">
+            <table class="table table-sm table-bordered align-middle text-center">
+              <thead>
+                <tr class="text-danger" style="font-size:08px;">
+                  <th>DISCIPLINE</th>
+                  <th>TOTAL JOBCARD</th>
+                  <th>TOTAL CHECKED PRELIMINARY</th>
+                  <th>% CHECKED</th>
+                </tr>
+              </thead>
+              <tbody style="font-size:08px;">
+                {% for d in discipline_summary_tam %}
+                  <tr>
+                    <td class="text-start">{{ d.discipline }}</td>
+                    <td>{{ d.total_jobcard }}</td>
+                    <td>{{ d.total_checked }}</td>
+                    <td>
+                      {% if d.total_jobcard %}
+                        {{ d.percent_checked|floatformat:2 }}%
+                      {% else %}
+                        0%
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="4" class="text-muted">No data for PRE/TAM 2026.</td></tr>
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr style="font-weight:bold;background:#e9ecef;font-size:10px;">
+                  <td>Total</td>
+                  <td>{{ discipline_total_jobcard_tam }}</td>
+                  <td>{{ discipline_total_checked_tam }}</td>
+                  <td>{{ discipline_percent_checked_tam|floatformat:2 }}%</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AREA -->
+    <div class="col-md-6">
+      <div class="card shadow-sm h-100 equal-card">
+        <div class="d-flex align-items-center justify-content-between"
+             style="background:#f7f8fa; min-height:46px; padding:10px 18px 7px 16px;">
+          <div style="font-size:13px; font-weight:600; color:#272626ff; letter-spacing:.01em; margin-bottom:0;">
+            Jobcard Checking per Area — <span style="color:#6b7280">PRE & TAM 2026</span>
+          </div>
+          <div class="d-flex align-items-center gap-1">
+            <span style="width:11px;height:11px;background:#ff5f57;border-radius:50%;display:inline-block;box-shadow:0 1.5px 6px #fee0e2;"></span>
+            <span style="width:11px;height:11px;background:#febc2e;border-radius:50%;display:inline-block;box-shadow:0 1.5px 6px #fff6e2;"></span>
+            <span style="width:11px;height:11px;background:#28c840;border-radius:50%;display:inline-block;box-shadow:0 1.5px 6px #e6ffe7;"></span>
+          </div>
+        </div>
+        <div class="card-body p-2 d-flex flex-column">
+          <div class="table-responsive" style="flex:1 1 auto;">
+            <table class="table table-sm table-bordered align-middle text-center">
+              <thead>
+                <tr class="text-danger" style="font-size:08px;">
+                  <th>AREA CODE</th>
+                  <th>AREA DESCRIPTION</th>
+                  <th>TOTAL JOBCARD</th>
+                  <th>TOTAL CHECKED PRELIMINARY</th>
+                  <th>% CHECKED</th>
+                </tr>
+              </thead>
+              <tbody style="font-size:08px;">
+                {% for a in area_summary_tam %}
+                  <tr>
+                    <td>{{ a.area_code }}</td>
+                    <td class="text-start">{{ a.area_description }}</td>
+                    <td>{{ a.total_jobcard }}</td>
+                    <td>{{ a.total_checked }}</td>
+                    <td>
+                      {% if a.total_jobcard %}
+                        {{ a.percent_checked|floatformat:2 }}%
+                      {% else %}
+                        0%
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="5" class="text-muted">No data for PRE/TAM 2026.</td></tr>
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr style="font-weight:bold;background:#e9ecef;font-size:10px;">
+                  <td colspan="2">Total</td>
+                  <td>{{ area_total_jobcard_tam }}</td>
+                  <td>{{ area_total_checked_tam }}</td>
+                  <td>{{ area_percent_checked_tam|floatformat:2 }}%</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEXTA LINHA: Workpack Summary + Revisions + Engineering -->
   <div class="row gx-4 mt-3">
     <!-- Coluna 1: Workpack Summary -->
     <div class="col-md-4 d-flex flex-column">
       <div class="card flex-fill mb-0" style="min-height:180px; height: 100%">
-        <!-- HEADER APPLE STYLE -->
         <div class="d-flex align-items-center justify-content-between" style="background: #f7f8fa; min-height: 46px; padding: 10px 18px 7px 16px;">
           <div style="font-size: 13px; font-weight: 600; color: #272626ff; letter-spacing: .01em; margin-bottom:0;">
             Jobcard Checking per Workpack
@@ -699,353 +569,189 @@ body, .container-fluid {
       </div>
     </div>
 
-  <!-- Coluna 2: Recent Document Revisions -->
-  <div class="col-md-4">
-    <div class="card shadow-sm">
-      <!-- HEADER MINIMALISTA COM 'BOLINHAS' APPLE STYLE -->
-      <div class="d-flex align-items-center justify-content-between" style="background: #f7f8fa; min-height: 46px; padding: 10px 18px 7px 16px;">
-        <div style="font-size: 13px; font-weight: 600; color: #272626ff; letter-spacing: .01em; margin-bottom:0;">
-          Recent Document Revisions
+    <!-- Coluna 2: Recent Document Revisions (FIX LAYOUT) -->
+    <div class="col-md-4 d-flex">
+      <div class="card shadow-sm equal-card">
+        <div class="d-flex align-items-center justify-content-between"
+             style="background: #f7f8fa; min-height: 46px; padding: 10px 18px 7px 16px;">
+          <div style="font-size: 13px; font-weight: 600; color: #272626ff; letter-spacing: .01em; margin-bottom:0;">
+            Recent Document Revisions
+          </div>
+          <div class="d-flex align-items-center gap-1">
+            <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
+            <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
+            <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
+          </div>
         </div>
-        <div class="d-flex align-items-center gap-1">
-          <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
-          <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
-          <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
-        </div>
-      </div>
-      <div class="card-body p-2" style="overflow:auto; height: 190px;">
-        <table class="table table-sm table-bordered align-middle text-center" style="margin-bottom:0;">
-          <thead>
-            <tr class="text-danger" style="font-size:08px;">
-              <th style="width:4%;">#</th>
-              <th style="width:32%;" class="d-none d-md-table-cell">Documents</th>
-              <th style="width:25%;" class="d-none d-md-table-cell">Project</th>
-              <th style="width:12%;">Old</th>
-              <th style="width:12%;">New</th>
-              <th style="width:18%;">Date</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-revisoes" style="font-size:08px;">
-            <tr>
-              <td colspan="6" class="text-center text-muted">Loading...</td>
-            </tr>
-            {# Aqui seu loop de dados dinâmico via Django/JS #}
-            
-            {% for r in revisions %}
-            <tr>
-              <td>{{ forloop.counter }}</td>
-              <td class="d-none d-md-table-cell">{{ r.document }}</td>
-              <td class="d-none d-md-table-cell">{{ r.project }}</td>
-              <td>{{ r.old_revision }}</td>
-              <td>{{ r.new_revision }}</td>
-              <td>{{ r.date }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="6">No data.</td></tr>
-            {% endfor %}
-            
-          </tbody>
-         
-        </table>
-      </div>
-    </div>
-  </div>
-
-<div class="col-md-4">
-  <div class="card shadow-sm">
-    <!-- HEADER -->
-    <div class="d-flex align-items-center justify-content-between" style="background: #f7f8fa; min-height: 46px; padding: 10px 18px 7px 16px;">
-      <div style="font-size: 13px; font-weight: 600; color: #272626ff; letter-spacing: .01em; margin-bottom:0;">
-        <i class="fas fa-drafting-compass me-1"></i> Engineering Base - Documents Synced
-      </div>
-      <div class="d-flex align-items-center gap-1">
-        <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
-        <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
-        <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
-      </div>
-    </div>
-    <div class="card-body p-2">
-      <div style="height: 170px; overflow-y: auto;">
-        <table class="table table-sm table-bordered align-middle text-center" style="margin-bottom:0;">
-          <thead>
-            <tr class="text-danger" style="font-size:08px;">
-              <th style="width:5%;">#</th>
-              <th style="width:40%;">Document</th>
-              <th style="width:30%;">Discipline</th>
-              <th style="width:25%;">Revision</th>
-            </tr>
-          </thead>
-          <tbody style="font-size:08px;">
-            {% if engineering_synced_docs %}
-              {% for doc in engineering_synced_docs %}
-                <tr>
-                  <td>{{ forloop.counter }}</td>
-                  <td>{{ doc.document }}</td>
-                  <td>{{ doc.discipline }}</td>
-                  <td>{{ doc.rev }}</td>
+        <div class="card-body p-2 d-flex">
+          <div class="table-responsive revisions-body w-100">
+            <table class="table table-sm table-bordered align-middle text-center table-fixed" id="table-revisions">
+              <thead>
+                <tr class="text-danger" style="font-size:08px;">
+                  <th style="width:6%;">#</th>
+                  <th style="width:38%;">Documents</th>
+                  <th style="width:22%;">Project</th>
+                  <th style="width:12%;">Old</th>
+                  <th style="width:12%;">New</th>
+                  <th style="width:10%;">Date</th>
                 </tr>
-              {% endfor %}
-            {% else %}
-              <tr>
-                <td colspan="4" class="text-center text-muted">No synced documents found.</td>
-              </tr>
-            {% endif %}
-          </tbody>
-          <tfoot>
-            <tr style="font-weight: bold; background: #e9ecef; font-size:10px;">
-              <td colspan="2" class="text-end">Total</td>
-              <td colspan="2">{{ engineering_synced_docs|length }}</td>
-            </tr>
-          </tfoot>
-        </table>
+              </thead>
+              <tbody id="tbody-revisoes" style="font-size:08px;">
+                <tr><td colspan="6" class="text-center text-muted">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
 
+    <!-- Coluna 3: Engineering Base - Documents Synced -->
+    <div class="col-md-4">
+      <div class="card shadow-sm">
+        <div class="d-flex align-items-center justify-content-between" style="background: #f7f8fa; min-height: 46px; padding: 10px 18px 7px 16px;">
+          <div style="font-size: 13px; font-weight: 600; color: #272626ff; letter-spacing: .01em; margin-bottom:0;">
+            <i class="fas fa-drafting-compass me-1"></i> Engineering Base - Documents Synced
+          </div>
+          <div class="d-flex align-items-center gap-1">
+            <span style="width: 11px; height: 11px; background: #ff5f57; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fee0e2;"></span>
+            <span style="width: 11px; height: 11px; background: #febc2e; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #fff6e2;"></span>
+            <span style="width: 11px; height: 11px; background: #28c840; border-radius: 50%; display: inline-block; box-shadow:0 1.5px 6px #e6ffe7;"></span>
+          </div>
+        </div>
+        <div class="card-body p-2">
+          <div style="height: 170px; overflow-y: auto;">
+            <table class="table table-sm table-bordered align-middle text-center" style="margin-bottom:0;">
+              <thead>
+                <tr class="text-danger" style="font-size:08px;">
+                  <th style="width:5%;">#</th>
+                  <th style="width:40%;">Document</th>
+                  <th style="width:30%;">Discipline</th>
+                  <th style="width:25%;">Revision</th>
+                </tr>
+              </thead>
+              <tbody style="font-size:08px;">
+                {% if engineering_synced_docs %}
+                  {% for doc in engineering_synced_docs %}
+                    <tr>
+                      <td>{{ forloop.counter }}</td>
+                      <td>{{ doc.document }}</td>
+                      <td>{{ doc.discipline }}</td>
+                      <td>{{ doc.rev }}</td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td colspan="4" class="text-center text-muted">No synced documents found.</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+              <tfoot>
+                <tr style="font-weight: bold; background: #e9ecef; font-size:10px;">
+                  <td colspan="2" class="text-end">Total</td>
+                  <td colspan="2">{{ engineering_synced_docs|length }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
 
+  </div> <!-- /row SEXTA LINHA -->
 
+</div> <!-- /container-fluid -->
 
-</div>
-
-<!-- Chart.js scripts -->
-<link href="https://cdn.jsdelivr.net/npm/simple-datatables@8.0.1/dist/style.css" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/simple-datatables@8.0.1" ></script>
-
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script>
-function alternatingColors(n) {
-  const colors = [];
-  for(let i=0;i<n;i++) {
-    colors.push(i%2===0 ? '#23272e' : '#cececeff');
-  }
-  return colors;
-}
+  Chart.register(ChartDataLabels);
 
-// Função para calcular se o label deve ser branco ou preto (opcional)
-function contrastColor(context) {
-  // se a cor da barra for escura, label branco. Se for clara, label preto.
-  const bg = context.dataset.backgroundColor[context.dataIndex];
-  return (bg === '#23272e') ? '#fff' : '#23272e';
-}
+  // Gráfico principal (line)
+  (function() {
+    const checkedDays = {{ checked_days|safe }};
+    const checkedCounts = {{ checked_counts|safe }};
+    const el = document.getElementById('jobcardCheckedLine');
+    if (!el) return;
 
-// Vertical bar: JobCards per Area
-new Chart(document.getElementById('areaBar'), {
-  type: 'bar',
-  data: {
-    labels: {{ labels_areas|safe }},
-    datasets: [{
-      label: 'JobCards',
-      data: {{ data_areas|safe }},
-      backgroundColor: alternatingColors({{ data_areas|length }}),
-      borderRadius: 7
-    }]
-  },
-  options: {
-    indexAxis: 'x',
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: true },
-      datalabels: {
-        anchor: 'end',
-        align: 'end',
-        color: function(ctx) {
-          const bg = ctx.dataset.backgroundColor[ctx.dataIndex];
-          return (bg === '#23272e') ? '#23272e' : '#23272e'; // sempre preto fora
-        },
-        font: { weight: 'bold', size: 14 },
-        formatter: function(value) { return value; },
-        clip: false,
-        clamp: true,
-        padding: {top: 2, right: 2, bottom: 2, left: 2}
-      }
-    },
-    y: {
-      grid: { color:'#ececec' },
-      beginAtZero: true,
-      suggestedMax: Math.max(...({{ data_areas|safe }})) + 1, // ou +2 para espaço, opcional
-      ticks: { stepSize: 1, color:'#444' }
-    },
-    scales: {
-      x: { grid: {display: false}, ticks: {color:'#444', font:{weight:200}}},
-      y: { grid: {color:'#ececec'}, beginAtZero: true, ticks: { stepSize: 1, color:'#444' } }
-    }
-  },
-  plugins: [ChartDataLabels]
-});
-
-// Horizontal bar: JobCards per Discipline (garantindo todas as disciplinas visíveis)
-const dataTotal = {{ data_total|safe }};
-const maxX = Math.max(...dataTotal) + 1;
-
-new Chart(document.getElementById('totalBar'), {
-  type: 'bar',
-  data: {
-    labels: {{ labels_total|safe }},
-    datasets: [{
-      label: "JobCards per Discipline",
-      data: dataTotal,
-      backgroundColor: alternatingColors(dataTotal.length),
-      borderRadius: 7
-    }]
-  },
-  options: {
-    indexAxis: 'y',
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: true },
-      datalabels: {
-        anchor: 'end',
-        align: 'right',
-        color: '#23272e',
-        font: { weight: 'bold', size: 14 },
-        formatter: function(value) { return value; },
-        display: true,
-        clip: false,
-        clamp: true,
-        padding: {left: 6}
-      }
-    },
-    scales: {
-      x: { 
-        grid: {color:'#e8e9ed'}, 
-        beginAtZero: true, 
-        suggestedMax: maxX, 
-        ticks: {color:'#444'} 
-      },
-      y: { 
-        grid: {display: false},
-        ticks: {
-          color:'#444',
-          font:{weight:600},
-          autoSkip: false // <--- GARANTE TODOS OS LABELS
-        }
-      }
-    }
-  },
-  plugins: [ChartDataLabels]
-});
-</script>
-
-<script>
-  function buscarRevisoesNovas() {
-      fetch('/api/revisoes_ultimas/')
-        .then(resp => resp.json())
-        .then(data => {
-          let linhas = '';
-          data.revisoes.forEach(function(rev, idx){
-            linhas += `<tr>
-              <td>${idx+1}</td>
-              <td class="d-none d-md-table-cell">${rev.codigo}</td>
-              <td class="d-none d-md-table-cell">${rev.nome_projeto}</td>
-              <td><span style="color:gray;">${rev.revisao_anterior||'—'}</span></td>
-              <td><span style="color:green;font-weight:600">${rev.revisao_nova}</span></td>
-              <td>${rev.data_mudanca}</td>
-            </tr>`;
-          });
-          document.getElementById("tbody-revisoes").innerHTML = linhas || '<tr><td colspan="6" class="text-center text-muted">No document revisions.</td></tr>';
-
-          // Inicializa/reinicializa o DataTable só uma vez (evita duplicar ao fazer polling)
-          if (window.revisaoTable) {
-              window.revisaoTable.destroy();
-          }
-          window.revisaoTable = new simpleDatatables.DataTable("#datatablesRevisoes", {
-              perPage: 7,
-              searchable: true,
-              fixedHeight: true,
-              perPageSelect: [5, 7, 10, 20]
-          });
-        });
-  }
-  setInterval(buscarRevisoesNovas, 5000); // Atualiza a cada 60s
-  window.onload = buscarRevisoesNovas;
-</script>
-
-<script>
-    Autodesk.Viewing.Initializer({
-      env: 'AutodeskProduction',
-      accessToken: '{{ token }}'
-    }, function() {
-      var viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('viewerContainer'));
-      viewer.start();
-      var urn = '{{ urn }}';
-      Autodesk.Viewing.Document.load(
-        'urn:' + urn,
-        function(doc) {
-          var viewables = doc.getRoot().getDefaultGeometry();
-          viewer.loadDocumentNode(doc, viewables);
-        },
-        function(err) { console.error(err); }
-      );
-    });
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
-
-
-
-
-<script>
-const checkedDays = {{ checked_days|safe }};
-const checkedCounts = {{ checked_counts|safe }};
-
-Chart.register(ChartDataLabels);
-
-const ctx = document.getElementById('jobcardCheckedLine').getContext('2d');
-const chart = new Chart(ctx, {
-    type: 'line',
-    data: {
+    new Chart(el.getContext('2d'), {
+      type: 'line',
+      data: {
         labels: checkedDays,
         datasets: [{
-            label: 'Checked Preliminary',
-            data: checkedCounts,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 6,
-            pointHoverRadius: 9,
-            borderWidth: 2,
-            borderColor: '#8799ffdc',
-            backgroundColor: '#8799ff56',
+          label: 'Checked Preliminary',
+          data: checkedCounts,
+          fill: true,
+          tension: 0.3,
+          pointRadius: 6,
+          pointHoverRadius: 9,
+          borderWidth: 2,
+          borderColor: '#8799ffdc',
+          backgroundColor: '#8799ff56',
         }]
-    },
-    options: {
+      },
+      options: {
         responsive: true,
         maintainAspectRatio: false,
-        layout: {
-            padding: {
-                top: 30   // <-- ESSA LINHA GARANTE ESPAÇO NO TOPO PARA LABEL GRANDE
-            }
-        },
+        layout: { padding: { top: 30 } },
         plugins: {
-            legend: { display: false },
-            datalabels: {
-                anchor: 'end',
-                align: 'top',
-                offset: 4, // pode aumentar se quiser mais espaço
-                font: {
-                    weight: 'bold',
-                    size: 10
-                },
-                color: '#222',
-                formatter: function(value, context) {
-                    return value;
-                }
-            }
+          legend: { display: false },
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            offset: 4,
+            font: { weight: 'bold', size: 10 },
+            color: '#222',
+            formatter: (value) => value
+          }
         },
         scales: {
-            y: {
-                beginAtZero: true,
-                title: { display: true, text: 'Checked Count' }
-            },
-            x: {
-                title: { display: true, text: 'Day' }
-            }
+          y: { beginAtZero: true, title: { display: true, text: 'Checked Count' } },
+          x: { title: { display: true, text: 'Day' } }
         }
-    }
-});
+      }
+    });
+  })();
+
+  // Buscar revisões (layout estável, sem recriar plugin)
+  function buscarRevisoesNovas() {
+    fetch('/api/revisoes_ultimas/')
+      .then(resp => resp.json())
+      .then(data => {
+        let linhas = '';
+        (data.revisoes || []).forEach(function(rev, idx){
+          linhas += `<tr>
+            <td>${idx+1}</td>
+            <td class="text-start">${rev.codigo||''}</td>
+            <td>${rev.nome_projeto||''}</td>
+            <td>${rev.revisao_anterior||'—'}</td>
+            <td><span style="color:green;font-weight:600">${rev.revisao_nova||''}</span></td>
+            <td>${rev.data_mudanca||''}</td>
+          </tr>`;
+        });
+        document.getElementById("tbody-revisoes").innerHTML =
+          linhas || '<tr><td colspan="6" class="text-center text-muted">No document revisions.</td></tr>';
+      })
+      .catch(() => {
+        // fallback silencioso
+      });
+  }
+  setInterval(buscarRevisoesNovas, 5000);
+  window.addEventListener('load', buscarRevisoesNovas);
+
+  // Autodesk viewer: só inicia se existir container
+  (function() {
+    const container = document.getElementById('viewerContainer');
+    if (!container) return;
+    Autodesk.Viewing.Initializer({ env: 'AutodeskProduction', accessToken: '{{ token }}' }, function() {
+      var viewer = new Autodesk.Viewing.GuiViewer3D(container);
+      viewer.start();
+      var urn = '{{ urn }}';
+      Autodesk.Viewing.Document.load('urn:' + urn, function(doc) {
+        var viewables = doc.getRoot().getDefaultGeometry();
+        viewer.loadDocumentNode(doc, viewables);
+      }, function(err) { console.error(err); });
+    });
+  })();
 </script>
-
-
 {% endblock %}
