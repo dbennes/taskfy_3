@@ -108,7 +108,7 @@ class MaterialBase(models.Model):
     basic_material           = models.CharField("Basic Material", max_length=100, blank=True)
     description              = models.TextField()
     project_code             = models.CharField("Project Code", max_length=50, blank=True)
-    nps1                     = models.CharField("NPS 1", max_length=20, blank=True)
+    nps1                     = models.CharField("NPS 1", max_length=100, blank=True)
     qty                      = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     unit                     = models.CharField(max_length=20, blank=True)
     po                       = models.CharField("PO", max_length=50, blank=True)
