@@ -394,8 +394,12 @@ def dashboard(request):
     for d in qs_tam.values('discipline').distinct():
         disc_name = d['discipline']
         total_t   = qs_tam.filter(discipline=disc_name).count()
-        checked_t = qs_tam.filter(discipline=disc_name,
-                                  jobcard_status__in=STAGE_PRE_OR_MORE).count()
+        if total_t == 0:
+            continue  # não adiciona linhas zeradas
+        checked_t = qs_tam.filter(
+            discipline=disc_name,
+            jobcard_status__in=STAGE_PRE_OR_MORE
+        ).count()
         percent_t = (checked_t / total_t * 100) if total_t else 0.0
         discipline_summary_tam.append({
             'discipline': disc_name,
@@ -404,26 +408,33 @@ def dashboard(request):
             'percent_checked': percent_t,
         })
 
-    # Ordena pela mesma ordem fixa
-    disc_dict_tam = {d['discipline']: d for d in discipline_summary_tam}
-    discipline_summary_tam_sorted = []
-    for name in discipline_order:
-        discipline_summary_tam_sorted.append(disc_dict_tam.get(name, {
-            'discipline': name, 'total_jobcard': 0, 'total_checked': 0, 'percent_checked': 0.0
-        }))
+    # Ordena pela ordem fixa definida em discipline_order
+    order_index = {name: i for i, name in enumerate(discipline_order)}
+    discipline_summary_tam_sorted = sorted(
+        discipline_summary_tam,
+        key=lambda x: order_index.get(x['discipline'], 9999)
+    )
 
     discipline_total_jobcard_tam   = sum(d['total_jobcard'] for d in discipline_summary_tam_sorted)
     discipline_total_checked_tam   = sum(d['total_checked'] for d in discipline_summary_tam_sorted)
-    discipline_percent_checked_tam = (discipline_total_checked_tam / discipline_total_jobcard_tam * 100) if discipline_total_jobcard_tam else 0.0
+    discipline_percent_checked_tam = (
+        (discipline_total_checked_tam / discipline_total_jobcard_tam * 100)
+        if discipline_total_jobcard_tam else 0.0
+    )
 
     # ---- Area summary (PRE/TAM 2026; cumulativo >= PRELIMINARY)
     area_summary_tam = []
     for area_code in sorted(area_groups):
-        codes    = [a.area_code for a in area_groups[area_code]]
-        total_a  = qs_tam.filter(location__in=codes).count()
-        checked_a= qs_tam.filter(location__in=codes, jobcard_status__in=STAGE_PRE_OR_MORE).count()
-        percent_a= (checked_a / total_a * 100) if total_a else 0.0
-        area_obj = Area.objects.filter(area_code=area_code).order_by('pk').first()
+        codes     = [a.area_code for a in area_groups[area_code]]
+        total_a   = qs_tam.filter(location__in=codes).count()
+        if total_a == 0:
+            continue  # não adiciona linhas zeradas
+        checked_a = qs_tam.filter(
+            location__in=codes,
+            jobcard_status__in=STAGE_PRE_OR_MORE
+        ).count()
+        percent_a = (checked_a / total_a * 100) if total_a else 0.0
+        area_obj  = Area.objects.filter(area_code=area_code).order_by('pk').first()
         area_summary_tam.append({
             'area_code': area_code,
             'area_description': area_obj.location if area_obj else '',
@@ -434,7 +445,13 @@ def dashboard(request):
 
     area_total_jobcard_tam   = sum(a['total_jobcard'] for a in area_summary_tam)
     area_total_checked_tam   = sum(a['total_checked'] for a in area_summary_tam)
-    area_percent_checked_tam = (area_total_checked_tam / area_total_jobcard_tam * 100) if area_total_jobcard_tam else 0.0
+    area_percent_checked_tam = (
+        (area_total_checked_tam / area_total_jobcard_tam * 100)
+        if area_total_jobcard_tam else 0.0
+    )
+
+    # Exibir a seção PRE/TAM 2026 somente se houver dados em qualquer uma das tabelas
+    show_tam_section = bool(discipline_summary_tam_sorted or area_summary_tam)
     # ======================================================================
 
     context = {
@@ -503,12 +520,12 @@ def dashboard(request):
         'jobcards'              : jobcards,
 
         # === NOVOS CONTEXTOS (apenas PRE/TAM 2026) ===
-        'discipline_summary_tam'      : discipline_summary_tam_sorted,
+        'show_tam_section': show_tam_section,
+        'discipline_summary_tam': discipline_summary_tam_sorted,
         'discipline_total_jobcard_tam': discipline_total_jobcard_tam,
         'discipline_total_checked_tam': discipline_total_checked_tam,
         'discipline_percent_checked_tam': discipline_percent_checked_tam,
-
-        'area_summary_tam'      : area_summary_tam,
+        'area_summary_tam': area_summary_tam,
         'area_total_jobcard_tam': area_total_jobcard_tam,
         'area_total_checked_tam': area_total_checked_tam,
         'area_percent_checked_tam': area_percent_checked_tam,
