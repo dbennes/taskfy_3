@@ -3,111 +3,154 @@
 
 {% block content %}
 <style>
-  /* Força visual Taskfy */
-  body, .container-fluid, .container {
-    background: #f7f8fa !important;
-  }
+  /* Fundo */
+  body, .container-fluid, .container { background: #f5f6f8 !important; }
 
-  .tfy-wrap { max-width: 760px; margin: 24px auto; }
+  /* Wrapper mais fluido e encostado */
+  .tfy-wrap { max-width: 100%; margin: 12px auto; }
 
+  /* Cards mais compactos */
   .tfy-card {
-    background: #fff; border-radius: 16px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-    padding: 18px 18px 12px 18px; border: 1px solid #eceef3;
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    padding: 14px 12px; border: 1px solid #e9ecf2;
   }
 
-  .tfy-title {
-    display:flex; align-items:center; gap:10px;
-    font-weight: 800; letter-spacing:.2px; color:#23272e; margin:0 0 8px 0;
-  }
-  .tfy-sub { color:#6b7280; font-size:.95rem; margin-bottom: 14px; }
+  .tfy-title { display:flex; align-items:center; gap:8px; font-weight:800; letter-spacing:.15px; color:#23272e; margin:0; font-size:1.05rem; }
+  .tfy-sub { color:#6b7280; font-size:.9rem; margin:6px 0 10px; }
 
+  /* Dropzone enxuta */
   .tfy-zone {
-    border: 1.5px dashed #d0d7de; border-radius: 14px;
+    border: 1.25px dashed #d0d7de; border-radius: 10px;
     background: linear-gradient(180deg, #fafbff, #f7f8fa);
-    padding: 18px; text-align: center; transition: all .15s ease;
+    padding: 12px; text-align: center; transition: all .12s ease;
   }
-  .tfy-zone.tfy-highlight { border-color:#23272e; background:#f3f4f7; transform: scale(1.01); }
-  .tfy-zone .ico { font-size: 28px; color:#23272e; opacity:.9 }
-  .tfy-zone .line1 { font-weight:700; color:#23272e; margin-top:6px; }
-  .tfy-zone .line2 { font-size:.9rem; color:#6b7280; }
+  .tfy-zone.tfy-highlight { border-color:#23272e; background:#f3f4f7; transform: scale(1.005); }
+  .tfy-zone .ico { font-size: 22px; color:#23272e; opacity:.9 }
+  .tfy-zone .line1 { font-weight:700; color:#23272e; margin-top:4px; font-size:.95rem; }
+  .tfy-zone .line2 { font-size:.8rem; color:#6b7280; }
 
-  .tfy-filelist { margin-top: 14px; }
+  /* Lista de uploads (esquerda) mais colada */
+  .tfy-filelist { margin-top: 10px; }
   .tfy-file {
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-    background:#fbfbfd; border:1px solid #eceef3; border-radius:12px;
-    padding:10px 12px; margin-bottom:8px;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:#fbfbfd; border:1px solid #eceef3; border-radius:10px;
+    padding:8px 10px; margin-bottom:6px;
   }
-  .tfy-file-left { display:flex; align-items:center; gap:10px; min-width:0; }
-  .tfy-file .fa-file-pdf { font-size:18px; color:#e11d48; }
-  .tfy-file-name { font-weight:600; color:#23272e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:420px; }
-  .tfy-file-meta { font-size:.85rem; color:#6b7280; }
-  .tfy-badge-ok { background:#e8fff3; color:#047857; border:1px solid #c7f9df; padding:2px 8px; border-radius:999px; font-size:.78rem; font-weight:700; }
-  .tfy-badge-err { background:#fff1f2; color:#b91c1c; border:1px solid #fecaca; padding:2px 8px; border-radius:999px; font-size:.78rem; font-weight:700; }
-  .tfy-remove { border:none; background:#fff; color:#6b7280; padding:6px 8px; border-radius:8px; }
+  .tfy-file-left { display:flex; align-items:center; gap:8px; min-width:0; }
+
+  /* Ícones por tipo */
+  .ico-pdf   { color:#e11d48; } .ico-word { color:#2563eb; } .ico-excel { color:#047857; }
+  .ico-ppt   { color:#ea580c; } .ico-img  { color:#0ea5e9; } .ico-zip   { color:#6b7280; }
+  .ico-text  { color:#23272e; } .ico-generic { color:#23272e; }
+
+  .tfy-file-name { font-weight:600; color:#23272e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:320px; font-size:.95rem; }
+  .tfy-file-meta { font-size:.8rem; color:#6b7280; }
+  .tfy-badge-ok { background:#e8fff3; color:#047857; border:1px solid #c7f9df; padding:2px 8px; border-radius:999px; font-size:.72rem; font-weight:700; }
+  .tfy-badge-err { background:#fff1f2; color:#b91c1c; border:1px solid #fecaca; padding:2px 8px; border-radius:999px; font-size:.72rem; font-weight:700; }
+  .tfy-remove { border:none; background:#fff; color:#6b7280; padding:4px 6px; border-radius:6px; }
   .tfy-remove:hover { background:#f1f5f9; color:#111827; }
 
-  .tfy-actions { display:flex; gap:8px; margin-top: 14px; }
-  .tfy-actions .btn { border-radius:10px; padding:8px 14px; }
-  .tfy-hint { font-size:.85rem; color:#6b7280; margin-top:2px; }
+  .tfy-actions { display:flex; gap:6px; margin-top: 10px; }
+  .tfy-actions .btn { border-radius:8px; padding:6px 12px; }
+  .tfy-hint { font-size:.8rem; color:#6b7280; margin-top:2px; }
+  .tfy-alerts .alert { border-radius:10px; padding:8px 10px; margin-bottom:6px; }
 
-  .tfy-alerts .alert { border-radius:12px; }
+  /* Card da direita ainda mais “encostado” */
+  .docs-card-title { font-weight:800; color:#23272e; margin:0; font-size:.95rem; }
+  .docs-filters .form-control, .docs-filters .btn { font-size: 12px; padding: 4px 8px; height: 28px; }
+  .docs-list {
+    max-height: calc(100vh - 260px);
+    overflow-y: auto; border:1px solid #eceef3; border-radius:10px; padding:6px; background:#fbfbfd;
+  }
+  .doc-row {
+    display:grid; grid-template-columns: 20px 1fr auto; gap:8px;
+    align-items:center; padding:6px 8px; background:#fff; border:1px solid #eceef3; border-radius:8px; margin-bottom:6px;
+  }
+  .doc-name { font-weight:600; color:#23272e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.95rem; }
+  .doc-meta { font-size:11px; color:#6b7280; }
+  .doc-actions .btn { padding:4px 8px; font-size:11px; border-radius:6px; }
+  .docs-sticky { position: sticky; top: 0; background: #fff; z-index: 1; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid #eceef3; }
+
+  /* Gutters menores entre colunas */
+  @media (min-width: 992px) {
+    .gx-tight { --bs-gutter-x: .5rem; }
+    .gy-tight { --bs-gutter-y: .5rem; }
+  }
 </style>
 
-<div class="container tfy-wrap">
-  <div class="tfy-header d-flex align-items-center justify-content-between mb-2">
-    <h4 class="tfy-title">
-      <i class="fa-solid fa-file-upload"></i> Upload Documents
-    </h4>
-    <a href="{% url 'jobcards_list' %}" class="btn btn-outline-secondary btn-sm">
-      <i class="fa-solid fa-arrow-left"></i> Back
-    </a>
+<div class="container-fluid tfy-wrap px-2">
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h4 class="tfy-title"><i class="fa-solid fa-file-upload"></i> Upload Documents</h4>
+    <a href="{% url 'jobcards_list' %}" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Back</a>
   </div>
-  <div class="tfy-sub">PDF only • Multiple files • Validated before submit</div>
+  <div class="tfy-sub">Any file type • Multiple files • Size validated before submit</div>
 
   {% if messages %}
-    <div class="tfy-alerts mb-2">
-      {% for m in messages %}
-        <div class="alert alert-{{ m.tags }} mb-2">
-          {{ m }}
-        </div>
-      {% endfor %}
+    <div class="tfy-alerts">
+      {% for m in messages %}<div class="alert alert-{{ m.tags }} mb-2">{{ m }}</div>{% endfor %}
     </div>
   {% endif %}
 
-  <form id="uploadForm"
-        action="{% url 'upload_documents' %}"
-        method="post"
-        enctype="multipart/form-data"
-        class="tfy-card">
-    {% csrf_token %}
+  <div class="row gx-tight gy-tight align-items-start">
+    <!-- ESQUERDA: Upload -->
+    <div class="col-lg-5 col-12">
+      <form id="uploadForm" action="{% url 'upload_documents' %}" method="post" enctype="multipart/form-data" class="tfy-card">
+        {% csrf_token %}
+        <div id="dropzone" class="tfy-zone" role="button" tabindex="0" aria-label="Upload files by clicking or dragging into this area">
+          <div class="ico"><i class="fa-regular fa-file"></i></div>
+          <div class="line1">Drop files here or click to select</div>
+          <div class="line2">Any type — Max {{ MAX_SIZE_MB|default:50 }}MB each</div>
+          <input type="file" id="documents" name="documents" multiple style="display:none" />
+        </div>
 
-    <!-- Dropzone -->
-    <div id="dropzone" class="tfy-zone" role="button" tabindex="0" aria-label="Upload PDFs by clicking or dragging into this area">
-      <div class="ico"><i class="fa-regular fa-file-pdf"></i></div>
-      <div class="line1">Drop PDF files here or click to select</div>
-      <div class="line2">Only .pdf — Max {{ MAX_SIZE_MB|default:50 }}MB each</div>
-      <input type="file"
-             id="documents"
-             name="documents"
-             accept=".pdf,application/pdf"
-             multiple
-             style="display:none" />
+        <div id="fileList" class="tfy-filelist" aria-live="polite"></div>
+
+        <div class="tfy-actions">
+          <button id="btnUpload" type="submit" class="btn btn-primary btn-sm" disabled>
+            <span class="label"><i class="fa-solid fa-cloud-arrow-up me-1"></i> Upload</span>
+            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+          </button>
+          <button id="btnClear" type="button" class="btn btn-light border btn-sm">Clear</button>
+        </div>
+
+        <div class="tfy-hint">Tip: you can drag more files to add them before sending.</div>
+      </form>
     </div>
 
-    <!-- Lista de arquivos -->
-    <div id="fileList" class="tfy-filelist" aria-live="polite"></div>
+    <!-- DIREITA: Lista/Busca/Downloads -->
+    <div class="col-lg-7 col-12">
+      <div class="tfy-card p-12">
+        <div class="d-flex align-items-center justify-content-between docs-sticky">
+          <h6 class="docs-card-title mb-0"><i class="fa-solid fa-folder-open me-1"></i> Documents</h6>
+          <div class="d-flex align-items-center">
+            <input type="checkbox" id="chkAll" class="form-check-input me-1" style="transform:scale(.9)">
+            <label for="chkAll" class="small text-muted">Select all</label>
+          </div>
+        </div>
 
-    <div class="tfy-actions">
-      <button id="btnUpload" type="submit" class="btn btn-primary" disabled>
-        <span class="label"><i class="fa-solid fa-cloud-arrow-up me-1"></i> Upload</span>
-        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-      </button>
-      <button id="btnClear" type="button" class="btn btn-light border">Clear</button>
+        <div class="docs-filters mb-2">
+          <div class="row g-1">
+            <div class="col-12">
+              <input id="q" class="form-control form-control-sm" placeholder="Search by name">
+            </div>
+            <div class="col-4"><input id="f_system"   class="form-control form-control-sm" placeholder="System"></div>
+            <div class="col-4"><input id="f_workpack" class="form-control form-control-sm" placeholder="Workpack"></div>
+            <div class="col-4"><input id="f_jobcard"  class="form-control form-control-sm" placeholder="Jobcard"></div>
+          </div>
+          <div class="mt-2 d-flex gap-1">
+            <button id="btnSearch" class="btn btn-dark btn-sm"><i class="fa-solid fa-magnifying-glass me-1"></i> Apply</button>
+            <button id="btnReset" class="btn btn-light btn-sm border">Reset</button>
+            <button id="btnDownloadMany" class="btn btn-primary btn-sm ms-auto" disabled>
+              <i class="fa-solid fa-file-zipper me-1"></i> Download (<span id="selCount">0</span>)
+            </button>
+          </div>
+        </div>
+
+        <div id="docsList" class="docs-list" aria-live="polite"></div>
+      </div>
     </div>
-
-    <div class="tfy-hint">Tip: you can drag more files to add them before sending.</div>
-  </form>
+  </div>
 </div>
 
 <script>
@@ -120,7 +163,6 @@
   const btnClear = document.getElementById('btnClear');
   const form = document.getElementById('uploadForm');
 
-  /** Estado controlado para conseguirmos adicionar/remover arquivos programaticamente */
   let selected = [];
 
   function formatSize(bytes) {
@@ -128,17 +170,21 @@
     if (bytes >= 1024) return (bytes/1024).toFixed(0) + ' KB';
     return bytes + ' B';
   }
-
-  function isPDF(f) {
-    // checa extensão e MIME
-    const nameOk = /\.pdf$/i.test(f.name);
-    const typeOk = (f.type || '').toLowerCase() === 'application/pdf';
-    return nameOk || typeOk;
+  function extOf(name) { const i = name.lastIndexOf('.'); return i >= 0 ? name.slice(i+1).toLowerCase() : ''; }
+  function iconClassForExt(ext) {
+    if (ext === 'pdf') return { cls: 'fa-regular fa-file-pdf ico-pdf', label: 'PDF' };
+    if (['doc','docx','rtf'].includes(ext)) return { cls: 'fa-regular fa-file-word ico-word', label: 'Word' };
+    if (['xls','xlsx','csv'].includes(ext)) return { cls: 'fa-regular fa-file-excel ico-excel', label: 'Excel' };
+    if (['ppt','pptx'].includes(ext)) return { cls: 'fa-regular fa-file-powerpoint ico-ppt', label: 'PowerPoint' };
+    if (['jpg','jpeg','png','gif','webp','bmp','tiff','svg'].includes(ext)) return { cls: 'fa-regular fa-file-image ico-img', label: 'Image' };
+    if (['zip','rar','7z','gz','tar'].includes(ext)) return { cls: 'fa-solid fa-file-zipper ico-zip', label: 'Archive' };
+    if (['txt','log','md'].includes(ext)) return { cls: 'fa-regular fa-file-lines ico-text', label: 'Text' };
+    return { cls: 'fa-regular fa-file ico-generic', label: ext || 'File' };
   }
+  function iconClassFor(file) { return iconClassForExt(extOf(file.name)); }
 
   function validateFile(f) {
     const errors = [];
-    if (!isPDF(f)) errors.push('Not PDF');
     if (f.size > MAX_MB * 1024 * 1024) errors.push('Too large');
     return { ok: errors.length === 0, errors };
   }
@@ -147,8 +193,8 @@
     list.innerHTML = '';
     let anyValid = false;
     selected.forEach((item, idx) => {
-      const { file, ok, errors } = item;
-      if (ok) anyValid = true;
+      const { file, ok, errors } = item; if (ok) anyValid = true;
+      const icon = iconClassFor(file);
 
       const row = document.createElement('div');
       row.className = 'tfy-file';
@@ -156,7 +202,7 @@
       const left = document.createElement('div');
       left.className = 'tfy-file-left';
       left.innerHTML = `
-        <i class="fa-regular fa-file-pdf"></i>
+        <i class="${icon.cls}" aria-hidden="true" title="${icon.label}"></i>
         <div style="min-width:0">
           <div class="tfy-file-name" title="${file.name}">${file.name}</div>
           <div class="tfy-file-meta">${formatSize(file.size)}</div>
@@ -164,9 +210,7 @@
       `;
 
       const right = document.createElement('div');
-      right.style.display = 'flex';
-      right.style.alignItems = 'center';
-      right.style.gap = '8px';
+      right.style.display = 'flex'; right.style.alignItems = 'center'; right.style.gap = '6px';
 
       const badge = document.createElement('span');
       badge.className = ok ? 'tfy-badge-ok' : 'tfy-badge-err';
@@ -174,21 +218,14 @@
       right.appendChild(badge);
 
       const rm = document.createElement('button');
-      rm.type = 'button';
-      rm.className = 'tfy-remove';
-      rm.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-      rm.addEventListener('click', () => {
-        selected.splice(idx, 1);
-        syncInputFiles();
-        renderList();
-      });
+      rm.type = 'button'; rm.className = 'tfy-remove';
+      rm.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
+      rm.setAttribute('aria-label', `Remove ${file.name}`);
+      rm.addEventListener('click', () => { selected.splice(idx, 1); syncInputFiles(); renderList(); });
       right.appendChild(rm);
 
-      row.appendChild(left);
-      row.appendChild(right);
-      list.appendChild(row);
+      row.appendChild(left); row.appendChild(right); list.appendChild(row);
     });
-
     btnUpload.disabled = !anyValid;
   }
 
@@ -200,7 +237,6 @@
 
   function addFiles(fileList) {
     const incoming = Array.from(fileList);
-    // Evita duplicados pelo nome+tamanho
     const keys = new Set(selected.map(s => s.file.name + '|' + s.file.size));
     incoming.forEach(f => {
       const key = f.name + '|' + f.size;
@@ -210,38 +246,168 @@
         keys.add(key);
       }
     });
-    syncInputFiles();
-    renderList();
+    syncInputFiles(); renderList();
   }
 
   dz.addEventListener('click', () => input.click());
   dz.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }});
-
   dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('tfy-highlight'); });
   dz.addEventListener('dragleave', () => dz.classList.remove('tfy-highlight'));
-  dz.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dz.classList.remove('tfy-highlight');
-    addFiles(e.dataTransfer.files);
-  });
-
+  dz.addEventListener('drop', (e) => { e.preventDefault(); dz.classList.remove('tfy-highlight'); addFiles(e.dataTransfer.files); });
   input.addEventListener('change', (e) => addFiles(e.target.files));
-
-  btnClear.addEventListener('click', () => {
-    selected = [];
-    syncInputFiles();
-    renderList();
-  });
+  btnClear.addEventListener('click', () => { selected = []; syncInputFiles(); renderList(); });
 
   form.addEventListener('submit', () => {
-    // UX: spinner + trava
     btnUpload.querySelector('.label').classList.add('d-none');
     btnUpload.querySelector('.spinner-border').classList.remove('d-none');
     btnUpload.disabled = true;
   });
 
+  // ------------------- CARD DA DIREITA (lista de documentos) -------------------
+  const LIST_URL = "{% url 'list_documents' %}";
+  const DL_ONE_URL = "{% url 'download_document' %}";
+  const DL_MANY_URL = "{% url 'download_many_documents' %}";
+
+  const docsList = document.getElementById('docsList');
+  const q = document.getElementById('q');
+  const f_system = document.getElementById('f_system');
+  const f_workpack = document.getElementById('f_workpack');
+  const f_jobcard = document.getElementById('f_jobcard');
+  const btnSearch = document.getElementById('btnSearch');
+  const btnReset = document.getElementById('btnReset');
+  const btnDownloadMany = document.getElementById('btnDownloadMany');
+  const chkAll = document.getElementById('chkAll');
+  const selCount = document.getElementById('selCount');
+
+  let currentItems = [];
+  let selectedNames = new Set();
+
+  function formatDate(ts) {
+    try {
+      const d = new Date(ts * 1000);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mi = String(d.getMinutes()).padStart(2,'0');
+      return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+    } catch { return ''; }
+  }
+
+  function renderDocs(items) {
+    currentItems = items;
+    docsList.innerHTML = '';
+    if (!items.length) {
+      docsList.innerHTML = '<div class="text-muted small">No documents found.</div>';
+      updateSelectionUI();
+      return;
+    }
+    items.forEach(it => {
+      const icon = iconClassForExt(it.ext || '');
+      const row = document.createElement('div');
+      row.className = 'doc-row';
+
+      const cbox = document.createElement('input');
+      cbox.type = 'checkbox'; cbox.className = 'form-check-input';
+      cbox.style.transform = 'scale(.9)';
+      cbox.checked = selectedNames.has(it.name);
+      cbox.addEventListener('change', () => {
+        if (cbox.checked) selectedNames.add(it.name); else selectedNames.delete(it.name);
+        updateSelectionUI();
+      });
+
+      const mid = document.createElement('div');
+      mid.style.minWidth = 0;
+      mid.innerHTML = `
+        <div class="d-flex align-items-center gap-2">
+          <i class="${icon.cls}" title="${icon.label}"></i>
+          <span class="doc-name" title="${it.name}">${it.name}</span>
+        </div>
+        <div class="doc-meta">
+          ${formatSize(it.size)} • ${formatDate(it.mtime)}
+          ${it.system ? ' • SYS: '+it.system : ''}${it.workpack ? ' • WP: '+it.workpack : ''}${it.jobcard ? ' • JC: '+it.jobcard : ''}
+        </div>
+      `;
+
+      const actions = document.createElement('div');
+      actions.className = 'doc-actions';
+      actions.innerHTML = `
+        <a href="${DL_ONE_URL}?name=${encodeURIComponent(it.name)}" class="btn btn-light border btn-sm" title="Download">
+          <i class="fa-solid fa-download"></i>
+        </a>
+      `;
+
+      row.appendChild(cbox);
+      row.appendChild(mid);
+      row.appendChild(actions);
+      docsList.appendChild(row);
+    });
+    updateSelectionUI();
+  }
+
+  function updateSelectionUI() {
+    selCount.textContent = String(selectedNames.size);
+    btnDownloadMany.disabled = selectedNames.size === 0;
+    if (currentItems.length) {
+      const allSelected = currentItems.every(it => selectedNames.has(it.name));
+      chkAll.checked = allSelected && selectedNames.size > 0;
+      chkAll.indeterminate = selectedNames.size > 0 && !allSelected;
+    } else {
+      chkAll.checked = false; chkAll.indeterminate = false;
+    }
+  }
+
+  function loadDocs() {
+    const params = new URLSearchParams({
+      q: q.value.trim(),
+      system: f_system.value.trim(),
+      workpack: f_workpack.value.trim(),
+      jobcard: f_jobcard.value.trim(),
+    });
+    fetch(LIST_URL + '?' + params.toString(), { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(data => renderDocs(data.items || []))
+      .catch(() => { docsList.innerHTML = '<div class="text-danger small">Failed to load documents.</div>'; });
+  }
+
+  function getCookie(name) {
+    const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return m ? m.pop() : '';
+  }
+
+  function downloadMany() {
+    const names = Array.from(selectedNames);
+    fetch(DL_MANY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({ names })
+    })
+    .then(res => { if (!res.ok) throw new Error('Download failed'); return res.blob(); })
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'documents.zip';
+      document.body.appendChild(a); a.click();
+      a.remove(); window.URL.revokeObjectURL(url);
+    })
+    .catch(() => alert('Failed to download zip.'));
+  }
+
+  document.getElementById('btnSearch').addEventListener('click', (e) => { e.preventDefault(); loadDocs(); });
+  document.getElementById('btnReset').addEventListener('click', (e) => {
+    e.preventDefault(); q.value = ''; f_system.value = ''; f_workpack.value = ''; f_jobcard.value = ''; loadDocs();
+  });
+  document.getElementById('btnDownloadMany').addEventListener('click', (e) => { e.preventDefault(); downloadMany(); });
+  document.getElementById('chkAll').addEventListener('change', () => {
+    if (!currentItems.length) return;
+    if (chkAll.checked) currentItems.forEach(it => selectedNames.add(it.name));
+    else selectedNames.clear();
+    renderDocs(currentItems);
+  });
+
   // inicial
   renderList();
+  loadDocs();
 })();
 </script>
 {% endblock %}

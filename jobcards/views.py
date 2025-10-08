@@ -3101,6 +3101,7 @@ def po_tracking(request):
         "In Customs Clearance",
         "In Transit",
         "Ready for Receipt at Warehouse",
+        "Received at Warehouse"
         "On Hold",
         "Cancelled",
     ]
@@ -3900,32 +3901,54 @@ def delete_jobcard_image(request):
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'No image to delete'}, status=404)
 
-ALLOWED_EXT = ".pdf"
-MAX_SIZE_MB = 50  # ajuste se quiser
+# ========== IMPORTAÇÃO DE DOCUMENTOS ===================== #
+from uuid import uuid4
 
-def _is_pdf(file_obj) -> bool:
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, permission_required
+from django.core.files.storage import FileSystemStorage
+from django.shortcuts import redirect, render
+from django.utils.text import slugify
+from django.views.decorators.csrf import csrf_exempt
+
+MAX_SIZE_MB = 100  # ajuste se quiser
+
+ALLOW_ALL_EXTENSIONS = True  # <- ACEITA QUALQUER ARQUIVO
+SAFE_EXTS = {
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".csv",
+    ".ppt", ".pptx", ".txt", ".jpg", ".jpeg", ".png", ".gif",
+    ".zip", ".rar", ".7z"
+}
+# Opcional: bloquear executáveis/scripts perigosos mesmo permitindo tudo
+BLACKLIST_EXTS = {".exe", ".bat", ".cmd", ".js", ".msi", ".vbs", ".ps1", ".sh"}
+
+def _safe_filename(original_name: str, maxbase: int = 80) -> str:
     """
-    Validação robusta: extensão .pdf e header %PDF (magic bytes).
+    Gera um nome seguro preservando a extensão original.
+    - Slugify no nome base
+    - Mantém extensão em minúsculo
+    - Se o base ficar vazio, usa UUID
     """
-    name_ok = file_obj.name.lower().endswith(ALLOWED_EXT)
-    pos = file_obj.tell()
-    head = file_obj.read(5)  # b'%PDF-'
-    file_obj.seek(pos)
-    header_ok = head.startswith(b"%PDF")
-    return name_ok and header_ok
+    base, ext = os.path.splitext(original_name)
+    ext = (ext or "").lower()
+    base_slug = slugify(base)[:maxbase]
+    if not base_slug:
+        base_slug = uuid4().hex[:12]
+    # Evita nomes como ".pdf" se base vier vazio
+    return f"{base_slug}{ext}" if ext else base_slug
 
 @login_required(login_url="login")
 @permission_required("jobcards.change_jobcard", raise_exception=True)
 def upload_documents(request):
     if request.method == "GET":
-        # Renderiza a página de upload
         return render(request, "sistema/upload_documents/upload_documents.html")
 
     if request.method == "POST":
         files = request.FILES.getlist("documents")
         if not files:
             messages.error(request, "No files selected.")
-            return redirect("upload_documents")  # mantenha o nome da sua rota aqui
+            return redirect("upload_documents")
 
         # Pasta de destino: MEDIA_ROOT/documents_jobcards/
         rel_dir = os.path.join("documents_jobcards")
@@ -3940,21 +3963,28 @@ def upload_documents(request):
         saved, errors = [], []
 
         for f in files:
-            # Tamanho
+            # 1) Tamanho
             if f.size > MAX_SIZE_MB * 1024 * 1024:
                 errors.append(f"{f.name}: file too large (> {MAX_SIZE_MB}MB).")
                 continue
 
-            # Apenas PDF (ext + magic bytes)
-            if not _is_pdf(f):
-                errors.append(f"{f.name}: only PDF files are allowed.")
+            # 2) Extensão (opcional)
+            name_ext = os.path.splitext(f.name)[1].lower()
+
+            # Bloqueios de segurança (mesmo aceitando tudo)
+            if name_ext in BLACKLIST_EXTS:
+                errors.append(f"{f.name}: blocked file type for security.")
                 continue
 
-            # Nome seguro (sem timestamp para permitir overwrite "1:1")
-            base, _ = os.path.splitext(f.name)
-            safe_name = f"{slugify(base)[:80]}.pdf"
+            # Se quiser restringir por whitelist, desative ALLOW_ALL_EXTENSIONS
+            if not ALLOW_ALL_EXTENSIONS and SAFE_EXTS and name_ext not in SAFE_EXTS:
+                errors.append(f"{f.name}: file type not allowed ({name_ext}).")
+                continue
 
-            # OVERWRITE: se existir, apaga antes de salvar
+            # 3) Nome seguro (preserva extensão original)
+            safe_name = _safe_filename(f.name, maxbase=80)
+
+            # 4) OVERWRITE: se existir, apaga antes de salvar
             abs_target = os.path.join(abs_dir, safe_name)
             if os.path.exists(abs_target):
                 try:
@@ -3963,18 +3993,20 @@ def upload_documents(request):
                     errors.append(f"{f.name}: failed to overwrite ({e}).")
                     continue
 
-            # Salva (FileSystemStorage não sobrescreve por padrão)
+            # 5) Salva (FileSystemStorage não sobrescreve por padrão)
             filename = storage.save(safe_name, f)
             saved.append(storage.url(filename))
 
         if saved:
-            messages.success(request, f"{len(saved)} PDF(s) uploaded successfully (overwritten when same name).")
+            messages.success(
+                request,
+                f"{len(saved)} file(s) uploaded successfully (overwritten when same name)."
+            )
         if errors:
             messages.warning(request, " | ".join(errors))
 
         return redirect("upload_documents")
 
-    # Outros métodos → volta pra página
     messages.error(request, "Method not allowed.")
     return redirect("upload_documents")
 

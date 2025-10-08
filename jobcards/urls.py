@@ -6,6 +6,8 @@ from . import views_schedule, views_documents, views_allocated_manpower, views_s
 from . import views_downloads_jobcards
 from . import views_account
 from . import views_dashboardWorkpack
+from . import views_procurement
+from . import views_documentsJobcards
 from django.views.generic.base import RedirectView
 
 from .views_auth  import TaskfyPasswordChangeView
@@ -227,5 +229,11 @@ urlpatterns = [
     # --- Belt & suspenders: atenda também /accounts/login/ com o MESMO login ---
     # (assim qualquer lib que aponte pra /accounts/login/ não quebra)
     path("accounts/login/", views.login, name="accounts_login"),
+
+    # ---- Documentos de Jobcards (HTML + APIs) ----
+    path("procurement/reference/download/", views_procurement.download_procurement_reference, name="download_procurement_reference"),
+    path("documents/list/",         views_documentsJobcards.list_documents,      name="list_documents"),
+    path("documents/download/",     views_documentsJobcards.download_document,   name="download_document"),
+    path("documents/download-many/",views_documentsJobcards.download_many_documents, name="download_many_documents"),
 
 ]
