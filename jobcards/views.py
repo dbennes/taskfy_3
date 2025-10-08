@@ -3091,13 +3091,15 @@ def save_allocation(request: HttpRequest, jobcard_id: str, task_order: int):
 # --------- AREA DE SUPRIMENTOS --------------- #
 
 def po_tracking(request):
+    
     statuses = [
-        "Pending MR",
+       "PO Pending",
         "Ordered",
         "In Production",
-        "In Transit",
-        "Delivered",
         "Ready for Inspection",
+        "Ready for Shipment",
+        "In Customs Clearance",
+        "In Transit",
         "Ready for Receipt at Warehouse",
         "On Hold",
         "Cancelled",
