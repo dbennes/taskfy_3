@@ -368,6 +368,51 @@ def _recalc_jobcard_percentages(jobcards: Set[str]) -> int:
         AllocatedTask.objects.bulk_update(to_update, ["percent"], batch_size=1000)
     return len(to_update)
 
+# =========================
+# Helpers: PRUNE órfãs (AllocatedTask x TaskBase)
+# =========================
+def _prune_orphan_allocated_tasks(jobcards: Set[str], job_map: Dict[str, dict]) -> int:
+    """
+    Remove de AllocatedTask as tasks cujo task_order NÃO existe mais no TaskBase
+    para o working_code da JobCard.
+    - Se o working_code não tiver nenhuma task no TaskBase, apaga TODAS as tasks da JobCard.
+    Retorna quantidade de linhas deletadas.
+    """
+    if not jobcards:
+        return 0
+
+    # working_code por JobCard
+    wc_by_jc = {jc: (job_map.get(jc, {}).get("working_code") or "") for jc in jobcards}
+    working_codes = {wc for wc in wc_by_jc.values() if wc}
+
+    # Mapa de orders esperados por working_code, conforme TaskBase
+    expected_by_wc: Dict[str, Set[int]] = defaultdict(set)
+    if working_codes:
+        tb_qs = TaskBase.objects.filter(working_code__in=working_codes).values("working_code", "order")
+        for r in tb_qs:
+            expected_by_wc[r["working_code"]].add(int(r["order"]))
+
+    deleted_total = 0
+    # Para cada JobCard importado, apaga o que não estiver no TaskBase
+    for jc in sorted(jobcards):
+        wc = wc_by_jc.get(jc, "")
+        expected_orders = expected_by_wc.get(wc, set())
+
+        if not expected_orders:
+            # Não há tasks no TaskBase para este working_code -> apaga todas
+            deleted, _ = AllocatedTask.objects.filter(jobcard_number=jc).delete()
+            deleted_total += deleted
+        else:
+            # Apaga apenas as que não pertencem ao TaskBase
+            deleted, _ = (
+                AllocatedTask.objects
+                .filter(jobcard_number=jc)
+                .exclude(task_order__in=list(expected_orders))
+                .delete()
+            )
+            deleted_total += deleted
+
+    return deleted_total
 
 
 def _ensure_missing_tasks_as_na(valid_rows: List[dict], job_map: Dict[str, dict]) -> int:
@@ -625,7 +670,7 @@ def allocated_manpower_table_data(request):
 
 
 # =========================
-# Views: IMPORT & TEMPLATE
+# Views: IMPORT & TEMPLATE (VERSÃO ATUALIZADA)
 # =========================
 @login_required(login_url="login")
 @permission_required("jobcards.change_jobcard", raise_exception=True)
@@ -638,13 +683,12 @@ def import_allocated_manpower(request):
 
     Modos:
       - merge: upsert por (jobcard_number, task_order, direct_labor)
-      - replace_jobcard: apaga tudo dos JobCards PRESENTES E EXISTENTES e recria
-                         + cria/atualiza tasks faltantes como N/A
-                         + recalcula percentuais por participação no total do JobCard
-                         + mantém ordem por (jobcard, task_order)
-
-    ✅ All-or-nothing: se houver qualquer erro de validação, a importação é cancelada
-    e um popup detalha os problemas.
+      - replace_jobcard:
+          * apaga todos os AllocatedManpower dos jobcards importados
+          * zera horas das AllocatedTask remanescentes
+          * 🔥 remove AllocatedTask que NÃO existem mais no TaskBase (prune órfãs)
+          * cria/ajusta faltantes como N/A (com base no TaskBase)
+          * recalcula percentuais e sincroniza JobCard (Σ totals / Σ max)
     """
     if request.method != "POST":
         return HttpResponseBadRequest("Invalid method.")
@@ -676,8 +720,8 @@ def import_allocated_manpower(request):
 
     # Validação de linhas
     valid_rows: List[dict] = []
-    invalid_jobs: List[str] = []        # JobCards inexistentes
-    invalid_labor: List[str] = []       # Direct Labor fora da base
+    invalid_jobs: List[str] = []
+    invalid_labor: List[str] = []
 
     for r in rows:
         jc = (r.get("jobcard_number") or "").strip()
@@ -695,7 +739,7 @@ def import_allocated_manpower(request):
         r["working_code"] = job_map[jc]["working_code"]
         valid_rows.append(r)
 
-    # ❌ Se houver QUALQUER erro => aborta toda importação com mensagem detalhada
+    # Abort on any error
     if invalid_jobs or invalid_labor:
         blocks = []
         if invalid_jobs:
@@ -705,23 +749,16 @@ def import_allocated_manpower(request):
 
         if invalid_labor:
             uniq = sorted({x for x in invalid_labor if x})
-            # sugestões com difflib
             labor_base = sorted({v for v in _manpower_valid_names_set()})
-            suggestion_html = ""
-            examples = uniq[:20]
             sug_items = []
-            for name in examples:
+            for name in uniq[:20]:
                 close = difflib.get_close_matches(name.lower(), labor_base, n=1, cutoff=0.72)
                 if close:
                     sug_items.append(f"<li><code>{name}</code> → did you mean <b>{close[0]}</b>?</li>")
                 else:
                     sug_items.append(f"<li><code>{name}</code></li>")
             suggestion_html = "<ul>" + "".join(sug_items) + "</ul>"
-
-            blocks.append(
-                "<li><b>Direct Labor not found in ManpowerBase</b>:"
-                f"{suggestion_html}</li>"
-            )
+            blocks.append("<li><b>Direct Labor not found in ManpowerBase</b>:" f"{suggestion_html}</li>")
 
         hint = (
             "<p class='mb-1'>How to fix:</p>"
@@ -738,7 +775,7 @@ def import_allocated_manpower(request):
         messages.error(request, mark_safe(html))
         return redirect("allocated_manpower_list")
 
-    # ✅ garante ordem determinística antes de salvar
+    # Ordem determinística antes de salvar
     valid_rows.sort(
         key=lambda r: (
             r["jobcard_number"],
@@ -750,16 +787,22 @@ def import_allocated_manpower(request):
     affected_pairs: Set[Tuple[str, int]] = set()
     created_na = 0
     pct_updates = 0
-    agg_updates = 0  # quantos JobCards sincronizados
+    agg_updates = 0
+    pruned_orphans = 0
 
     try:
         with transaction.atomic():
             if mode == "replace_jobcard":
-                # apaga SOMENTE os manpower dos jobcards existentes e zera horas das tasks
+                # 1) Apaga manpowers dos jobcards existentes
                 existing_jobcards = {r["jobcard_number"] for r in valid_rows}
                 if existing_jobcards:
                     AllocatedManpower.objects.filter(jobcard_number__in=existing_jobcards).delete()
+
+                    # 2) Zera horas de tasks (as remanescentes)
                     AllocatedTask.objects.filter(jobcard_number__in=existing_jobcards).update(total_hours=0)
+
+                    # 3) 🔥 Remove tasks órfãs (que não existem mais no TaskBase)
+                    pruned_orphans = _prune_orphan_allocated_tasks(existing_jobcards, job_map)
 
             # MERGE/UPSERT por (jobcard_number, task_order, direct_labor)
             for r in valid_rows:
@@ -795,7 +838,7 @@ def import_allocated_manpower(request):
             affected_jobcards = {r["jobcard_number"] for r in valid_rows}
             pct_updates = _recalc_jobcard_percentages(affected_jobcards)
 
-            # ✅ Sincroniza o JobCard com o que ficou em AllocatedTask (Σ totals / Σ max)
+            # Sincroniza JobCard com AllocatedTask (Σ totals / Σ max)
             agg_updates = _sync_jobcard_from_allocatedtask(affected_jobcards)
 
         # ===== Mensagens =====
@@ -807,10 +850,11 @@ def import_allocated_manpower(request):
             f"<li>{updated_tasks} task(s) updated (total/max/description)</li>"
             f"<li>{pct_updates} task(s) with % recalculated</li>"
             f"<li><b>{agg_updates}</b> JobCard(s) synced from AllocatedTask</li>"
-            f"</ul>"
         )
         if mode == "replace_jobcard":
-            base_msg += f"<p>{created_na} missing task(s) were set as <b>N/A</b>.</p>"
+            base_msg += f"<li>{pruned_orphans} orphan task(s) removed (no longer in TaskBase)</li>"
+            base_msg += f"<li>{created_na} missing task(s) were set as <b>N/A</b></li>"
+        base_msg += "</ul>"
         messages.success(request, mark_safe(base_msg))
 
     except Exception as e:
